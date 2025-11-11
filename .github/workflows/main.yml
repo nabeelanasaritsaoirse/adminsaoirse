@@ -37,10 +37,15 @@ jobs:
           echo "Your site is live at:"
           echo "http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com"
 
-      - name: Add summary with clickable link
+      - name: 🧾 Add summary with clickable links
+        if: success()
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo " **Your static site is live!**" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Static Website URL:**" >> $GITHUB_STEP_SUMMARY
+          echo "[http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com](http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[ View Live Site](http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com)" >> $GITHUB_STEP_SUMMARY
+          echo "**Custom Domain (GoDaddy):**" >> $GITHUB_STEP_SUMMARY
+          echo "[http://${CUSTOM_DOMAIN}](http://${CUSTOM_DOMAIN})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
