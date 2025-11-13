@@ -15,318 +15,144 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
+    <link rel="stylesheet" href="/adminsaoirse/assets/css/style.css">
+    <link rel="stylesheet" href="/adminsaoirse/assets/css/responsive.css">
 </head>
+
 <body>
 
-    <!-- Top Navigation Bar -->
+    <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
+
             <button class="btn btn-dark" id="sidebarToggle">
                 <i class="bi bi-list"></i>
             </button>
-            <a class="navbar-brand ms-3" href="../index.html">
+
+            <a class="navbar-brand ms-3" href="/adminsaoirse/index.html">
                 <i class="bi bi-gear-fill"></i> Admin Panel
             </a>
 
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                         <i class="bi bi-bell"></i>
                         <span class="badge bg-danger">3</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-info-circle text-info"></i> New user registered</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-exclamation-triangle text-warning"></i> Server load high</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-check-circle text-success"></i> Backup completed</a></li>
+                        <li><a class="dropdown-item" href="#">New user registered</a></li>
+                        <li><a class="dropdown-item" href="#">Server load high</a></li>
+                        <li><a class="dropdown-item" href="#">Backup completed</a></li>
                     </ul>
                 </li>
+
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> Admin
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear"></i> Settings</a></li>
+                        <li><a class="dropdown-item" href="/adminsaoirse/pages/profile.html">Profile</a></li>
+                        <li><a class="dropdown-item" href="/adminsaoirse/pages/settings.html">Settings</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="../login.html"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                        <li><a class="dropdown-item" href="/adminsaoirse/login.html">Logout</a></li>
                     </ul>
                 </li>
             </ul>
+
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
+    <!-- SIDEBAR (FIXED + DYNAMIC LIKE CATEGORIES) -->
+    <div id="sidebar" class="sidebar"></div>
 
-            <!-- Sidebar -->
-            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../index.html">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active" href="users.html">
-                                <i class="bi bi-people"></i> Users
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.html">
-                                <i class="bi bi-folder-fill"></i> Categories
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="products.html">
-                                <i class="bi bi-box-seam"></i> Products
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-cart3"></i> Orders
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-graph-up"></i> Analytics
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="notifications.html">
-                                <i class="bi bi-bell"></i> Notifications
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="settings.html">
-                                <i class="bi bi-gear"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="container-fluid">
 
-            <!-- Main Content Area -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">User Management</h1>
-                    <div class="btn-toolbar mb-2 mb-md-0">
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                            <i class="bi bi-plus-circle"></i> Add New User
-                        </button>
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">User Management</h1>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="bi bi-plus-circle"></i> Add New User
+                </button>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="searchUser" placeholder="Search users...">
                     </div>
                 </div>
-
-                <!-- Search and Filter -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="searchUser" placeholder="Search users...">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select" id="filterRole">
-                            <option value="">All Roles</option>
-                            <option value="admin">Admin</option>
-                            <option value="user">User</option>
-                            <option value="moderator">Moderator</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select class="form-select" id="filterStatus">
-                            <option value="">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                            <option value="suspended">Suspended</option>
-                        </select>
-                    </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="filterRole">
+                        <option value="">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                        <option value="moderator">Moderator</option>
+                    </select>
                 </div>
-
-                <!-- Users Table -->
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Status</th>
-                                        <th>Registered</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="usersTableBody">
-                                    <tr>
-                                        <td>#001</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-person-circle fs-4 me-2"></i>
-                                                <span>John Doe</span>
-                                            </div>
-                                        </td>
-                                        <td>john@example.com</td>
-                                        <td><span class="badge bg-danger">Admin</span></td>
-                                        <td><span class="badge bg-success">Active</span></td>
-                                        <td>2024-01-10</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>#002</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-person-circle fs-4 me-2"></i>
-                                                <span>Jane Smith</span>
-                                            </div>
-                                        </td>
-                                        <td>jane@example.com</td>
-                                        <td><span class="badge bg-primary">User</span></td>
-                                        <td><span class="badge bg-success">Active</span></td>
-                                        <td>2024-01-12</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>#003</td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="bi bi-person-circle fs-4 me-2"></i>
-                                                <span>Mike Johnson</span>
-                                            </div>
-                                        </td>
-                                        <td>mike@example.com</td>
-                                        <td><span class="badge bg-info">Moderator</span></td>
-                                        <td><span class="badge bg-warning">Inactive</span></td>
-                                        <td>2024-01-08</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" title="Delete">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Pagination -->
-                        <nav>
-                            <ul class="pagination justify-content-center">
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#" tabindex="-1">Previous</a>
-                                </li>
-                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                <li class="page-item">
-                                    <a class="page-link" href="#">Next</a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
-
-            </main>
-        </div>
-    </div>
-
-    <!-- Add User Modal -->
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addUserForm">
-                        <div class="mb-3">
-                            <label for="userName" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="userName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="userEmail" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="userEmail" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="userRole" class="form-label">Role</label>
-                            <select class="form-select" id="userRole" required>
-                                <option value="">Select Role</option>
-                                <option value="admin">Admin</option>
-                                <option value="user">User</option>
-                                <option value="moderator">Moderator</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="userPassword" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="userPassword" required>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" form="addUserForm" class="btn btn-primary">Add User</button>
+                <div class="col-md-3">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="suspended">Suspended</option>
+                    </select>
                 </div>
             </div>
+
+            <!-- Users Table -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="usersTableBody">
+                                <!-- Your JS loads users -->
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav>
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item disabled"><a class="page-link">Previous</a></li>
+                            <li class="page-item active"><a class="page-link">1</a></li>
+                            <li class="page-item"><a class="page-link">2</a></li>
+                            <li class="page-item"><a class="page-link">3</a></li>
+                            <li class="page-item"><a class="page-link">Next</a></li>
+                        </ul>
+                    </nav>
+
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer mt-auto py-3 bg-light">
-        <div class="container-fluid text-center">
-            <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
-        </div>
-    </footer>
-
-    <!-- Bootstrap JS Bundle -->
+    <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Custom JavaScript -->
-    <script src="../assets/js/utils.js"></script>
-    <script src="../assets/js/sidebar.js"></script>
-    <script src="../assets/js/main.js"></script>
-
-    <script>
-        // Search functionality
-        document.getElementById('searchUser').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#usersTableBody tr');
-
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        });
-
-        // Add user form submission
-        document.getElementById('addUserForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('User added successfully!');
-            bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
-            this.reset();
-        });
-    </script>
+    <script src="/adminsaoirse/assets/js/utils.js"></script>
+    <script src="/adminsaoirse/assets/js/config.js"></script>
+    <script src="/adminsaoirse/assets/js/navigation.js"></script>
+    <script src="/adminsaoirse/assets/js/sidebar.js"></script>
+    <script src="/adminsaoirse/assets/js/main.js"></script>
+    <script src="/adminsaoirse/assets/js/users.js"></script>
 
 </body>
 </html>

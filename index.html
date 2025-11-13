@@ -18,301 +18,213 @@
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/responsive.css">
 </head>
+
 <body>
 
-    <!-- Top Navigation Bar -->
+    <!-- TOP NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
+
             <button class="btn btn-dark" id="sidebarToggle">
                 <i class="bi bi-list"></i>
             </button>
+
             <a class="navbar-brand ms-3" href="index.html">
                 <i class="bi bi-gear-fill"></i> Admin Panel
             </a>
 
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                         <i class="bi bi-bell"></i>
                         <span class="badge bg-danger">3</span>
                     </a>
+
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-info-circle text-info"></i> New user registered</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-exclamation-triangle text-warning"></i> Server load high</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-check-circle text-success"></i> Backup completed</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-center" href="#">View All</a></li>
+                        <li><a class="dropdown-item">New user registered</a></li>
+                        <li><a class="dropdown-item">Server load high</a></li>
+                        <li><a class="dropdown-item">Backup completed</a></li>
                     </ul>
                 </li>
+
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle"></i> Admin
                     </a>
+
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="pages/profile.html"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="pages/settings.html"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="login.html"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                        <li><a class="dropdown-item" href="pages/profile.html">Profile</a></li>
+                        <li><a class="dropdown-item" href="pages/settings.html">Settings</a></li>
+                        <li><a class="dropdown-item" href="login.html">Logout</a></li>
                     </ul>
                 </li>
             </ul>
+
         </div>
     </nav>
 
-    <div class="container-fluid">
-        <div class="row">
 
-            <!-- Sidebar -->
-            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link active" href="index.html">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="pages/users.html">
-                                <i class="bi bi-people"></i> Users
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="pages/categories.html">
-                                <i class="bi bi-folder-fill"></i> Categories
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="pages/products.html">
-                                <i class="bi bi-box-seam"></i> Products
-                            </a>
-                        </li>
-                          <li class="nav-item">
-                            <a class="nav-link" href="pages/products.html">
-                                <i class="bi bi-box-seam"></i> image store
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-cart3"></i> Orders
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-graph-up"></i> Analytics
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="pages/notifications.html">
-                                <i class="bi bi-bell"></i> Notifications
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="pages/settings.html">
-                                <i class="bi bi-gear"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
+    <!-- ========================= -->
+    <!--   SIDEBAR (FIXED SAME AS CATEGORIES)   -->
+    <!-- ========================= -->
+    <div id="sidebar" class="sidebar"></div>
 
-                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                        <span>Quick Actions</span>
-                    </h6>
-                    <ul class="nav flex-column mb-2">
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-file-earmark-plus"></i> Add New
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-download"></i> Reports
-                            </a>
-                        </li>
-                    </ul>
+
+    <!-- ========================= -->
+    <!--   MAIN CONTENT (SMOOTH LIKE CATEGORIES) -->
+    <!-- ========================= -->
+    <div class="main-content">
+        <div class="container-fluid">
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Dashboard</h1>
+
+                <div class="btn-toolbar">
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-calendar3"></i> Today
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-2">
+                        <i class="bi bi-download"></i> Export
+                    </button>
                 </div>
-            </nav>
+            </div>
 
-            <!-- Main Content Area -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Dashboard</h1>
-                    <div class="btn-toolbar mb-2 mb-md-0">
-                        <div class="btn-group me-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-calendar3"></i> Today
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-download"></i> Export
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            <!-- Stats Row -->
+            <div class="row">
 
-                <!-- Stats Cards -->
-                <div class="row mb-4">
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-start border-primary border-4 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Users</div>
-                                        <div class="h5 mb-0 fw-bold text-gray-800">1,234</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-people fs-2 text-muted"></i>
-                                    </div>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-primary">Total Users</div>
+                                    <div class="h5 mb-0 fw-bold">1,234</div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-start border-success border-4 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <div class="text-xs fw-bold text-success text-uppercase mb-1">Revenue</div>
-                                        <div class="h5 mb-0 fw-bold text-gray-800">$45,890</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-currency-dollar fs-2 text-muted"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-start border-info border-4 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <div class="text-xs fw-bold text-info text-uppercase mb-1">Orders</div>
-                                        <div class="h5 mb-0 fw-bold text-gray-800">567</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-cart3 fs-2 text-muted"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-xl-3 col-md-6 mb-4">
-                        <div class="card border-start border-warning border-4 shadow-sm h-100">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <div class="text-xs fw-bold text-warning text-uppercase mb-1">Pending</div>
-                                        <div class="h5 mb-0 fw-bold text-gray-800">18</div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="bi bi-clock-history fs-2 text-muted"></i>
-                                    </div>
-                                </div>
+                                <i class="bi bi-people fs-2 text-muted"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Charts Row -->
-                <div class="row mb-4">
-                    <div class="col-lg-8">
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 fw-bold text-primary">Sales Overview</h6>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="salesChart" width="100%" height="40"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-4">
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 fw-bold text-primary">Revenue Sources</h6>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="revenueChart"></canvas>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-success shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-success">Revenue</div>
+                                    <div class="h5 mb-0 fw-bold">$45,890</div>
+                                </div>
+                                <i class="bi bi-currency-dollar fs-2 text-muted"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Recent Activity Table -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 fw-bold text-primary">Recent Activity</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover" id="activityTable">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>User</th>
-                                        <th>Action</th>
-                                        <th>Status</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>#001</td>
-                                        <td>John Doe</td>
-                                        <td>New Order</td>
-                                        <td><span class="badge bg-success">Completed</span></td>
-                                        <td>2024-01-15</td>
-                                    </tr>
-                                    <tr>
-                                        <td>#002</td>
-                                        <td>Jane Smith</td>
-                                        <td>Profile Update</td>
-                                        <td><span class="badge bg-info">Processing</span></td>
-                                        <td>2024-01-15</td>
-                                    </tr>
-                                    <tr>
-                                        <td>#003</td>
-                                        <td>Mike Johnson</td>
-                                        <td>Payment</td>
-                                        <td><span class="badge bg-warning">Pending</span></td>
-                                        <td>2024-01-14</td>
-                                    </tr>
-                                    <tr>
-                                        <td>#004</td>
-                                        <td>Sarah Williams</td>
-                                        <td>Registration</td>
-                                        <td><span class="badge bg-success">Completed</span></td>
-                                        <td>2024-01-14</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-info">Orders</div>
+                                    <div class="h5 mb-0 fw-bold">567</div>
+                                </div>
+                                <i class="bi bi-cart3 fs-2 text-muted"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-            </main>
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-xs fw-bold text-warning">Pending</div>
+                                    <div class="h5 mb-0 fw-bold">18</div>
+                                </div>
+                                <i class="bi bi-clock-history fs-2 text-muted"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- Recent Activity Table -->
+            <div class="card shadow-sm mb-5">
+                <div class="card-header">
+                    <h6 class="m-0 fw-bold text-primary">Recent Activity</h6>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <tr>
+                                    <td>#001</td>
+                                    <td>John Doe</td>
+                                    <td>New Order</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>2024-01-15</td>
+                                </tr>
+                                <tr>
+                                    <td>#002</td>
+                                    <td>Jane Smith</td>
+                                    <td>Profile Update</td>
+                                    <td><span class="badge bg-info">Processing</span></td>
+                                    <td>2024-01-15</td>
+                                </tr>
+                                <tr>
+                                    <td>#003</td>
+                                    <td>Mike Johnson</td>
+                                    <td>Payment</td>
+                                    <td><span class="badge bg-warning">Pending</span></td>
+                                    <td>2024-01-14</td>
+                                </tr>
+                                <tr>
+                                    <td>#004</td>
+                                    <td>Sarah Williams</td>
+                                    <td>Registration</td>
+                                    <td><span class="badge bg-success">Completed</span></td>
+                                    <td>2024-01-14</td>
+                                </tr>
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
     </div>
 
+
     <!-- Footer -->
-    <footer class="footer mt-auto py-3 bg-light">
-        <div class="container-fluid text-center">
-            <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
+    <footer class="footer bg-light py-3">
+        <div class="text-center text-muted">
+            © 2024 Admin Panel. All rights reserved.
         </div>
     </footer>
 
-    <!-- Bootstrap JS Bundle -->
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-    <!-- Custom JavaScript -->
-    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/navigation.js"></script>
     <script src="assets/js/sidebar.js"></script>
-    <script src="assets/js/chart.js"></script>
     <script src="assets/js/main.js"></script>
 
 </body>

@@ -1,12 +1,6 @@
-/**
- * Global Configuration
- * Common configuration settings used across the application
- */
-
 // API Configuration
 const API_CONFIG = {
     // Base URL for API endpoints
-    // Change this for production environment
     baseURL: 'http://localhost:5000/api',
 
     // Timeout for API requests (milliseconds)
@@ -22,7 +16,6 @@ const API_CONFIG = {
             getById: '/categories/:id',
             getBreadcrumb: '/categories/:id/breadcrumb',
             getSubcategories: '/categories/:id/subcategories',
-            // Admin endpoints
             create: '/categories/admin/create',
             update: '/categories/admin/:id',
             delete: '/categories/admin/:id',
@@ -43,10 +36,10 @@ const API_CONFIG = {
         // Users
         users: {
             getAll: '/users',
-            getById: '/users/:id',
+            getById: '/users/:userId',            // ✔ CORRECT
             create: '/users/admin/create',
-            update: '/users/admin/:id',
-            delete: '/users/admin/:id'
+            update: '/users/admin/:userId',       // ✔ FIXED
+            delete: '/users/admin/:userId'        // ✔ FIXED
         },
 
         // Notifications
@@ -69,97 +62,61 @@ const API_CONFIG = {
 
 // App Configuration
 const APP_CONFIG = {
-    // Application name
     name: 'Admin Panel',
-
-    // Version
     version: '1.0.0',
 
-    // Pagination
     pagination: {
         defaultPageSize: 10,
         pageSizeOptions: [5, 10, 25, 50, 100]
     },
 
-    // Date format
     dateFormat: 'YYYY-MM-DD',
     dateTimeFormat: 'YYYY-MM-DD HH:mm:ss',
 
-    // Maximum file upload size (in bytes)
     maxFileSize: 5 * 1024 * 1024, // 5MB
-
-    // Allowed image formats
     allowedImageFormats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
 
-    // Category settings
     categories: {
         maxLevels: 5,
         maxNameLength: 100,
         maxDescriptionLength: 500
     },
 
-    // Notification settings
     notifications: {
-        duration: 3000, // milliseconds
+        duration: 3000,
         position: 'top-right'
     }
 };
 
 // Authentication helper
 const AUTH = {
-    /**
-     * Get authentication token from localStorage
-     * @returns {string|null} Authentication token
-     */
     getToken: function() {
         return localStorage.getItem('authToken');
     },
 
-    /**
-     * Set authentication token in localStorage
-     * @param {string} token - Authentication token
-     */
     setToken: function(token) {
         localStorage.setItem('authToken', token);
     },
 
-    /**
-     * Remove authentication token from localStorage
-     */
     removeToken: function() {
         localStorage.removeItem('authToken');
     },
 
-    /**
-     * Check if user is authenticated
-     * @returns {boolean} True if authenticated
-     */
     isAuthenticated: function() {
         return !!this.getToken();
     },
 
-    /**
-     * Get authorization header
-     * @returns {Object} Headers object with Authorization
-     */
     getAuthHeaders: function() {
         const token = this.getToken();
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 };
 
-// API Helper functions
+// API Helper
 const API = {
-    /**
-     * Build full API URL
-     * @param {string} endpoint - API endpoint path
-     * @param {Object} params - URL parameters to replace
-     * @returns {string} Full URL
-     */
     buildURL: function(endpoint, params = {}) {
         let url = API_CONFIG.baseURL + endpoint;
 
-        // Replace URL parameters
         Object.keys(params).forEach(key => {
             url = url.replace(`:${key}`, params[key]);
         });
@@ -167,15 +124,8 @@ const API = {
         return url;
     },
 
-    /**
-     * Make API request
-     * @param {string} url - Full URL or endpoint
-     * @param {Object} options - Fetch options
-     * @returns {Promise} Response data
-     */
     request: async function(url, options = {}) {
         try {
-            // Add default headers
             const defaultHeaders = {
                 'Content-Type': 'application/json',
                 ...AUTH.getAuthHeaders()
@@ -190,16 +140,6 @@ const API = {
             };
 
             const response = await fetch(url, config);
-
-            // Handle unauthorized - TEMPORARILY DISABLED FOR TESTING
-            // TODO: Enable this when authentication is implemented
-            // if (response.status === 401) {
-            //     AUTH.removeToken();
-            //     window.location.href = '/login.html';
-            //     throw new Error('Unauthorized');
-            // }
-
-            // Parse response
             const data = await response.json();
 
             if (!response.ok) {
@@ -214,17 +154,9 @@ const API = {
         }
     },
 
-    /**
-     * GET request
-     * @param {string} endpoint - API endpoint
-     * @param {Object} params - URL parameters
-     * @param {Object} query - Query string parameters
-     * @returns {Promise} Response data
-     */
     get: async function(endpoint, params = {}, query = {}) {
         let url = this.buildURL(endpoint, params);
 
-        // Add query parameters
         if (Object.keys(query).length > 0) {
             const queryString = new URLSearchParams(query).toString();
             url += `?${queryString}`;
@@ -233,13 +165,6 @@ const API = {
         return this.request(url, { method: 'GET' });
     },
 
-    /**
-     * POST request
-     * @param {string} endpoint - API endpoint
-     * @param {Object} data - Request body data
-     * @param {Object} params - URL parameters
-     * @returns {Promise} Response data
-     */
     post: async function(endpoint, data, params = {}) {
         const url = this.buildURL(endpoint, params);
         return this.request(url, {
@@ -248,13 +173,6 @@ const API = {
         });
     },
 
-    /**
-     * PUT request
-     * @param {string} endpoint - API endpoint
-     * @param {Object} data - Request body data
-     * @param {Object} params - URL parameters
-     * @returns {Promise} Response data
-     */
     put: async function(endpoint, data, params = {}) {
         const url = this.buildURL(endpoint, params);
         return this.request(url, {
@@ -263,17 +181,9 @@ const API = {
         });
     },
 
-    /**
-     * DELETE request
-     * @param {string} endpoint - API endpoint
-     * @param {Object} params - URL parameters
-     * @param {Object} query - Query string parameters
-     * @returns {Promise} Response data
-     */
     delete: async function(endpoint, params = {}, query = {}) {
         let url = this.buildURL(endpoint, params);
 
-        // Add query parameters
         if (Object.keys(query).length > 0) {
             const queryString = new URLSearchParams(query).toString();
             url += `?${queryString}`;
@@ -283,7 +193,6 @@ const API = {
     }
 };
 
-// Export for use in other files
 if (typeof window !== 'undefined') {
     window.API_CONFIG = API_CONFIG;
     window.APP_CONFIG = APP_CONFIG;
