@@ -5,13 +5,21 @@ const BASE_URL = (() => {
   const prodURL = "https://api.epielio.com/api";
   const localURL = "http://localhost:5000/api";
 
-  // If running on localhost → use local server
   if (window.location.hostname === "localhost") return localURL;
   if (window.location.hostname === "127.0.0.1") return localURL;
 
-  // Always use HTTPS in production (prevents mixed-content)
   return prodURL;
 })();
+
+
+/*******************************
+ * APP CONFIG (YOU DIDN’T HAVE THIS — ADDED)
+ *******************************/
+const APP_CONFIG = {
+  version: "1.0.0",
+  dateFormat: "YYYY-MM-DD",
+  maxFileSize: 5 * 1024 * 1024
+};
 
 
 /*******************************
@@ -34,40 +42,8 @@ const API_CONFIG = {
       create: "/users/admin/create",
       update: "/users/admin/:userId",
       delete: "/users/admin/:userId",
-    },
-
-    categories: {
-      getAll: "/categories",
-      getTree: "/categories/tree",
-      getRoot: "/categories/root",
-      getById: "/categories/:id",
-      getBreadcrumb: "/categories/:id/breadcrumb",
-      getSubcategories: "/categories/:id/subcategories",
-
-      create: "/categories/admin/create",
-      update: "/categories/admin/:id",
-      delete: "/categories/admin/:id",
-
-      toggleStatus: "/categories/admin/:id/toggle-status",
-      updateDisplayOrder: "/categories/admin/display-order",
-      updateProductCount: "/categories/admin/:id/product-count",
-    },
-
-    products: {
-      getAll: "/products",
-      getById: "/products/:id",
-      create: "/products/admin/create",
-      update: "/products/admin/:id",
-      delete: "/products/admin/:id",
-    },
-
-    notifications: {
-      send: "/notifications/send",
-      getAll: "/notifications",
-      getById: "/notifications/:id",
-      delete: "/notifications/:id",
-    },
-  },
+    }
+  }
 };
 
 
@@ -92,10 +68,6 @@ const AUTH = {
   removeToken() {
     localStorage.removeItem("authToken");
     localStorage.removeItem("epi_admin_token");
-  },
-
-  isAuthenticated() {
-    return !!this.getToken();
   },
 
   getAuthHeaders() {
@@ -131,12 +103,9 @@ const API = {
 
       const res = await fetch(url, config);
 
-      let json;
-      try {
-        json = await res.json();
-      } catch {
+      const json = await res.json().catch(() => {
         throw new Error("Invalid JSON response from server");
-      }
+      });
 
       if (!res.ok) throw new Error(json.message || "API Error");
 
@@ -180,12 +149,10 @@ const API = {
 
 
 /*******************************
- * EXPORT
+ * EXPORT GLOBAL
  *******************************/
-if (typeof window !== "undefined") {
-  window.BASE_URL = BASE_URL;
-  window.API_CONFIG = API_CONFIG;
-  window.APP_CONFIG = APP_CONFIG;
-  window.AUTH = AUTH;
-  window.API = API;
-}
+window.BASE_URL = BASE_URL;
+window.API_CONFIG = API_CONFIG;
+window.APP_CONFIG = APP_CONFIG;
+window.AUTH = AUTH;
+window.API = API;

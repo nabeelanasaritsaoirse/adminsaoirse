@@ -23,9 +23,9 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
     />
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="/adminsaoirse/assets/css/style.css" />
-    <link rel="stylesheet" href="/adminsaoirse/assets/css/responsive.css" />
+    <!-- Custom CSS (FIXED PATHS) -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
   </head>
 
   <body>
@@ -38,14 +38,14 @@
         const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
         if (!token) {
-          window.location.href = "pages/login.html";
+          window.location.href = "login.html"; // FIXED
           return;
         }
 
         if (user.role !== "admin") {
           localStorage.removeItem("epi_admin_token");
           localStorage.removeItem("epi_admin_user");
-          window.location.href = "pages/login.html";
+          window.location.href = "login.html"; // FIXED
           return;
         }
       })();
@@ -58,7 +58,7 @@
           <i class="bi bi-list"></i>
         </button>
 
-        <a class="navbar-brand ms-3" href="/adminsaoirse/index.html">
+        <a class="navbar-brand ms-3" href="../index.html">
           <i class="bi bi-gear-fill"></i> Admin Panel
         </a>
 
@@ -80,28 +80,17 @@
             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
               <i class="bi bi-person-circle"></i> Admin
             </a>
+
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <a
-                  class="dropdown-item"
-                  href="/adminsaoirse/pages/profile.html"
-                >
-                  Profile
-                </a>
+                <a class="dropdown-item" href="profile.html">Profile</a>
               </li>
               <li>
-                <a
-                  class="dropdown-item"
-                  href="/adminsaoirse/pages/settings.html"
-                >
-                  Settings
-                </a>
+                <a class="dropdown-item" href="settings.html">Settings</a>
               </li>
               <li><hr class="dropdown-divider" /></li>
               <li>
-                <a class="dropdown-item" href="/adminsaoirse/pages/login.html">
-                  Logout
-                </a>
+                <a class="dropdown-item" id="logoutBtn">Logout</a> <!-- FIXED -->
               </li>
             </ul>
           </li>
@@ -185,10 +174,7 @@
       </div>
     </div>
 
-    <!-- ================================= -->
-    <!-- ADD USER MODAL (FIXED + WORKING) -->
-    <!-- ================================= -->
-
+    <!-- ADD USER MODAL -->
     <div class="modal fade" id="addUserModal" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -201,32 +187,17 @@
             <form id="addUserForm">
               <div class="mb-3">
                 <label class="form-label">Full Name</label>
-                <input
-                  type="text"
-                  id="userName"
-                  class="form-control"
-                  required
-                />
+                <input type="text" id="userName" class="form-control" required />
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Email</label>
-                <input
-                  type="email"
-                  id="userEmail"
-                  class="form-control"
-                  required
-                />
+                <input type="email" id="userEmail" class="form-control" required />
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Password</label>
-                <input
-                  type="password"
-                  id="userPassword"
-                  class="form-control"
-                  required
-                />
+                <input type="password" id="userPassword" class="form-control" required />
               </div>
 
               <div class="mb-3">
@@ -240,26 +211,28 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">
-              Cancel
-            </button>
-            <button class="btn btn-primary" type="submit" form="addUserForm">
-              Create User
-            </button>
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" type="submit" form="addUserForm">Create User</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- JS FILES (Correct order!) -->
+    <!-- JS FILES (Correct Order) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script src="/adminsaoirse/assets/js/utils.js"></script>
-    <script src="/adminsaoirse/assets/js/config.js"></script>
-    <script src="/adminsaoirse/assets/js/navigation.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/users.js"></script>
 
-    <!-- FIXED: CORRECT SIDEBAR PATH -->
-    <script src="/adminsaoirse/assets/js/main.js"></script>
-    <script src="/adminsaoirse/assets/js/users.js"></script>
+    <!-- LOGOUT -->
+    <script>
+      document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "login.html";
+      });
+    </script>
   </body>
 </html>

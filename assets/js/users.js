@@ -1,8 +1,11 @@
-// USERS MANAGEMENT PAGE JS
+/********************************************
+ * USERS MANAGEMENT PAGE – FINAL CLEAN CODE
+ ********************************************/
 
 document.addEventListener("DOMContentLoaded", () => {
     initUserManagement();
 });
+
 
 function initUserManagement() {
     loadUsers();
@@ -10,19 +13,23 @@ function initUserManagement() {
     setupSearchFilter();
 }
 
-// ------------------------------------
-// FETCH USERS
-// ------------------------------------
 
+/********************************************
+ * LOAD USERS FROM BACKEND
+ ********************************************/
 async function loadUsers() {
     try {
-        const users = await API.get(API_CONFIG.endpoints.users.getAll);
+        const response = await API.get(API_CONFIG.endpoints.users.getAll);
+
+        const users = response.data || response; // safe for both formats
         renderUsersTable(users);
+
     } catch (err) {
         console.error("Error loading users:", err);
         alert("Failed to load users from the server");
     }
 }
+
 
 function renderUsersTable(users) {
     const tbody = document.getElementById("usersTableBody");
@@ -77,10 +84,11 @@ function renderUsersTable(users) {
     });
 }
 
-// ------------------------------------
-// ADD USER
-// ------------------------------------
 
+
+/********************************************
+ * ADD USER
+ ********************************************/
 function setupAddUserForm() {
     const addForm = document.getElementById("addUserForm");
     if (!addForm) return;
@@ -93,7 +101,7 @@ function setupAddUserForm() {
             email: document.getElementById("userEmail").value,
             password: document.getElementById("userPassword").value,
             role: document.getElementById("userRole").value,
-            referralLimit: 50
+            referralLimit: 50,
         };
 
         try {
@@ -106,6 +114,7 @@ function setupAddUserForm() {
 
             addForm.reset();
             loadUsers();
+
         } catch (err) {
             console.error("Create user failed:", err);
             alert(err.message || "Failed to create user");
@@ -113,20 +122,25 @@ function setupAddUserForm() {
     });
 }
 
-// ------------------------------------
-// EDIT USER
-// ------------------------------------
 
+
+/********************************************
+ * EDIT USER (FETCH + MODAL)
+ ********************************************/
 async function openEditUserModal(userId) {
     try {
-        // Correct: { userId } matches "/users/:userId"
-        const user = await API.get(API_CONFIG.endpoints.users.getById, { userId });
+        const response = await API.get(API_CONFIG.endpoints.users.getById, { userId });
+
+        const user = response.data || response;
+
         injectEditUserModal(user);
+
     } catch (err) {
         console.error("Failed to fetch user:", err);
         alert("Failed to load user details");
     }
 }
+
 
 function injectEditUserModal(user) {
     const existing = document.getElementById("editUserModal");
@@ -198,6 +212,11 @@ function injectEditUserModal(user) {
     new bootstrap.Modal(document.getElementById("editUserModal")).show();
 }
 
+
+
+/********************************************
+ * UPDATE USER
+ ********************************************/
 async function updateUser(userId) {
     const body = {
         name: document.getElementById("editName").value,
@@ -209,7 +228,6 @@ async function updateUser(userId) {
     };
 
     try {
-        // Correct: { userId } — NOT { id }
         await API.put(API_CONFIG.endpoints.users.update, body, { userId });
 
         alert("User updated successfully");
@@ -218,35 +236,37 @@ async function updateUser(userId) {
         if (modal) modal.hide();
 
         loadUsers();
+
     } catch (err) {
         console.error("Update failed:", err);
         alert("Failed to update user");
     }
 }
 
-// ------------------------------------
-// DELETE USER
-// ------------------------------------
 
+
+/********************************************
+ * DELETE USER
+ ********************************************/
 async function deleteUser(userId) {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
     try {
-        // Corrected — backend expects :userId
         await API.delete(API_CONFIG.endpoints.users.delete, { userId });
-
         alert("User deleted");
         loadUsers();
+
     } catch (err) {
         console.error("Delete failed:", err);
         alert("Failed to delete user");
     }
 }
 
-// ------------------------------------
-// SEARCH FILTER
-// ------------------------------------
 
+
+/********************************************
+ * SEARCH FILTER
+ ********************************************/
 function setupSearchFilter() {
     const input = document.getElementById("searchUser");
     if (!input) return;
@@ -262,10 +282,11 @@ function setupSearchFilter() {
     });
 }
 
-// ------------------------------------
-// HTML ESCAPE
-// ------------------------------------
 
+
+/********************************************
+ * SAFE TEXT ESCAPER
+ ********************************************/
 function escapeHtml(text) {
     if (!text) return "";
     return text

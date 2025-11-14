@@ -22,20 +22,18 @@
 <body>
 
     <!-- =============================== -->
-    <!--   AUTH PROTECTION (ADDED)      -->
+    <!--   AUTH PROTECTION (DO NOT REMOVE) -->
     <!-- =============================== -->
     <script>
         (function() {
             const token = localStorage.getItem("epi_admin_token");
             const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
-            // If not logged in → redirect
             if (!token) {
                 window.location.href = "pages/login.html";
                 return;
             }
 
-            // If logged in but NOT admin → logout and redirect
             if (user.role !== "admin") {
                 localStorage.removeItem("epi_admin_token");
                 localStorage.removeItem("epi_admin_user");
@@ -45,7 +43,6 @@
         })();
     </script>
     <!-- =============================== -->
-
 
     <!-- TOP NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
@@ -89,10 +86,8 @@
         </div>
     </nav>
 
-
     <!-- SIDEBAR -->
     <div id="sidebar" class="sidebar"></div>
-
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
@@ -111,9 +106,9 @@
                 </div>
             </div>
 
-
-            <!-- STATS -->
+            <!-- SAMPLE STATS (STATIC) -->
             <div class="row">
+
                 <div class="col-xl-3 col-md-6 mb-4">
                     <div class="card border-left-primary shadow-sm">
                         <div class="card-body">
@@ -169,10 +164,10 @@
                         </div>
                     </div>
                 </div>
+
             </div>
 
-
-            <!-- TABLE -->
+            <!-- SAMPLE ACTIVITY TABLE -->
             <div class="card shadow-sm mb-5">
                 <div class="card-header">
                     <h6 class="m-0 fw-bold text-primary">Recent Activity</h6>
@@ -199,6 +194,7 @@
                                     <td><span class="badge bg-success">Completed</span></td>
                                     <td>2024-01-15</td>
                                 </tr>
+
                                 <tr>
                                     <td>#002</td>
                                     <td>Jane Smith</td>
@@ -206,6 +202,7 @@
                                     <td><span class="badge bg-info">Processing</span></td>
                                     <td>2024-01-15</td>
                                 </tr>
+
                                 <tr>
                                     <td>#003</td>
                                     <td>Mike Johnson</td>
@@ -213,6 +210,7 @@
                                     <td><span class="badge bg-warning">Pending</span></td>
                                     <td>2024-01-14</td>
                                 </tr>
+
                                 <tr>
                                     <td>#004</td>
                                     <td>Sarah Williams</td>
@@ -231,7 +229,6 @@
         </div>
     </div>
 
-
     <!-- FOOTER -->
     <footer class="footer bg-light py-3">
         <div class="text-center text-muted">
@@ -239,10 +236,13 @@
         </div>
     </footer>
 
-
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Load config FIRST -->
+    <script src="assets/js/config.js"></script>
+
+    <!-- Other JS -->
     <script src="assets/js/navigation.js"></script>
     <script src="assets/js/main.js"></script>
 
