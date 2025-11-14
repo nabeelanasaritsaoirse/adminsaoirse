@@ -11,7 +11,7 @@ function initUserManagement() {
 }
 
 // ------------------------------------
-// FETCH USERS FROM BACKEND & RENDER
+// FETCH USERS
 // ------------------------------------
 
 async function loadUsers() {
@@ -119,6 +119,7 @@ function setupAddUserForm() {
 
 async function openEditUserModal(userId) {
     try {
+        // Correct: { userId } matches "/users/:userId"
         const user = await API.get(API_CONFIG.endpoints.users.getById, { userId });
         injectEditUserModal(user);
     } catch (err) {
@@ -126,7 +127,6 @@ async function openEditUserModal(userId) {
         alert("Failed to load user details");
     }
 }
-
 
 function injectEditUserModal(user) {
     const existing = document.getElementById("editUserModal");
@@ -209,6 +209,7 @@ async function updateUser(userId) {
     };
 
     try {
+        // Correct: { userId } — NOT { id }
         await API.put(API_CONFIG.endpoints.users.update, body, { userId });
 
         alert("User updated successfully");
@@ -223,7 +224,6 @@ async function updateUser(userId) {
     }
 }
 
-
 // ------------------------------------
 // DELETE USER
 // ------------------------------------
@@ -232,7 +232,9 @@ async function deleteUser(userId) {
     if (!confirm("Are you sure you want to delete this user?")) return;
 
     try {
-        await API.delete(API_CONFIG.endpoints.users.delete, { id: userId });
+        // Corrected — backend expects :userId
+        await API.delete(API_CONFIG.endpoints.users.delete, { userId });
+
         alert("User deleted");
         loadUsers();
     } catch (err) {

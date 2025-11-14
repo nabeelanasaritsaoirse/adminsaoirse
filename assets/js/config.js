@@ -1,21 +1,25 @@
-// ============================
-// API CONFIGURATION (FIXED)
-// ============================
+/*******************************
+ * BASE URL (CHANGE ONLY THIS)
+ *******************************/
+const BASE_URL = "https://api.epielio.com/api";
+// const BASE_URL = "http://localhost:5000/api"; // For local dev
 
+
+
+/*******************************
+ * API CONFIGURATION
+ *******************************/
 const API_CONFIG = {
-  baseURL: "http://13.203.227.43:5000/api", // LIVE BACKEND
-
+  baseURL: BASE_URL,
   timeout: 30000,
 
   endpoints: {
-    // Auth
     auth: {
       adminLogin: "/auth/admin-login",
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
     },
 
-    // Users
     users: {
       getAll: "/users",
       getById: "/users/:userId",
@@ -24,7 +28,6 @@ const API_CONFIG = {
       delete: "/users/admin/:userId",
     },
 
-    // Categories
     categories: {
       getAll: "/categories",
       getTree: "/categories/tree",
@@ -42,7 +45,6 @@ const API_CONFIG = {
       updateProductCount: "/categories/admin/:id/product-count",
     },
 
-    // Products
     products: {
       getAll: "/products",
       getById: "/products/:id",
@@ -51,7 +53,6 @@ const API_CONFIG = {
       delete: "/products/admin/:id",
     },
 
-    // Notifications
     notifications: {
       send: "/notifications/send",
       getAll: "/notifications",
@@ -61,10 +62,11 @@ const API_CONFIG = {
   },
 };
 
-// ============================
-// APP CONFIG
-// ============================
 
+
+/*******************************
+ * APP CONFIG
+ *******************************/
 const APP_CONFIG = {
   name: "Admin Panel",
   version: "1.0.0",
@@ -81,10 +83,13 @@ const APP_CONFIG = {
   allowedImageFormats: ["jpg", "jpeg", "png", "gif", "webp"],
 };
 
-// Authentication helper
+
+
+/*******************************
+ * AUTH HANDLER
+ *******************************/
 const AUTH = {
   getToken: function () {
-    // Support both keys: older code uses 'authToken', your login stores 'epi_admin_token'
     return (
       localStorage.getItem("authToken") ||
       localStorage.getItem("epi_admin_token") ||
@@ -93,7 +98,6 @@ const AUTH = {
   },
 
   setToken: function (token) {
-    // store to both keys to remain compatible across the app
     if (!token) return;
     localStorage.setItem("authToken", token);
     localStorage.setItem("epi_admin_token", token);
@@ -114,10 +118,11 @@ const AUTH = {
   },
 };
 
-// ============================
-// API WRAPPER
-// ============================
 
+
+/*******************************
+ * API WRAPPER
+ *******************************/
 const API = {
   buildURL(endpoint, params = {}) {
     let url = API_CONFIG.baseURL + endpoint;
@@ -140,18 +145,25 @@ const API = {
       const config = { ...options, headers };
 
       const res = await fetch(url, config);
-      const json = await res.json();
+
+      let json;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error("Invalid JSON response from server");
+      }
 
       if (!res.ok) throw new Error(json.message || "API Error");
 
       return json;
+
     } catch (err) {
       console.error("API Request Error:", err);
       throw err;
     }
   },
 
-  async get(endpoint, params = {}, query = {}) {
+  get(endpoint, params = {}, query = {}) {
     let url = this.buildURL(endpoint, params);
 
     if (Object.keys(query).length) {
@@ -163,7 +175,6 @@ const API = {
 
   post(endpoint, data, params = {}) {
     const url = this.buildURL(endpoint, params);
-
     return this.request(url, {
       method: "POST",
       body: JSON.stringify(data),
@@ -172,7 +183,6 @@ const API = {
 
   put(endpoint, data, params = {}) {
     const url = this.buildURL(endpoint, params);
-
     return this.request(url, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -181,14 +191,17 @@ const API = {
 
   delete(endpoint, params = {}) {
     const url = this.buildURL(endpoint, params);
-
     return this.request(url, { method: "DELETE" });
   },
 };
 
-// ============================
 
+
+/*******************************
+ * EXPORT
+ *******************************/
 if (typeof window !== "undefined") {
+  window.BASE_URL = BASE_URL;
   window.API_CONFIG = API_CONFIG;
   window.APP_CONFIG = APP_CONFIG;
   window.AUTH = AUTH;
