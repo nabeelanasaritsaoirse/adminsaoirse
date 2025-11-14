@@ -17,7 +17,6 @@ function initUserManagement() {
 async function loadUsers() {
     try {
         const users = await API.get(API_CONFIG.endpoints.users.getAll);
-
         renderUsersTable(users);
     } catch (err) {
         console.error("Error loading users:", err);
@@ -27,6 +26,8 @@ async function loadUsers() {
 
 function renderUsersTable(users) {
     const tbody = document.getElementById("usersTableBody");
+    if (!tbody) return;
+
     tbody.innerHTML = "";
 
     if (!users || users.length === 0) {
@@ -42,15 +43,15 @@ function renderUsersTable(users) {
                 <td>
                     <div class="d-flex align-items-center">
                         <i class="bi bi-person-circle fs-4 me-2"></i>
-                        <span>${u.name}</span>
+                        <span>${escapeHtml(u.name)}</span>
                     </div>
                 </td>
 
-                <td>${u.email}</td>
+                <td>${escapeHtml(u.email)}</td>
 
                 <td>
                     <span class="badge ${u.role === "admin" ? "bg-danger" : "bg-primary"}">
-                        ${u.role}
+                        ${escapeHtml(u.role)}
                     </span>
                 </td>
 
@@ -82,6 +83,7 @@ function renderUsersTable(users) {
 
 function setupAddUserForm() {
     const addForm = document.getElementById("addUserForm");
+    if (!addForm) return;
 
     addForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -98,9 +100,11 @@ function setupAddUserForm() {
             await API.post(API_CONFIG.endpoints.users.create, newUser);
 
             alert("User created successfully");
-            bootstrap.Modal.getInstance(document.getElementById("addUserModal")).hide();
-            addForm.reset();
 
+            const modal = bootstrap.Modal.getInstance(document.getElementById("addUserModal"));
+            if (modal) modal.hide();
+
+            addForm.reset();
             loadUsers();
         } catch (err) {
             console.error("Create user failed:", err);
@@ -116,13 +120,13 @@ function setupAddUserForm() {
 async function openEditUserModal(userId) {
     try {
         const user = await API.get(API_CONFIG.endpoints.users.getById, { userId });
-
         injectEditUserModal(user);
     } catch (err) {
         console.error("Failed to fetch user:", err);
         alert("Failed to load user details");
     }
 }
+
 
 function injectEditUserModal(user) {
     const existing = document.getElementById("editUserModal");
@@ -134,7 +138,7 @@ function injectEditUserModal(user) {
             <div class="modal-content">
 
                 <div class="modal-header">
-                    <h5 class="modal-title">Edit User - ${user.name}</h5>
+                    <h5 class="modal-title">Edit User - ${escapeHtml(user.name)}</h5>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
 
@@ -143,17 +147,17 @@ function injectEditUserModal(user) {
 
                         <div class="mb-3">
                             <label class="form-label">Name</label>
-                            <input id="editName" class="form-control" value="${user.name}">
+                            <input id="editName" class="form-control" value="${escapeHtml(user.name)}">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input id="editEmail" class="form-control" value="${user.email}">
+                            <input id="editEmail" class="form-control" value="${escapeHtml(user.email)}">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Phone</label>
-                            <input id="editPhone" class="form-control" value="${user.phoneNumber || ''}">
+                            <input id="editPhone" class="form-control" value="${escapeHtml(user.phoneNumber || '')}">
                         </div>
 
                         <div class="mb-3">
@@ -191,7 +195,6 @@ function injectEditUserModal(user) {
     `;
 
     document.body.insertAdjacentHTML("beforeend", html);
-
     new bootstrap.Modal(document.getElementById("editUserModal")).show();
 }
 
@@ -206,10 +209,12 @@ async function updateUser(userId) {
     };
 
     try {
-        await API.put(API_CONFIG.endpoints.users.update, body, { id: userId });
+        await API.put(API_CONFIG.endpoints.users.update, body, { userId });
 
         alert("User updated successfully");
-        bootstrap.Modal.getInstance(document.getElementById("editUserModal")).hide();
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById("editUserModal"));
+        if (modal) modal.hide();
 
         loadUsers();
     } catch (err) {
@@ -217,6 +222,7 @@ async function updateUser(userId) {
         alert("Failed to update user");
     }
 }
+
 
 // ------------------------------------
 // DELETE USER
@@ -227,7 +233,6 @@ async function deleteUser(userId) {
 
     try {
         await API.delete(API_CONFIG.endpoints.users.delete, { id: userId });
-
         alert("User deleted");
         loadUsers();
     } catch (err) {
@@ -242,14 +247,30 @@ async function deleteUser(userId) {
 
 function setupSearchFilter() {
     const input = document.getElementById("searchUser");
+    if (!input) return;
 
     input.addEventListener("input", (e) => {
         const term = e.target.value.toLowerCase();
         const rows = document.querySelectorAll("#usersTableBody tr");
 
-        rows.forEach((row) => {
+        rows.forEach(row => {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(term) ? "" : "none";
         });
     });
+}
+
+// ------------------------------------
+// HTML ESCAPE
+// ------------------------------------
+
+function escapeHtml(text) {
+    if (!text) return "";
+    return text
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }

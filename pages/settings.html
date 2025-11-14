@@ -1,65 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Settings</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
-</head>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
 
-<body>
+  <body>
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
+        // If not logged in → redirect
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
+
+        // If logged in but NOT admin → logout and redirect
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
 
-            <button class="btn btn-dark" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
 
-            <a class="navbar-brand ms-3" href="../index.html">
-                <i class="bi bi-gear-fill"></i> Admin Panel
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger">3</span>
             </a>
-
-            <ul class="navbar-nav ms-auto">
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge bg-danger">3</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item"><i class="bi bi-info-circle text-info"></i> New user registered</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> Admin
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="profile.html">Profile</a></li>
-                        <li><a class="dropdown-item" href="settings.html">Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="../login.html">Logout</a></li>
-                    </ul>
-                </li>
-
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li>
+                <a class="dropdown-item"
+                  ><i class="bi bi-info-circle text-info"></i> New user
+                  registered</a
+                >
+              </li>
             </ul>
+          </li>
 
-        </div>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li>
+                <a class="dropdown-item" href="settings.html">Settings</a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" href="../login.html">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </nav>
 
     <!-- DYNAMIC SIDEBAR -->
@@ -67,176 +97,231 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
-        <div class="container-fluid">
-
-            <!-- PAGE HEADER -->
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Settings</h1>
-            </div>
-
-            <div class="row">
-
-                <div class="col-lg-8">
-
-                    <!-- GENERAL SETTINGS -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-gear"></i> General Settings</h5>
-                        </div>
-                        <div class="card-body">
-
-                            <form id="generalSettingsForm">
-                                <div class="mb-3">
-                                    <label class="form-label">Site Name</label>
-                                    <input class="form-control" id="siteName" value="Admin Panel">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Site Email</label>
-                                    <input type="email" class="form-control" id="siteEmail" value="admin@example.com">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Description</label>
-                                    <textarea class="form-control" id="siteDescription" rows="3">Professional admin panel for managing your business</textarea>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Timezone</label>
-                                    <select class="form-select" id="timezone">
-                                        <option value="UTC">UTC</option>
-                                        <option value="EST" selected>Eastern Time (EST)</option>
-                                        <option value="PST">Pacific Time (PST)</option>
-                                    </select>
-                                </div>
-
-                                <button class="btn btn-primary">Save Changes</button>
-                            </form>
-
-                        </div>
-                    </div>
-
-                    <!-- SECURITY SETTINGS -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-shield-lock"></i> Security Settings</h5>
-                        </div>
-                        <div class="card-body">
-
-                            <form id="securitySettingsForm">
-
-                                <div class="mb-3">
-                                    <label class="form-label">Current Password</label>
-                                    <input type="password" class="form-control" id="currentPassword">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">New Password</label>
-                                    <input type="password" class="form-control" id="newPassword">
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">Confirm New Password</label>
-                                    <input type="password" class="form-control" id="confirmPassword">
-                                </div>
-
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="twoFactorAuth">
-                                    <label class="form-check-label" for="twoFactorAuth">
-                                        Enable Two-Factor Authentication
-                                    </label>
-                                </div>
-
-                                <button class="btn btn-primary">Update Security</button>
-
-                            </form>
-
-                        </div>
-                    </div>
-
-                    <!-- NOTIFICATION SETTINGS -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-bell"></i> Notification Settings</h5>
-                        </div>
-                        <div class="card-body">
-
-                            <form id="notificationSettingsForm">
-
-                                <div class="form-check form-switch mb-3">
-                                    <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
-                                    <label class="form-check-label">Email Notifications</label>
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-                                    <input type="checkbox" class="form-check-input" id="smsNotifications">
-                                    <label class="form-check-label">SMS Notifications</label>
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-                                    <input type="checkbox" class="form-check-input" id="pushNotifications" checked>
-                                    <label class="form-check-label">Push Notifications</label>
-                                </div>
-
-                                <div class="form-check form-switch mb-3">
-                                    <input type="checkbox" class="form-check-input" id="weeklyReports" checked>
-                                    <label class="form-check-label">Weekly Reports</label>
-                                </div>
-
-                                <button class="btn btn-primary">Save Preferences</button>
-
-                            </form>
-
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="col-lg-4">
-
-                    <!-- QUICK ACTIONS -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary"><i class="bi bi-download"></i> Backup Data</button>
-                                <button class="btn btn-outline-success"><i class="bi bi-arrow-clockwise"></i> Clear Cache</button>
-                                <button class="btn btn-outline-info"><i class="bi bi-file-earmark-text"></i> View Logs</button>
-                                <button class="btn btn-outline-warning"><i class="bi bi-exclamation-triangle"></i> System Check</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SYSTEM INFO -->
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-info-circle"></i> System Information</h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-0">
-                                <li class="mb-2"><strong>Version:</strong> 2.0.1</li>
-                                <li class="mb-2"><strong>Server:</strong> Online <span class="badge bg-success">Active</span></li>
-                                <li class="mb-2"><strong>Database:</strong> MySQL 8.0</li>
-                                <li class="mb-2"><strong>Last Backup:</strong> 2024-01-15</li>
-                                <li><strong>Storage Used:</strong> 45.2 GB / 100 GB</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
+      <div class="container-fluid">
+        <!-- PAGE HEADER -->
+        <div
+          class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Settings</h1>
         </div>
+
+        <div class="row">
+          <div class="col-lg-8">
+            <!-- GENERAL SETTINGS -->
+            <div class="card shadow-sm mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-gear"></i> General Settings
+                </h5>
+              </div>
+              <div class="card-body">
+                <form id="generalSettingsForm">
+                  <div class="mb-3">
+                    <label class="form-label">Site Name</label>
+                    <input
+                      class="form-control"
+                      id="siteName"
+                      value="Admin Panel"
+                    />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Site Email</label>
+                    <input
+                      type="email"
+                      class="form-control"
+                      id="siteEmail"
+                      value="admin@example.com"
+                    />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea
+                      class="form-control"
+                      id="siteDescription"
+                      rows="3"
+                    >
+Professional admin panel for managing your business</textarea
+                    >
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Timezone</label>
+                    <select class="form-select" id="timezone">
+                      <option value="UTC">UTC</option>
+                      <option value="EST" selected>Eastern Time (EST)</option>
+                      <option value="PST">Pacific Time (PST)</option>
+                    </select>
+                  </div>
+
+                  <button class="btn btn-primary">Save Changes</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- SECURITY SETTINGS -->
+            <div class="card shadow-sm mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-shield-lock"></i> Security Settings
+                </h5>
+              </div>
+              <div class="card-body">
+                <form id="securitySettingsForm">
+                  <div class="mb-3">
+                    <label class="form-label">Current Password</label>
+                    <input
+                      type="password"
+                      class="form-control"
+                      id="currentPassword"
+                    />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input
+                      type="password"
+                      class="form-control"
+                      id="newPassword"
+                    />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Confirm New Password</label>
+                    <input
+                      type="password"
+                      class="form-control"
+                      id="confirmPassword"
+                    />
+                  </div>
+
+                  <div class="form-check mb-3">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="twoFactorAuth"
+                    />
+                    <label class="form-check-label" for="twoFactorAuth">
+                      Enable Two-Factor Authentication
+                    </label>
+                  </div>
+
+                  <button class="btn btn-primary">Update Security</button>
+                </form>
+              </div>
+            </div>
+
+            <!-- NOTIFICATION SETTINGS -->
+            <div class="card shadow-sm mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-bell"></i> Notification Settings
+                </h5>
+              </div>
+              <div class="card-body">
+                <form id="notificationSettingsForm">
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      type="checkbox"
+                      class="form-check-input"
+                      id="emailNotifications"
+                      checked
+                    />
+                    <label class="form-check-label">Email Notifications</label>
+                  </div>
+
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      type="checkbox"
+                      class="form-check-input"
+                      id="smsNotifications"
+                    />
+                    <label class="form-check-label">SMS Notifications</label>
+                  </div>
+
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      type="checkbox"
+                      class="form-check-input"
+                      id="pushNotifications"
+                      checked
+                    />
+                    <label class="form-check-label">Push Notifications</label>
+                  </div>
+
+                  <div class="form-check form-switch mb-3">
+                    <input
+                      type="checkbox"
+                      class="form-check-input"
+                      id="weeklyReports"
+                      checked
+                    />
+                    <label class="form-check-label">Weekly Reports</label>
+                  </div>
+
+                  <button class="btn btn-primary">Save Preferences</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <!-- QUICK ACTIONS -->
+            <div class="card shadow-sm mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-lightning"></i> Quick Actions
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="d-grid gap-2">
+                  <button class="btn btn-outline-primary">
+                    <i class="bi bi-download"></i> Backup Data
+                  </button>
+                  <button class="btn btn-outline-success">
+                    <i class="bi bi-arrow-clockwise"></i> Clear Cache
+                  </button>
+                  <button class="btn btn-outline-info">
+                    <i class="bi bi-file-earmark-text"></i> View Logs
+                  </button>
+                  <button class="btn btn-outline-warning">
+                    <i class="bi bi-exclamation-triangle"></i> System Check
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SYSTEM INFO -->
+            <div class="card shadow-sm mb-4">
+              <div class="card-header">
+                <h5 class="mb-0">
+                  <i class="bi bi-info-circle"></i> System Information
+                </h5>
+              </div>
+              <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                  <li class="mb-2"><strong>Version:</strong> 2.0.1</li>
+                  <li class="mb-2">
+                    <strong>Server:</strong> Online
+                    <span class="badge bg-success">Active</span>
+                  </li>
+                  <li class="mb-2"><strong>Database:</strong> MySQL 8.0</li>
+                  <li class="mb-2"><strong>Last Backup:</strong> 2024-01-15</li>
+                  <li><strong>Storage Used:</strong> 45.2 GB / 100 GB</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- FOOTER -->
     <footer class="footer mt-auto py-3 bg-light">
-        <div class="container-fluid text-center">
-            <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
-        </div>
+      <div class="container-fluid text-center">
+        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
+      </div>
     </footer>
 
     <!-- JS -->
@@ -247,26 +332,31 @@
     <script src="../assets/js/main.js"></script>
 
     <script>
-        // FORM SUBMISSIONS — unchanged
-        document.getElementById('generalSettingsForm').addEventListener('submit', e => {
-            e.preventDefault();
-            alert('General settings saved successfully!');
+      // FORM SUBMISSIONS — unchanged
+      document
+        .getElementById("generalSettingsForm")
+        .addEventListener("submit", (e) => {
+          e.preventDefault();
+          alert("General settings saved successfully!");
         });
 
-        document.getElementById('securitySettingsForm').addEventListener('submit', e => {
-            e.preventDefault();
-            if (newPassword.value !== confirmPassword.value) {
-                alert('Passwords do not match!');
-                return;
-            }
-            alert('Security settings updated successfully!');
+      document
+        .getElementById("securitySettingsForm")
+        .addEventListener("submit", (e) => {
+          e.preventDefault();
+          if (newPassword.value !== confirmPassword.value) {
+            alert("Passwords do not match!");
+            return;
+          }
+          alert("Security settings updated successfully!");
         });
 
-        document.getElementById('notificationSettingsForm').addEventListener('submit', e => {
-            e.preventDefault();
-            alert('Notification preferences saved successfully!');
+      document
+        .getElementById("notificationSettingsForm")
+        .addEventListener("submit", (e) => {
+          e.preventDefault();
+          alert("Notification preferences saved successfully!");
         });
     </script>
-
-</body>
+  </body>
 </html>

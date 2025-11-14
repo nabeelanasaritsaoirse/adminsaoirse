@@ -1,64 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Products</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
-</head>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
 
-<body>
+  <body>
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
+        // If not logged in → redirect
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
+
+        // If logged in but NOT admin → logout and redirect
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
 
-            <button class="btn btn-dark" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
 
-            <a class="navbar-brand ms-3" href="../index.html">
-                <i class="bi bi-gear-fill"></i> Admin Panel
+        <!-- RIGHT NAV -->
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger">3</span>
             </a>
-
-            <!-- RIGHT NAV -->
-            <ul class="navbar-nav ms-auto">
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge bg-danger">3</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item">New user registered</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> Admin
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="profile.html">Profile</a></li>
-                        <li><a class="dropdown-item" href="settings.html">Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="../login.html">Logout</a></li>
-                    </ul>
-                </li>
-
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li><a class="dropdown-item">New user registered</a></li>
             </ul>
-        </div>
+          </li>
+
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li>
+                <a class="dropdown-item" href="settings.html">Settings</a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" href="../login.html">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </nav>
 
     <!-- SIDEBAR (DYNAMIC LIKE CATEGORIES + USERS) -->
@@ -66,167 +93,207 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
-        <div class="container-fluid">
+      <div class="container-fluid">
+        <!-- HEADER -->
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Product Management</h1>
 
-            <!-- HEADER -->
-            <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Product Management</h1>
-
-                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                    <i class="bi bi-plus-circle"></i> Add New Product
-                </button>
-            </div>
-
-            <!-- STATS CARDS (UNCHANGED) -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card border-start border-primary border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="text-xs fw-bold text-primary mb-1">Total Products</div>
-                            <div class="h5 fw-bold">245</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-success border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="text-xs fw-bold text-success mb-1">In Stock</div>
-                            <div class="h5 fw-bold">189</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-warning border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="text-xs fw-bold text-warning mb-1">Low Stock</div>
-                            <div class="h5 fw-bold">34</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-danger border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="text-xs fw-bold text-danger mb-1">Out of Stock</div>
-                            <div class="h5 fw-bold">22</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FILTERS -->
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" id="searchProduct" class="form-control" placeholder="Search products...">
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <select class="form-select" id="filterCategory">
-                        <option value="">All Categories</option>
-                        <option value="electronics">Electronics</option>
-                        <option value="clothing">Clothing</option>
-                        <option value="books">Books</option>
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <select class="form-select" id="filterStock">
-                        <option value="">All Stock Status</option>
-                        <option value="instock">In Stock</option>
-                        <option value="lowstock">Low Stock</option>
-                        <option value="outofstock">Out of Stock</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- PRODUCTS GRID (unchanged) -->
-            <div class="row" id="productsGrid">
-                <!-- your cards (unchanged) -->
-                <!-- laptop -->
-                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <div class="text-center mb-3">
-                                <i class="bi bi-laptop fs-1 text-primary"></i>
-                            </div>
-                            <h5>Laptop Pro</h5>
-                            <p class="text-muted">Electronics</p>
-                            <h6 class="text-primary">$1,299.00</h6>
-                            <p><small>Stock: <span class="badge bg-success">In Stock (45)</span></small></p>
-
-                            <div class="btn-group btn-group-sm w-100">
-                                <button class="btn btn-outline-primary"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- (others unchanged) -->
-            </div>
-
+          <button
+            class="btn btn-sm btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#addProductModal"
+          >
+            <i class="bi bi-plus-circle"></i> Add New Product
+          </button>
         </div>
+
+        <!-- STATS CARDS (UNCHANGED) -->
+        <div class="row mb-4">
+          <div class="col-md-3">
+            <div class="card border-start border-primary border-4 shadow-sm">
+              <div class="card-body">
+                <div class="text-xs fw-bold text-primary mb-1">
+                  Total Products
+                </div>
+                <div class="h5 fw-bold">245</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-start border-success border-4 shadow-sm">
+              <div class="card-body">
+                <div class="text-xs fw-bold text-success mb-1">In Stock</div>
+                <div class="h5 fw-bold">189</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-start border-warning border-4 shadow-sm">
+              <div class="card-body">
+                <div class="text-xs fw-bold text-warning mb-1">Low Stock</div>
+                <div class="h5 fw-bold">34</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-start border-danger border-4 shadow-sm">
+              <div class="card-body">
+                <div class="text-xs fw-bold text-danger mb-1">Out of Stock</div>
+                <div class="h5 fw-bold">22</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILTERS -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                id="searchProduct"
+                class="form-control"
+                placeholder="Search products..."
+              />
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <select class="form-select" id="filterCategory">
+              <option value="">All Categories</option>
+              <option value="electronics">Electronics</option>
+              <option value="clothing">Clothing</option>
+              <option value="books">Books</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <select class="form-select" id="filterStock">
+              <option value="">All Stock Status</option>
+              <option value="instock">In Stock</option>
+              <option value="lowstock">Low Stock</option>
+              <option value="outofstock">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- PRODUCTS GRID (unchanged) -->
+        <div class="row" id="productsGrid">
+          <!-- your cards (unchanged) -->
+          <!-- laptop -->
+          <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div class="card-body">
+                <div class="text-center mb-3">
+                  <i class="bi bi-laptop fs-1 text-primary"></i>
+                </div>
+                <h5>Laptop Pro</h5>
+                <p class="text-muted">Electronics</p>
+                <h6 class="text-primary">$1,299.00</h6>
+                <p>
+                  <small
+                    >Stock:
+                    <span class="badge bg-success">In Stock (45)</span></small
+                  >
+                </p>
+
+                <div class="btn-group btn-group-sm w-100">
+                  <button class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- (others unchanged) -->
+        </div>
+      </div>
     </div>
 
     <!-- ADD PRODUCT MODAL (UNCHANGED) -->
     <div class="modal fade" id="addProductModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="addProductForm">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add New Product</h5>
-                        <button class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label>Product Name</label>
-                            <input type="text" class="form-control" id="productName" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label>Category</label>
-                            <select class="form-select" id="productCategory" required>
-                                <option value="">Select Category</option>
-                                <option value="electronics">Electronics</option>
-                                <option value="clothing">Clothing</option>
-                                <option value="books">Books</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label>Price</label>
-                            <input type="number" class="form-control" id="productPrice" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label>Stock Quantity</label>
-                            <input type="number" class="form-control" id="productStock" required>
-                        </div>
-
-                        <div class="mb-3">
-                            <label>Description</label>
-                            <textarea class="form-control" id="productDescription" rows="3"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button class="btn btn-primary" type="submit">Add Product</button>
-                    </div>
-
-                </form>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="addProductForm">
+            <div class="modal-header">
+              <h5 class="modal-title">Add New Product</h5>
+              <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+
+            <div class="modal-body">
+              <div class="mb-3">
+                <label>Product Name</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="productName"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label>Category</label>
+                <select class="form-select" id="productCategory" required>
+                  <option value="">Select Category</option>
+                  <option value="electronics">Electronics</option>
+                  <option value="clothing">Clothing</option>
+                  <option value="books">Books</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label>Price</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="productPrice"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label>Stock Quantity</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="productStock"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label>Description</label>
+                <textarea
+                  class="form-control"
+                  id="productDescription"
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">
+                Close
+              </button>
+              <button class="btn btn-primary" type="submit">Add Product</button>
+            </div>
+          </form>
         </div>
+      </div>
     </div>
 
     <!-- FOOTER -->
     <footer class="footer mt-auto py-3 bg-light">
-        <div class="container-fluid text-center">
-            <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
-        </div>
+      <div class="container-fluid text-center">
+        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
+      </div>
     </footer>
 
     <!-- JS -->
@@ -237,13 +304,16 @@
     <script src="../assets/js/main.js"></script>
 
     <script>
-        document.getElementById('addProductForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Product added successfully!');
-            bootstrap.Modal.getInstance(document.getElementById('addProductModal')).hide();
-            this.reset();
+      document
+        .getElementById("addProductForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          alert("Product added successfully!");
+          bootstrap.Modal.getInstance(
+            document.getElementById("addProductModal")
+          ).hide();
+          this.reset();
         });
     </script>
-
-</body>
+  </body>
 </html>

@@ -1,158 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Users</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/adminsaoirse/assets/css/style.css">
-    <link rel="stylesheet" href="/adminsaoirse/assets/css/responsive.css">
-</head>
+    <link rel="stylesheet" href="/adminsaoirse/assets/css/style.css" />
+    <link rel="stylesheet" href="/adminsaoirse/assets/css/responsive.css" />
+  </head>
 
-<body>
+  <body>
+    <!-- ====================== -->
+    <!-- ADMIN AUTH VALIDATION -->
+    <!-- ====================== -->
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
+
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
 
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
 
-            <button class="btn btn-dark" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
+        <a class="navbar-brand ms-3" href="/adminsaoirse/index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
 
-            <a class="navbar-brand ms-3" href="/adminsaoirse/index.html">
-                <i class="bi bi-gear-fill"></i> Admin Panel
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger">3</span>
             </a>
-
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge bg-danger">3</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item" href="#">New user registered</a></li>
-                        <li><a class="dropdown-item" href="#">Server load high</a></li>
-                        <li><a class="dropdown-item" href="#">Backup completed</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> Admin
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/adminsaoirse/pages/profile.html">Profile</a></li>
-                        <li><a class="dropdown-item" href="/adminsaoirse/pages/settings.html">Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="/adminsaoirse/login.html">Logout</a></li>
-                    </ul>
-                </li>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li><a class="dropdown-item">New user registered</a></li>
+              <li><a class="dropdown-item">Server load high</a></li>
+              <li><a class="dropdown-item">Backup completed</a></li>
             </ul>
+          </li>
 
-        </div>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="/adminsaoirse/pages/profile.html"
+                >
+                  Profile
+                </a>
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  href="/adminsaoirse/pages/settings.html"
+                >
+                  Settings
+                </a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="/adminsaoirse/pages/login.html">
+                  Logout
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </nav>
 
-    <!-- SIDEBAR (FIXED + DYNAMIC LIKE CATEGORIES) -->
+    <!-- SIDEBAR -->
     <div id="sidebar" class="sidebar"></div>
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
-        <div class="container-fluid">
-
-            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">User Management</h1>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                    <i class="bi bi-plus-circle"></i> Add New User
-                </button>
-            </div>
-
-            <!-- Search and Filter -->
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="searchUser" placeholder="Search users...">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="filterRole">
-                        <option value="">All Roles</option>
-                        <option value="admin">Admin</option>
-                        <option value="user">User</option>
-                        <option value="moderator">Moderator</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select class="form-select" id="filterStatus">
-                        <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="suspended">Suspended</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Users Table -->
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Registered</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-
-                            <tbody id="usersTableBody">
-                                <!-- Your JS loads users -->
-                            </tbody>
-
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <nav>
-                        <ul class="pagination justify-content-center">
-                            <li class="page-item disabled"><a class="page-link">Previous</a></li>
-                            <li class="page-item active"><a class="page-link">1</a></li>
-                            <li class="page-item"><a class="page-link">2</a></li>
-                            <li class="page-item"><a class="page-link">3</a></li>
-                            <li class="page-item"><a class="page-link">Next</a></li>
-                        </ul>
-                    </nav>
-
-                </div>
-            </div>
-
+      <div class="container-fluid">
+        <div
+          class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">User Management</h1>
+          <button
+            type="button"
+            class="btn btn-sm btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#addUserModal"
+          >
+            <i class="bi bi-plus-circle"></i> Add New User
+          </button>
         </div>
+
+        <!-- Search -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input
+                type="text"
+                class="form-control"
+                id="searchUser"
+                placeholder="Search users..."
+              />
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <select class="form-select" id="filterRole">
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="user">User</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <select class="form-select" id="filterStatus">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody id="usersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- JS -->
+    <!-- ================================= -->
+    <!-- ADD USER MODAL (FIXED + WORKING) -->
+    <!-- ================================= -->
+
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add New User</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+            <form id="addUserForm">
+              <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <input
+                  type="text"
+                  id="userName"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  id="userEmail"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  id="userPassword"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Role</label>
+                <select id="userRole" class="form-select">
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </form>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-primary" type="submit" form="addUserForm">
+              Create User
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JS FILES (Correct order!) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script src="/adminsaoirse/assets/js/utils.js"></script>
     <script src="/adminsaoirse/assets/js/config.js"></script>
     <script src="/adminsaoirse/assets/js/navigation.js"></script>
-    <script src="/adminsaoirse/assets/js/sidebar.js"></script>
+
+    <!-- FIXED: CORRECT SIDEBAR PATH -->
     <script src="/adminsaoirse/assets/js/main.js"></script>
     <script src="/adminsaoirse/assets/js/users.js"></script>
-
-</body>
+  </body>
 </html>

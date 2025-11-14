@@ -1,307 +1,465 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Category Management - Admin Dashboard</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
-    <link rel="stylesheet" href="../assets/css/categories.css">
-</head>
-<body>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+    <link rel="stylesheet" href="../assets/css/categories.css" />
+  </head>
+  <body>
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+
+        // If not logged in → redirect
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
+
+        // If logged in but NOT admin → logout and redirect
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
-            <button class="btn btn-link text-white me-3" id="sidebarToggle">
-                <i class="bi bi-list fs-4"></i>
+      <div class="container-fluid">
+        <button class="btn btn-link text-white me-3" id="sidebarToggle">
+          <i class="bi bi-list fs-4"></i>
+        </button>
+        <a class="navbar-brand" href="../index.html">Admin Panel</a>
+
+        <div class="ms-auto d-flex align-items-center">
+          <!-- Notifications -->
+          <div class="dropdown me-3">
+            <button
+              class="btn btn-link text-white position-relative"
+              type="button"
+              data-bs-toggle="dropdown"
+            >
+              <i class="bi bi-bell fs-5"></i>
+              <span
+                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              >
+                3
+              </span>
             </button>
-            <a class="navbar-brand" href="../index.html">Admin Panel</a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#">New category added</a></li>
+              <li><a class="dropdown-item" href="#">Category updated</a></li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="notifications.html">View all</a>
+              </li>
+            </ul>
+          </div>
 
-            <div class="ms-auto d-flex align-items-center">
-                <!-- Notifications -->
-                <div class="dropdown me-3">
-                    <button class="btn btn-link text-white position-relative" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-bell fs-5"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            3
-                        </span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#">New category added</a></li>
-                        <li><a class="dropdown-item" href="#">Category updated</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="notifications.html">View all</a></li>
-                    </ul>
-                </div>
-
-                <!-- User Menu -->
-                <div class="dropdown">
-                    <button class="btn btn-link text-white" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle fs-5"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>Profile</a></li>
-                        <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear me-2"></i>Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="../login.html"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
-                    </ul>
-                </div>
-            </div>
+          <!-- User Menu -->
+          <div class="dropdown">
+            <button
+              class="btn btn-link text-white"
+              type="button"
+              data-bs-toggle="dropdown"
+            >
+              <i class="bi bi-person-circle fs-5"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="profile.html"
+                  ><i class="bi bi-person me-2"></i>Profile</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item" href="settings.html"
+                  ><i class="bi bi-gear me-2"></i>Settings</a
+                >
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="../login.html"
+                  ><i class="bi bi-box-arrow-right me-2"></i>Logout</a
+                >
+              </li>
+            </ul>
+          </div>
         </div>
+      </div>
     </nav>
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <!-- Navigation will be rendered here by navigation.js -->
+      <!-- Navigation will be rendered here by navigation.js -->
     </div>
 
     <!-- Main Content -->
     <div class="main-content">
-        <div class="container-fluid">
-            <!-- Page Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2>Category Management</h2>
-                    <p class="text-muted">Manage product categories with hierarchical structure</p>
-                </div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" onclick="openAddCategoryModal()">
-                    <i class="bi bi-plus-circle me-2"></i>Add Category
-                </button>
-            </div>
-
-            <!-- Stats Cards -->
-            <div class="row mb-4 category-stats">
-                <div class="col-md-3">
-                    <div class="card border-start border-primary border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="text-muted mb-2">Total Categories</h6>
-                                    <h3 class="mb-0" id="totalCategoriesCount">0</h3>
-                                </div>
-                                <div class="text-primary">
-                                    <i class="bi bi-folder-fill fs-1"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-success border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="text-muted mb-2">Active Categories</h6>
-                                    <h3 class="mb-0" id="activeCategoriesCount">0</h3>
-                                </div>
-                                <div class="text-success">
-                                    <i class="bi bi-check-circle-fill fs-1"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-warning border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="text-muted mb-2">Featured</h6>
-                                    <h3 class="mb-0" id="featuredCategoriesCount">0</h3>
-                                </div>
-                                <div class="text-warning">
-                                    <i class="bi bi-star-fill fs-1"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-start border-info border-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="text-muted mb-2">Root Categories</h6>
-                                    <h3 class="mb-0" id="rootCategoriesCount">0</h3>
-                                </div>
-                                <div class="text-info">
-                                    <i class="bi bi-diagram-3-fill fs-1"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filters and Search -->
-            <div class="card mb-4 filter-section">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Search</label>
-                            <input type="text" class="form-control" id="searchInput" placeholder="Search categories...">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="statusFilter">
-                                <option value="">All</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Level</label>
-                            <select class="form-select" id="levelFilter">
-                                <option value="">All Levels</option>
-                                <option value="0">Root (Level 0)</option>
-                                <option value="1">Level 1</option>
-                                <option value="2">Level 2</option>
-                                <option value="3">Level 3</option>
-                                <option value="4">Level 4</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">View</label>
-                            <select class="form-select" id="viewMode">
-                                <option value="tree">Tree View</option>
-                                <option value="list">List View</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">&nbsp;</label>
-                            <button class="btn btn-secondary w-100" onclick="resetFilters()">
-                                <i class="bi bi-arrow-clockwise me-2"></i>Reset
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Categories Display -->
-            <div class="card">
-                <div class="card-body">
-                    <div id="categoriesContainer">
-                        <!-- Categories will be rendered here -->
-                    </div>
-                </div>
-            </div>
+      <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2>Category Management</h2>
+            <p class="text-muted">
+              Manage product categories with hierarchical structure
+            </p>
+          </div>
+          <button
+            class="btn btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#categoryModal"
+            onclick="openAddCategoryModal()"
+          >
+            <i class="bi bi-plus-circle me-2"></i>Add Category
+          </button>
         </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4 category-stats">
+          <div class="col-md-3">
+            <div class="card border-start border-primary border-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <h6 class="text-muted mb-2">Total Categories</h6>
+                    <h3 class="mb-0" id="totalCategoriesCount">0</h3>
+                  </div>
+                  <div class="text-primary">
+                    <i class="bi bi-folder-fill fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-start border-success border-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <h6 class="text-muted mb-2">Active Categories</h6>
+                    <h3 class="mb-0" id="activeCategoriesCount">0</h3>
+                  </div>
+                  <div class="text-success">
+                    <i class="bi bi-check-circle-fill fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-start border-warning border-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <h6 class="text-muted mb-2">Featured</h6>
+                    <h3 class="mb-0" id="featuredCategoriesCount">0</h3>
+                  </div>
+                  <div class="text-warning">
+                    <i class="bi bi-star-fill fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card border-start border-info border-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <h6 class="text-muted mb-2">Root Categories</h6>
+                    <h3 class="mb-0" id="rootCategoriesCount">0</h3>
+                  </div>
+                  <div class="text-info">
+                    <i class="bi bi-diagram-3-fill fs-1"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="card mb-4 filter-section">
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="searchInput"
+                  placeholder="Search categories..."
+                />
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" id="statusFilter">
+                  <option value="">All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Level</label>
+                <select class="form-select" id="levelFilter">
+                  <option value="">All Levels</option>
+                  <option value="0">Root (Level 0)</option>
+                  <option value="1">Level 1</option>
+                  <option value="2">Level 2</option>
+                  <option value="3">Level 3</option>
+                  <option value="4">Level 4</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">View</label>
+                <select class="form-select" id="viewMode">
+                  <option value="tree">Tree View</option>
+                  <option value="list">List View</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <button
+                  class="btn btn-secondary w-100"
+                  onclick="resetFilters()"
+                >
+                  <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categories Display -->
+        <div class="card">
+          <div class="card-body">
+            <div id="categoriesContainer">
+              <!-- Categories will be rendered here -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Add/Edit Category Modal -->
     <div class="modal fade category-modal" id="categoryModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="categoryModalTitle">Add Category</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="categoryModalTitle">Add Category</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="categoryForm">
+              <!-- Basic Information -->
+              <div class="form-section">
+                <h6>Basic Information</h6>
+                <div class="row mb-3">
+                  <div class="col-md-8">
+                    <label class="form-label"
+                      >Category Name <span class="text-danger">*</span></label
+                    >
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="categoryName"
+                      required
+                    />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Icon (Emoji)</label>
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="categoryIcon"
+                      placeholder="📱"
+                    />
+                  </div>
                 </div>
-                <div class="modal-body">
-                    <form id="categoryForm">
-                        <!-- Basic Information -->
-                        <div class="form-section">
-                            <h6>Basic Information</h6>
-                            <div class="row mb-3">
-                                <div class="col-md-8">
-                                    <label class="form-label">Category Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="categoryName" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Icon (Emoji)</label>
-                                    <input type="text" class="form-control" id="categoryIcon" placeholder="📱">
-                                </div>
-                            </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Description</label>
-                                <textarea class="form-control" id="categoryDescription" rows="3" maxlength="500"></textarea>
-                                <small class="text-muted">Max 500 characters</small>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Parent Category</label>
-                                <select class="form-select" id="parentCategory">
-                                    <option value="">None (Root Category)</option>
-                                    <!-- Will be populated dynamically -->
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Images -->
-                        <div class="form-section">
-                            <h6>Images</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Add Images</label>
-                                <div class="input-group">
-                                    <input type="url" class="form-control" id="imageUrl" placeholder="Enter image URL">
-                                    <input type="text" class="form-control" id="imageAltText" placeholder="Alt text (optional)">
-                                    <button type="button" class="btn btn-primary" onclick="addImage()">
-                                        <i class="bi bi-plus"></i> Add
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="imagesPreview" class="image-preview-container"></div>
-                        </div>
-
-                        <!-- Display Settings -->
-                        <div class="form-section">
-                            <h6>Display Settings</h6>
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Display Order</label>
-                                    <input type="number" class="form-control" id="displayOrder" value="0" min="0">
-                                </div>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="isActive" checked>
-                                <label class="form-check-label" for="isActive">Active</label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="isFeatured">
-                                <label class="form-check-label" for="isFeatured">Featured</label>
-                            </div>
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="showInMenu" checked>
-                                <label class="form-check-label" for="showInMenu">Show in Menu</label>
-                            </div>
-                        </div>
-
-                        <!-- SEO Settings -->
-                        <div class="form-section">
-                            <h6>SEO Settings</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Meta Title</label>
-                                <input type="text" class="form-control" id="metaTitle" maxlength="60">
-                                <small class="text-muted">Max 60 characters for optimal SEO</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Meta Description</label>
-                                <textarea class="form-control" id="metaDescription" rows="2" maxlength="160"></textarea>
-                                <small class="text-muted">Max 160 characters for optimal SEO</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Meta Keywords (comma-separated)</label>
-                                <input type="text" class="form-control" id="metaKeywords" placeholder="keyword1, keyword2, keyword3">
-                            </div>
-                        </div>
-                    </form>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea
+                    class="form-control"
+                    id="categoryDescription"
+                    rows="3"
+                    maxlength="500"
+                  ></textarea>
+                  <small class="text-muted">Max 500 characters</small>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveCategory()">
-                        <i class="bi bi-save me-2"></i>Save Category
+
+                <div class="mb-3">
+                  <label class="form-label">Parent Category</label>
+                  <select class="form-select" id="parentCategory">
+                    <option value="">None (Root Category)</option>
+                    <!-- Will be populated dynamically -->
+                  </select>
+                </div>
+              </div>
+
+              <!-- Images -->
+              <div class="form-section">
+                <h6>Images</h6>
+                <div class="mb-3">
+                  <label class="form-label">Add Images</label>
+                  <div class="input-group">
+                    <input
+                      type="url"
+                      class="form-control"
+                      id="imageUrl"
+                      placeholder="Enter image URL"
+                    />
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="imageAltText"
+                      placeholder="Alt text (optional)"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-primary"
+                      onclick="addImage()"
+                    >
+                      <i class="bi bi-plus"></i> Add
                     </button>
+                  </div>
                 </div>
-            </div>
+                <div id="imagesPreview" class="image-preview-container"></div>
+              </div>
+
+              <!-- Display Settings -->
+              <div class="form-section">
+                <h6>Display Settings</h6>
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Display Order</label>
+                    <input
+                      type="number"
+                      class="form-control"
+                      id="displayOrder"
+                      value="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
+                <div class="form-check mb-2">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="isActive"
+                    checked
+                  />
+                  <label class="form-check-label" for="isActive">Active</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="isFeatured"
+                  />
+                  <label class="form-check-label" for="isFeatured"
+                    >Featured</label
+                  >
+                </div>
+                <div class="form-check mb-3">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="showInMenu"
+                    checked
+                  />
+                  <label class="form-check-label" for="showInMenu"
+                    >Show in Menu</label
+                  >
+                </div>
+              </div>
+
+              <!-- SEO Settings -->
+              <div class="form-section">
+                <h6>SEO Settings</h6>
+                <div class="mb-3">
+                  <label class="form-label">Meta Title</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="metaTitle"
+                    maxlength="60"
+                  />
+                  <small class="text-muted"
+                    >Max 60 characters for optimal SEO</small
+                  >
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Meta Description</label>
+                  <textarea
+                    class="form-control"
+                    id="metaDescription"
+                    rows="2"
+                    maxlength="160"
+                  ></textarea>
+                  <small class="text-muted"
+                    >Max 160 characters for optimal SEO</small
+                  >
+                </div>
+                <div class="mb-3">
+                  <label class="form-label"
+                    >Meta Keywords (comma-separated)</label
+                  >
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="metaKeywords"
+                    placeholder="keyword1, keyword2, keyword3"
+                  />
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="saveCategory()"
+            >
+              <i class="bi bi-save me-2"></i>Save Category
+            </button>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -314,5 +472,5 @@
     <script src="../assets/js/sidebar.js"></script>
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/categories.js"></script>
-</body>
+  </body>
 </html>

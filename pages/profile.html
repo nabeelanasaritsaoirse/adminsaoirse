@@ -1,256 +1,386 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Profile</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
 
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
-</head>
-<body>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
+  <body>
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
+        // If not logged in → redirect
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
+
+        // If logged in but NOT admin → logout and redirect
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
-            <button class="btn btn-dark" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
-            <a class="navbar-brand ms-3" href="../index.html">
-                <i class="bi bi-gear-fill"></i> Admin Panel
-            </a>
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
 
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge bg-danger">3</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-info-circle text-info"></i> New user registered</a></li>
-                    </ul>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> Admin
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person"></i> Profile</a></li>
-                        <li><a class="dropdown-item" href="settings.html"><i class="bi bi-gear"></i> Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="../login.html"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                    </ul>
-                </li>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a
+              class="nav-link dropdown-toggle"
+              href="#"
+              id="notificationDropdown"
+              role="button"
+              data-bs-toggle="dropdown"
+            >
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger">3</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li>
+                <a class="dropdown-item" href="#"
+                  ><i class="bi bi-info-circle text-info"></i> New user
+                  registered</a
+                >
+              </li>
             </ul>
-        </div>
+          </li>
+          <li class="nav-item dropdown">
+            <a
+              class="nav-link dropdown-toggle"
+              href="#"
+              id="userDropdown"
+              role="button"
+              data-bs-toggle="dropdown"
+            >
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="profile.html"
+                  ><i class="bi bi-person"></i> Profile</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item" href="settings.html"
+                  ><i class="bi bi-gear"></i> Settings</a
+                >
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <a class="dropdown-item" href="../login.html"
+                  ><i class="bi bi-box-arrow-right"></i> Logout</a
+                >
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </nav>
 
     <div class="container-fluid">
-        <div class="row">
+      <div class="row">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+          <div class="position-sticky pt-3">
+            <ul class="nav flex-column">
+              <li class="nav-item">
+                <a class="nav-link" href="../index.html">
+                  <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="users.html">
+                  <i class="bi bi-people"></i> Users
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="categories.html">
+                  <i class="bi bi-folder-fill"></i> Categories
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="products.html">
+                  <i class="bi bi-box-seam"></i> Products
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#">
+                  <i class="bi bi-cart3"></i> Orders
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#">
+                  <i class="bi bi-graph-up"></i> Analytics
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="notifications.html">
+                  <i class="bi bi-bell"></i> Notifications
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="settings.html">
+                  <i class="bi bi-gear"></i> Settings
+                </a>
+              </li>
+            </ul>
+          </div>
+        </nav>
 
-            <!-- Sidebar -->
-            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../index.html">
-                                <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="users.html">
-                                <i class="bi bi-people"></i> Users
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="categories.html">
-                                <i class="bi bi-folder-fill"></i> Categories
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="products.html">
-                                <i class="bi bi-box-seam"></i> Products
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-cart3"></i> Orders
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="bi bi-graph-up"></i> Analytics
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="notifications.html">
-                                <i class="bi bi-bell"></i> Notifications
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="settings.html">
-                                <i class="bi bi-gear"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
+        <!-- Main Content Area -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+          <div
+            class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
+          >
+            <h1 class="h2">My Profile</h1>
+          </div>
+
+          <div class="row">
+            <div class="col-lg-4 mb-4">
+              <!-- Profile Card -->
+              <div class="card shadow-sm text-center">
+                <div class="card-body">
+                  <div class="mb-3">
+                    <i
+                      class="bi bi-person-circle"
+                      style="font-size: 120px; color: #667eea"
+                    ></i>
+                  </div>
+                  <h4>Admin User</h4>
+                  <p class="text-muted">admin@example.com</p>
+                  <span class="badge bg-danger mb-3">Administrator</span>
+                  <div class="d-grid gap-2">
+                    <button class="btn btn-primary">
+                      <i class="bi bi-camera"></i> Change Avatar
+                    </button>
+                  </div>
                 </div>
-            </nav>
+              </div>
 
-            <!-- Main Content Area -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
-                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">My Profile</h1>
+              <!-- Activity Card -->
+              <div class="card shadow-sm mt-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="bi bi-activity"></i> Activity</h5>
                 </div>
+                <div class="card-body">
+                  <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                      <i
+                        class="bi bi-circle-fill text-success"
+                        style="font-size: 8px"
+                      ></i>
+                      <small class="ms-2">Last Login: Today at 10:30 AM</small>
+                    </li>
+                    <li class="mb-2">
+                      <i
+                        class="bi bi-circle-fill text-info"
+                        style="font-size: 8px"
+                      ></i>
+                      <small class="ms-2">Account Created: Jan 1, 2024</small>
+                    </li>
+                    <li class="mb-0">
+                      <i
+                        class="bi bi-circle-fill text-warning"
+                        style="font-size: 8px"
+                      ></i>
+                      <small class="ms-2">Total Logins: 247</small>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
 
-                <div class="row">
-                    <div class="col-lg-4 mb-4">
-                        <!-- Profile Card -->
-                        <div class="card shadow-sm text-center">
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <i class="bi bi-person-circle" style="font-size: 120px; color: #667eea;"></i>
-                                </div>
-                                <h4>Admin User</h4>
-                                <p class="text-muted">admin@example.com</p>
-                                <span class="badge bg-danger mb-3">Administrator</span>
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-primary">
-                                        <i class="bi bi-camera"></i> Change Avatar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Activity Card -->
-                        <div class="card shadow-sm mt-4">
-                            <div class="card-header">
-                                <h5 class="mb-0"><i class="bi bi-activity"></i> Activity</h5>
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-unstyled mb-0">
-                                    <li class="mb-2">
-                                        <i class="bi bi-circle-fill text-success" style="font-size: 8px;"></i>
-                                        <small class="ms-2">Last Login: Today at 10:30 AM</small>
-                                    </li>
-                                    <li class="mb-2">
-                                        <i class="bi bi-circle-fill text-info" style="font-size: 8px;"></i>
-                                        <small class="ms-2">Account Created: Jan 1, 2024</small>
-                                    </li>
-                                    <li class="mb-0">
-                                        <i class="bi bi-circle-fill text-warning" style="font-size: 8px;"></i>
-                                        <small class="ms-2">Total Logins: 247</small>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
+            <div class="col-lg-8">
+              <!-- Personal Information -->
+              <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0">
+                    <i class="bi bi-person"></i> Personal Information
+                  </h5>
+                </div>
+                <div class="card-body">
+                  <form id="profileForm">
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label for="firstName" class="form-label"
+                          >First Name</label
+                        >
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="firstName"
+                          value="Admin"
+                        />
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="lastName" class="form-label"
+                          >Last Name</label
+                        >
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="lastName"
+                          value="User"
+                        />
+                      </div>
                     </div>
-
-                    <div class="col-lg-8">
-                        <!-- Personal Information -->
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header">
-                                <h5 class="mb-0"><i class="bi bi-person"></i> Personal Information</h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="profileForm">
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="firstName" class="form-label">First Name</label>
-                                            <input type="text" class="form-control" id="firstName" value="Admin">
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="lastName" class="form-label">Last Name</label>
-                                            <input type="text" class="form-control" id="lastName" value="User">
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="email" class="form-label">Email Address</label>
-                                        <input type="email" class="form-control" id="email" value="admin@example.com">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="phone" class="form-label">Phone Number</label>
-                                        <input type="tel" class="form-control" id="phone" value="+1 (555) 123-4567">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="address" class="form-label">Address</label>
-                                        <input type="text" class="form-control" id="address" value="123 Main Street">
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-6 mb-3">
-                                            <label for="city" class="form-label">City</label>
-                                            <input type="text" class="form-control" id="city" value="New York">
-                                        </div>
-                                        <div class="col-md-6 mb-3">
-                                            <label for="country" class="form-label">Country</label>
-                                            <select class="form-select" id="country">
-                                                <option value="USA" selected>United States</option>
-                                                <option value="UK">United Kingdom</option>
-                                                <option value="Canada">Canada</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="bio" class="form-label">Bio</label>
-                                        <textarea class="form-control" id="bio" rows="3">Experienced administrator with expertise in system management.</textarea>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Update Profile</button>
-                                    <button type="button" class="btn btn-secondary">Cancel</button>
-                                </form>
-                            </div>
-                        </div>
-
-                        <!-- Social Links -->
-                        <div class="card shadow-sm mb-4">
-                            <div class="card-header">
-                                <h5 class="mb-0"><i class="bi bi-share"></i> Social Links</h5>
-                            </div>
-                            <div class="card-body">
-                                <form id="socialLinksForm">
-                                    <div class="mb-3">
-                                        <label for="linkedin" class="form-label">
-                                            <i class="bi bi-linkedin"></i> LinkedIn
-                                        </label>
-                                        <input type="url" class="form-control" id="linkedin" placeholder="https://linkedin.com/in/username">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="twitter" class="form-label">
-                                            <i class="bi bi-twitter"></i> Twitter
-                                        </label>
-                                        <input type="url" class="form-control" id="twitter" placeholder="https://twitter.com/username">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="github" class="form-label">
-                                            <i class="bi bi-github"></i> GitHub
-                                        </label>
-                                        <input type="url" class="form-control" id="github" placeholder="https://github.com/username">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">Save Links</button>
-                                </form>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                      <label for="email" class="form-label"
+                        >Email Address</label
+                      >
+                      <input
+                        type="email"
+                        class="form-control"
+                        id="email"
+                        value="admin@example.com"
+                      />
                     </div>
+                    <div class="mb-3">
+                      <label for="phone" class="form-label">Phone Number</label>
+                      <input
+                        type="tel"
+                        class="form-control"
+                        id="phone"
+                        value="+1 (555) 123-4567"
+                      />
+                    </div>
+                    <div class="mb-3">
+                      <label for="address" class="form-label">Address</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="address"
+                        value="123 Main Street"
+                      />
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label for="city" class="form-label">City</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="city"
+                          value="New York"
+                        />
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label for="country" class="form-label">Country</label>
+                        <select class="form-select" id="country">
+                          <option value="USA" selected>United States</option>
+                          <option value="UK">United Kingdom</option>
+                          <option value="Canada">Canada</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label for="bio" class="form-label">Bio</label>
+                      <textarea class="form-control" id="bio" rows="3">
+Experienced administrator with expertise in system management.</textarea
+                      >
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                      Update Profile
+                    </button>
+                    <button type="button" class="btn btn-secondary">
+                      Cancel
+                    </button>
+                  </form>
                 </div>
+              </div>
 
-            </main>
-        </div>
+              <!-- Social Links -->
+              <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="bi bi-share"></i> Social Links</h5>
+                </div>
+                <div class="card-body">
+                  <form id="socialLinksForm">
+                    <div class="mb-3">
+                      <label for="linkedin" class="form-label">
+                        <i class="bi bi-linkedin"></i> LinkedIn
+                      </label>
+                      <input
+                        type="url"
+                        class="form-control"
+                        id="linkedin"
+                        placeholder="https://linkedin.com/in/username"
+                      />
+                    </div>
+                    <div class="mb-3">
+                      <label for="twitter" class="form-label">
+                        <i class="bi bi-twitter"></i> Twitter
+                      </label>
+                      <input
+                        type="url"
+                        class="form-control"
+                        id="twitter"
+                        placeholder="https://twitter.com/username"
+                      />
+                    </div>
+                    <div class="mb-3">
+                      <label for="github" class="form-label">
+                        <i class="bi bi-github"></i> GitHub
+                      </label>
+                      <input
+                        type="url"
+                        class="form-control"
+                        id="github"
+                        placeholder="https://github.com/username"
+                      />
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                      Save Links
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
 
     <!-- Footer -->
     <footer class="footer mt-auto py-3 bg-light">
-        <div class="container-fluid text-center">
-            <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
-        </div>
+      <div class="container-fluid text-center">
+        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
+      </div>
     </footer>
 
     <!-- Bootstrap JS Bundle -->
@@ -262,18 +392,21 @@
     <script src="../assets/js/main.js"></script>
 
     <script>
-        // Profile form submission
-        document.getElementById('profileForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Profile updated successfully!');
+      // Profile form submission
+      document
+        .getElementById("profileForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          alert("Profile updated successfully!");
         });
 
-        // Social links form submission
-        document.getElementById('socialLinksForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Social links saved successfully!');
+      // Social links form submission
+      document
+        .getElementById("socialLinksForm")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+          alert("Social links saved successfully!");
         });
     </script>
-
-</body>
+  </body>
 </html>

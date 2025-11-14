@@ -1,107 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Login</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css" />
 
     <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-container {
-            max-width: 450px;
-            width: 100%;
-            padding: 20px;
-        }
-        .login-card {
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .login-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px 15px 0 0;
-            padding: 30px;
-            text-align: center;
-        }
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-container {
+        max-width: 450px;
+        width: 100%;
+        padding: 20px;
+      }
+      .login-card {
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      .login-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 30px;
+        text-align: center;
+      }
     </style>
-</head>
-<body>
+  </head>
 
+  <body>
     <div class="login-container">
-        <div class="card login-card">
-            <div class="login-header">
-                <i class="bi bi-shield-lock fs-1"></i>
-                <h3 class="mt-2">Admin Panel</h3>
-                <p class="mb-0">Sign in to your account</p>
-            </div>
-            <div class="card-body p-4">
-                <form id="loginForm">
-                    <div class="mb-3">
-                        <label for="email" class="form-label">
-                            <i class="bi bi-envelope"></i> Email Address
-                        </label>
-                        <input type="email" class="form-control" id="email" placeholder="Enter your email" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">
-                            <i class="bi bi-lock"></i> Password
-                        </label>
-                        <input type="password" class="form-control" id="password" placeholder="Enter your password" required>
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="rememberMe">
-                        <label class="form-check-label" for="rememberMe">Remember me</label>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">
-                            <i class="bi bi-box-arrow-in-right"></i> Sign In
-                        </button>
-                    </div>
-                </form>
-                <div class="text-center mt-3">
-                    <a href="#" class="text-decoration-none">Forgot Password?</a>
-                </div>
-            </div>
-            <div class="card-footer text-center text-muted">
-                <small>© 2024 Admin Panel. All rights reserved.</small>
-            </div>
+      <div class="card login-card">
+        <div class="login-header">
+          <i class="bi bi-shield-lock fs-1"></i>
+          <h3 class="mt-2">Admin Panel</h3>
+          <p class="mb-0">Sign in to your account</p>
         </div>
+
+        <div class="card-body p-4">
+          <form id="loginForm">
+            <div class="mb-3">
+              <label for="email" class="form-label">
+                <i class="bi bi-envelope"></i> Email Address
+              </label>
+              <input
+                type="email"
+                class="form-control"
+                id="email"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">
+                <i class="bi bi-lock"></i> Password
+              </label>
+              <input
+                type="password"
+                class="form-control"
+                id="password"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+              </button>
+            </div>
+          </form>
+
+          <div class="text-center mt-3">
+            <a href="#" class="text-decoration-none">Forgot Password?</a>
+          </div>
+        </div>
+
+        <div class="card-footer text-center text-muted">
+          <small>© 2024 Admin Panel. All rights reserved.</small>
+        </div>
+      </div>
     </div>
 
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Login Script -->
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value.trim();
 
-            // Basic validation (replace with real authentication)
-            if (email && password) {
-                alert('Login successful! Redirecting to dashboard...');
-                window.location.href = 'index.html';
-            } else {
-                alert('Please enter valid credentials');
+          try {
+            const response = await fetch(
+              "http://13.203.227.43:5000/api/auth/admin-login",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+              }
+            );
+
+            const result = await response.json();
+
+            if (!result.success) {
+              alert(result.message || "Invalid login credentials");
+              return;
             }
+
+            // Save token + user data
+            localStorage.setItem("epi_admin_token", result.data.accessToken);
+            localStorage.setItem(
+              "epi_admin_user",
+              JSON.stringify(result.data)
+            );
+
+            alert("Login successful!");
+
+            // Redirect correctly (login.html is inside /pages)
+            window.location.href = "../index.html";
+          } catch (err) {
+            console.error("Login Error:", err);
+            alert("Unable to connect to server. Please try again.");
+          }
         });
     </script>
-
-</body>
+  </body>
 </html>

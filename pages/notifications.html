@@ -1,67 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Notifications</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
-</head>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
 
-<body>
+  <body>
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
+        // If not logged in → redirect
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
+
+        // If logged in but NOT admin → logout and redirect
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-        <div class="container-fluid">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
 
-            <button class="btn btn-dark" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
 
-            <a class="navbar-brand ms-3" href="../index.html">
-                <i class="bi bi-gear-fill"></i> Admin Panel
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger">3</span>
             </a>
-
-            <ul class="navbar-nav ms-auto">
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge bg-danger">3</span>
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><a class="dropdown-item"><i class="bi bi-info-circle text-info"></i> New user registered</a></li>
-                        <li><a class="dropdown-item"><i class="bi bi-exclamation-triangle text-warning"></i> Server load high</a></li>
-                        <li><a class="dropdown-item"><i class="bi bi-check-circle text-success"></i> Backup completed</a></li>
-                    </ul>
-                </li>
-
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> Admin
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="profile.html">Profile</a></li>
-                        <li><a class="dropdown-item" href="settings.html">Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="../login.html">Logout</a></li>
-                    </ul>
-                </li>
-
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li>
+                <a class="dropdown-item"
+                  ><i class="bi bi-info-circle text-info"></i> New user
+                  registered</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item"
+                  ><i class="bi bi-exclamation-triangle text-warning"></i>
+                  Server load high</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item"
+                  ><i class="bi bi-check-circle text-success"></i> Backup
+                  completed</a
+                >
+              </li>
             </ul>
+          </li>
 
-        </div>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li>
+                <a class="dropdown-item" href="settings.html">Settings</a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" href="../login.html">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
     </nav>
 
     <!-- DYNAMIC SIDEBAR (same structure as all fixed pages) -->
@@ -69,183 +109,232 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
-        <div class="container-fluid">
-
-            <!-- HEADER -->
-            <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-                <h1 class="h2">Notification Management</h1>
-                <button class="btn btn-primary btn-sm" id="createNewBtn">
-                    <i class="bi bi-plus-circle"></i> Create New
-                </button>
-            </div>
-
-            <!-- STATS -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card border-start border-primary border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <div class="text-xs fw-bold text-primary text-uppercase mb-1">Total Notifications</div>
-                                    <div class="h5 mb-0 fw-bold" id="totalCount">0</div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="bi bi-bell fs-2 text-muted"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card border-start border-success border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <div class="text-xs fw-bold text-success text-uppercase mb-1">Sent</div>
-                                    <div class="h5 mb-0 fw-bold" id="sentCount">0</div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="bi bi-check-circle fs-2 text-muted"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="card border-start border-warning border-4 shadow-sm">
-                        <div class="card-body">
-                            <div class="row align-items-center">
-                                <div class="col">
-                                    <div class="text-xs fw-bold text-warning text-uppercase mb-1">Drafts</div>
-                                    <div class="h5 mb-0 fw-bold" id="draftCount">0</div>
-                                </div>
-                                <div class="col-auto">
-                                    <i class="bi bi-file-earmark-text fs-2 text-muted"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TABS -->
-            <ul class="nav nav-tabs mb-3">
-                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#all">All</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#sent">Sent</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#drafts">Drafts</button></li>
-            </ul>
-
-            <!-- NOTIFICATION LIST -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-
-                    <div class="tab-content">
-
-                        <div class="tab-pane fade show active" id="all">
-                            <div id="allNotificationsList"></div>
-                        </div>
-
-                        <div class="tab-pane fade" id="sent">
-                            <div id="sentNotificationsList"></div>
-                        </div>
-
-                        <div class="tab-pane fade" id="drafts">
-                            <div id="draftNotificationsList"></div>
-                        </div>
-
-                    </div>
-
-                </div>
-            </div>
-
+      <div class="container-fluid">
+        <!-- HEADER -->
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Notification Management</h1>
+          <button class="btn btn-primary btn-sm" id="createNewBtn">
+            <i class="bi bi-plus-circle"></i> Create New
+          </button>
         </div>
+
+        <!-- STATS -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <div class="card border-start border-primary border-4 shadow-sm">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col">
+                    <div
+                      class="text-xs fw-bold text-primary text-uppercase mb-1"
+                    >
+                      Total Notifications
+                    </div>
+                    <div class="h5 mb-0 fw-bold" id="totalCount">0</div>
+                  </div>
+                  <div class="col-auto">
+                    <i class="bi bi-bell fs-2 text-muted"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card border-start border-success border-4 shadow-sm">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col">
+                    <div
+                      class="text-xs fw-bold text-success text-uppercase mb-1"
+                    >
+                      Sent
+                    </div>
+                    <div class="h5 mb-0 fw-bold" id="sentCount">0</div>
+                  </div>
+                  <div class="col-auto">
+                    <i class="bi bi-check-circle fs-2 text-muted"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="card border-start border-warning border-4 shadow-sm">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col">
+                    <div
+                      class="text-xs fw-bold text-warning text-uppercase mb-1"
+                    >
+                      Drafts
+                    </div>
+                    <div class="h5 mb-0 fw-bold" id="draftCount">0</div>
+                  </div>
+                  <div class="col-auto">
+                    <i class="bi bi-file-earmark-text fs-2 text-muted"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TABS -->
+        <ul class="nav nav-tabs mb-3">
+          <li class="nav-item">
+            <button
+              class="nav-link active"
+              data-bs-toggle="tab"
+              data-bs-target="#all"
+            >
+              All
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              data-bs-toggle="tab"
+              data-bs-target="#sent"
+            >
+              Sent
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              data-bs-toggle="tab"
+              data-bs-target="#drafts"
+            >
+              Drafts
+            </button>
+          </li>
+        </ul>
+
+        <!-- NOTIFICATION LIST -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <div class="tab-content">
+              <div class="tab-pane fade show active" id="all">
+                <div id="allNotificationsList"></div>
+              </div>
+
+              <div class="tab-pane fade" id="sent">
+                <div id="sentNotificationsList"></div>
+              </div>
+
+              <div class="tab-pane fade" id="drafts">
+                <div id="draftNotificationsList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ============ MODALS (no changes) ============ -->
 
     <!-- Create/Edit Modal -->
     <div class="modal fade" id="notificationModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Create New Notification</h5>
-                    <button class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="notificationForm">
-                        <input type="hidden" id="notificationId">
-                        <input type="hidden" id="notificationStatus">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalTitle">Create New Notification</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="notificationForm">
+              <input type="hidden" id="notificationId" />
+              <input type="hidden" id="notificationStatus" />
 
-                        <div class="mb-3">
-                            <label class="form-label">Title *</label>
-                            <input class="form-control" id="notificationTitle" required>
-                        </div>
+              <div class="mb-3">
+                <label class="form-label">Title *</label>
+                <input class="form-control" id="notificationTitle" required />
+              </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Message *</label>
-                            <textarea class="form-control" id="notificationMessage" rows="5" required></textarea>
-                            <small class="text-muted">Character count: <span id="charCount">0</span></small>
-                        </div>
+              <div class="mb-3">
+                <label class="form-label">Message *</label>
+                <textarea
+                  class="form-control"
+                  id="notificationMessage"
+                  rows="5"
+                  required
+                ></textarea>
+                <small class="text-muted"
+                  >Character count: <span id="charCount">0</span></small
+                >
+              </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Type *</label>
-                            <select class="form-select" id="notificationType" required>
-                                <option value="">Select Type</option>
-                                <option value="info">Info</option>
-                                <option value="warning">Warning</option>
-                                <option value="success">Success</option>
-                                <option value="error">Error</option>
-                            </select>
-                        </div>
+              <div class="mb-3">
+                <label class="form-label">Type *</label>
+                <select class="form-select" id="notificationType" required>
+                  <option value="">Select Type</option>
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="success">Success</option>
+                  <option value="error">Error</option>
+                </select>
+              </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Target Audience *</label>
-                            <input class="form-control" id="targetAudience" required>
-                        </div>
+              <div class="mb-3">
+                <label class="form-label">Target Audience *</label>
+                <input class="form-control" id="targetAudience" required />
+              </div>
 
-                        <div class="alert alert-info" id="readOnlyAlert" style="display:none;">
-                            <i class="bi bi-info-circle"></i> This notification has already been sent and cannot be edited.
-                        </div>
-
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <div id="actionButtons">
-                        <button class="btn btn-outline-primary" id="saveDraftBtn">Save as Draft</button>
-                        <button class="btn btn-primary" id="sendNowBtn">Send Now</button>
-                    </div>
-                </div>
+              <div
+                class="alert alert-info"
+                id="readOnlyAlert"
+                style="display: none"
+              >
+                <i class="bi bi-info-circle"></i> This notification has already
+                been sent and cannot be edited.
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+            <div id="actionButtons">
+              <button class="btn btn-outline-primary" id="saveDraftBtn">
+                Save as Draft
+              </button>
+              <button class="btn btn-primary" id="sendNowBtn">Send Now</button>
             </div>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Delete Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
-                    <button class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    Are you sure you want to delete this notification?
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-                </div>
-            </div>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Delete</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to delete this notification?
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- FOOTER -->
     <footer class="footer mt-auto py-3 bg-light">
-        <div class="container-fluid text-center">
-            <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
-        </div>
+      <div class="container-fluid text-center">
+        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
+      </div>
     </footer>
 
     <!-- JS -->
@@ -256,6 +345,5 @@
     <script src="../assets/js/sidebar.js"></script>
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/notifications.js"></script>
-
-</body>
+  </body>
 </html>

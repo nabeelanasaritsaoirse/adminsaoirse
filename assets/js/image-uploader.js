@@ -1,20 +1,53 @@
 // image-uploader.js
-// Requires: API_CONFIG, API, AUTH, adminPanel (from your existing scripts)
+// Requires global: API_CONFIG, API, AUTH, adminPanel (optional)
 
+/* Utility - safe notifier */
+function notify(message, type = 'info') {
+  if (window.adminPanel && typeof window.adminPanel.showNotification === 'function') {
+    // adminPanel uses 'success', 'danger', 'warning' etc.
+    window.adminPanel.showNotification(message, type === 'error' ? 'danger' : type);
+  } else {
+    // fallback
+    if (type === 'error') alert('Error: ' + message);
+    else alert(message);
+  }
+}
+
+/* Safe JSON parse helper (returns null on failure) */
+async function safeJson(resp) {
+  try {
+    return await resp.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+/* DOM-ready init */
 document.addEventListener('DOMContentLoaded', () => {
-  initImageUploader();
+  try {
+    initImageUploader();
+  } catch (e) {
+    console.error('image-uploader init failed', e);
+  }
 });
 
 function initImageUploader() {
-  // Buttons and forms
-  document.getElementById('btnUploadBanner').addEventListener('click', uploadBanner);
-  document.getElementById('btnClearBanner').addEventListener('click', clearBannerForm);
-  document.getElementById('btnUploadStory').addEventListener('click', uploadStory);
-  document.getElementById('btnClearStory').addEventListener('click', clearStoryForm);
+  // guard - some pages may not have these elements; attach only if they exist
+  const btnUploadBanner = document.getElementById('btnUploadBanner');
+  const btnClearBanner = document.getElementById('btnClearBanner');
+  const btnUploadStory = document.getElementById('btnUploadStory');
+  const btnClearStory = document.getElementById('btnClearStory');
+  const btnRefreshBanners = document.getElementById('btnRefreshBanners');
+  const btnRefreshStories = document.getElementById('btnRefreshStories');
 
-  document.getElementById('btnRefreshBanners').addEventListener('click', loadBanners);
-  document.getElementById('btnRefreshStories').addEventListener('click', loadStories);
+  if (btnUploadBanner) btnUploadBanner.addEventListener('click', uploadBanner);
+  if (btnClearBanner) btnClearBanner.addEventListener('click', clearBannerForm);
+  if (btnUploadStory) btnUploadStory.addEventListener('click', uploadStory);
+  if (btnClearStory) btnClearStory.addEventListener('click', clearStoryForm);
+  if (btnRefreshBanners) btnRefreshBanners.addEventListener('click', loadBanners);
+  if (btnRefreshStories) btnRefreshStories.addEventListener('click', loadStories);
 
+  // initial loads
   loadBanners();
   loadStories();
 }
@@ -26,43 +59,46 @@ function initImageUploader() {
 async function loadBanners() {
   const tbody = document.getElementById('bannersTableBody');
   const bannerCount = document.getElementById('bannerCount');
-  tbody.innerHTML = `<tr><td colspan="8" class="text-center">Loading...</td></tr>`;
-  bannerCount.textContent = '(loading...)';
+  if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Loading...</td></tr>`;
+  if (bannerCount) bannerCount.textContent = '(loading...)';
 
   try {
     const res = await API.get('/banners/admin/all', {}, { page: 1, limit: 200 });
-    const banners = res.data || [];
+    // some APIs return { success, data } while others return array; handle both
+    const banners = res.data || res || [];
 
-    bannerCount.textContent = `(${res.pagination?.total ?? banners.length})`;
+    if (bannerCount) bannerCount.textContent = `(${res.pagination?.total ?? banners.length})`;
 
     if (!banners || banners.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center">No banners found</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">No banners found</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = '';
-    banners.forEach((b, i) => {
-      tbody.insertAdjacentHTML('beforeend', renderBannerRow(b, i + 1));
-    });
-
+    if (tbody) {
+      tbody.innerHTML = '';
+      banners.forEach((b, i) => tbody.insertAdjacentHTML('beforeend', renderBannerRow(b, i + 1)));
+    }
   } catch (err) {
     console.error('Error loading banners:', err);
-    adminPanel.showNotification('Failed to load banners', 'danger');
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center">Failed to load</td></tr>`;
-    bannerCount.textContent = '(error)';
+    notify('Failed to load banners: ' + (err.message || ''), 'error');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Failed to load</td></tr>`;
+    if (bannerCount) bannerCount.textContent = '(error)';
   }
 }
 
 function renderBannerRow(b, idx) {
   const activeBadge = b.isActive ? `<span class="badge bg-success">Active</span>` : `<span class="badge bg-warning">Inactive</span>`;
-  const created = new Date(b.createdAt).toLocaleDateString();
-  const imageUrl = b.imageUrl || '';
+  const created = b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '-';
+  const imageUrl = b.imageUrl || b.s3Url || '';
 
   return `
     <tr>
       <td>${idx}</td>
-      <td><img src="${imageUrl}" class="thumb" alt="${escapeHtml(b.altText || b.title)}"></td>
-      <td style="max-width:220px;">${escapeHtml(b.title)}<br/><small class="text-muted">${truncateText(b.description || '', 80)}</small></td>
+      <td><img src="${escapeHtml(imageUrl)}" class="thumb" style="width:70px;height:45px;object-fit:cover" alt="${escapeHtml(b.altText || b.title || '')}"></td>
+      <td style="max-width:220px;">
+        <strong>${escapeHtml(b.title || '')}</strong>
+        <div class="text-muted small">${escapeHtml((b.description || '').substring(0, 120))}</div>
+      </td>
       <td>${escapeHtml(b.platform || 'both')}</td>
       <td>${b.displayOrder ?? 0}</td>
       <td>${activeBadge}</td>
@@ -80,28 +116,32 @@ function renderBannerRow(b, idx) {
   `;
 }
 
-/* Upload banner (multipart/form-data) */
-async function uploadBanner() {
-  const title = document.getElementById('bannerTitle').value.trim();
-  const description = document.getElementById('bannerDescription').value.trim();
-  const platform = document.getElementById('bannerPlatform').value;
-  const displayOrder = document.getElementById('bannerOrder').value;
-  const linkUrl = document.getElementById('bannerLink').value.trim();
+async function uploadBanner(e) {
+  // form fields
+  const titleEl = document.getElementById('bannerTitle');
+  const descEl = document.getElementById('bannerDescription');
+  const platformEl = document.getElementById('bannerPlatform');
+  const orderEl = document.getElementById('bannerOrder');
+  const linkEl = document.getElementById('bannerLink');
   const fileInput = document.getElementById('bannerImage');
 
+  const title = titleEl?.value?.trim() || '';
+  const description = descEl?.value?.trim() || '';
+  const platform = platformEl?.value || 'both';
+  const displayOrder = orderEl?.value || 0;
+  const linkUrl = linkEl?.value?.trim() || '';
+
   if (!title) {
-    adminPanel.showNotification('Enter banner title', 'warning');
+    notify('Enter banner title', 'warning');
     return;
   }
-
-  if (!fileInput.files || fileInput.files.length === 0) {
-    adminPanel.showNotification('Select an image file', 'warning');
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    notify('Select an image file', 'warning');
     return;
   }
 
   const file = fileInput.files[0];
   const formData = new FormData();
-
   formData.append('title', title);
   formData.append('description', description);
   formData.append('platform', platform);
@@ -110,81 +150,85 @@ async function uploadBanner() {
   formData.append('image', file);
 
   try {
-    const headers = AUTH.getAuthHeaders();
-    // fetch because API.post serializes JSON. DO NOT set Content-Type for FormData
+    const headers = AUTH.getAuthHeaders(); // do NOT set Content-Type
     const resp = await fetch(`${API_CONFIG.baseURL}/banners`, {
       method: 'POST',
       headers,
       body: formData
     });
 
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.message || 'Upload failed');
+    const data = await safeJson(resp);
+    if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
-    adminPanel.showNotification('Banner uploaded', 'success');
+    notify('Banner uploaded', 'success');
     clearBannerForm();
-    loadBanners();
+    await loadBanners();
   } catch (err) {
     console.error('Error uploading banner:', err);
-    adminPanel.showNotification(err.message || 'Banner upload failed', 'danger');
+    notify('Banner upload failed: ' + (err.message || ''), 'error');
   }
 }
 
 function clearBannerForm() {
-  document.getElementById('bannerUploadForm').reset();
+  const form = document.getElementById('bannerUploadForm');
+  if (form) form.reset();
 }
 
-/* Edit banner text modal */
+/* Edit banner modal (loads banner, allows editing text fields, not image) */
 function openEditBannerModal(bannerId) {
-  // fetch banner detail and show a modal form
   (async () => {
     try {
       const res = await API.get('/banners/:id', { id: bannerId });
-      const b = res.data;
+      const b = res.data || res;
       injectEditBannerModal(b);
     } catch (err) {
       console.error('Error loading banner:', err);
-      adminPanel.showNotification('Failed to load banner', 'danger');
+      notify('Failed to load banner', 'error');
     }
   })();
 }
 
 function injectEditBannerModal(b) {
-  const old = document.getElementById('editBannerModal');
-  if (old) old.remove();
+  const existing = document.getElementById('editBannerModal');
+  if (existing) existing.remove();
 
   const html = `
-    <div class="modal fade" id="editBannerModal" tabindex="-1"><div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Edit Banner - ${escapeHtml(b.title)}</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <form id="editBannerForm">
-          <div class="mb-2"><label class="form-label">Title</label><input id="editBannerTitle" class="form-control" value="${escapeHtml(b.title)}"></div>
-          <div class="mb-2"><label class="form-label">Description</label><textarea id="editBannerDescription" class="form-control">${escapeHtml(b.description||'')}</textarea></div>
-          <div class="mb-2"><label class="form-label">Platform</label>
-            <select id="editBannerPlatform" class="form-select">
-              <option value="both" ${b.platform==='both'?'selected':''}>Both</option>
-              <option value="web" ${b.platform==='web'?'selected':''}>Web</option>
-              <option value="app" ${b.platform==='app'?'selected':''}>App</option>
-            </select></div>
-          <div class="mb-2 row">
-            <div class="col"><label class="form-label">Display Order</label><input id="editBannerOrder" type="number" class="form-control" value="${b.displayOrder||0}"></div>
-            <div class="col"><label class="form-label">Link URL</label><input id="editBannerLink" class="form-control" value="${escapeHtml(b.linkUrl||'')}"></div>
+    <div class="modal fade" id="editBannerModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Banner - ${escapeHtml(b.title || '')}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
-          <div class="mb-2"><label class="form-label">Active</label>
-            <select id="editBannerActive" class="form-select">
-              <option value="true" ${b.isActive ? 'selected' : ''}>Active</option>
-              <option value="false" ${!b.isActive ? 'selected' : ''}>Inactive</option>
-            </select>
+          <div class="modal-body">
+            <form id="editBannerForm">
+              <div class="mb-2"><label class="form-label">Title</label><input id="editBannerTitle" class="form-control" value="${escapeHtml(b.title || '')}"></div>
+              <div class="mb-2"><label class="form-label">Description</label><textarea id="editBannerDescription" class="form-control">${escapeHtml(b.description || '')}</textarea></div>
+              <div class="mb-2"><label class="form-label">Platform</label>
+                <select id="editBannerPlatform" class="form-select">
+                  <option value="both" ${b.platform==='both'?'selected':''}>Both</option>
+                  <option value="web" ${b.platform==='web'?'selected':''}>Web</option>
+                  <option value="app" ${b.platform==='app'?'selected':''}>App</option>
+                </select></div>
+              <div class="mb-2 row">
+                <div class="col"><label class="form-label">Display Order</label><input id="editBannerOrder" type="number" class="form-control" value="${b.displayOrder||0}"></div>
+                <div class="col"><label class="form-label">Link URL</label><input id="editBannerLink" class="form-control" value="${escapeHtml(b.linkUrl || '')}"></div>
+              </div>
+              <div class="mb-2"><label class="form-label">Active</label>
+                <select id="editBannerActive" class="form-select">
+                  <option value="true" ${b.isActive ? 'selected' : ''}>Active</option>
+                  <option value="false" ${!b.isActive ? 'selected' : ''}>Inactive</option>
+                </select>
+              </div>
+            </form>
           </div>
-        </form>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button class="btn btn-primary" id="saveBannerChanges">Save</button>
+          </div>
+        </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button class="btn btn-primary" id="saveBannerChanges">Save</button>
-      </div>
-    </div></div></div>
+    </div>
   `;
 
   document.body.insertAdjacentHTML('beforeend', html);
@@ -197,41 +241,42 @@ function injectEditBannerModal(b) {
       title: document.getElementById('editBannerTitle').value.trim(),
       description: document.getElementById('editBannerDescription').value.trim(),
       platform: document.getElementById('editBannerPlatform').value,
-      displayOrder: document.getElementById('editBannerOrder').value,
+      displayOrder: Number(document.getElementById('editBannerOrder').value) || 0,
       linkUrl: document.getElementById('editBannerLink').value.trim(),
       isActive: document.getElementById('editBannerActive').value === 'true'
     };
 
     try {
-      await API.put('/banners/admin/:id', data, { id: b._id });
-      adminPanel.showNotification('Banner updated', 'success');
+      await API.put('/banners/:id', data, { id: b._id });
+      notify('Banner updated', 'success');
       modal.hide();
-      loadBanners();
+      await loadBanners();
     } catch (err) {
       console.error('Error updating banner:', err);
-      adminPanel.showNotification('Failed to update banner', 'danger');
+      notify('Failed to update banner', 'error');
     }
   });
 }
 
-/* Replace banner image modal */
+/* Replace banner image modal and upload */
 function openReplaceBannerImageModal(bannerId) {
-  const old = document.getElementById('replaceBannerModal');
-  if (old) old.remove();
+  const existing = document.getElementById('replaceBannerModal');
+  if (existing) existing.remove();
 
   const html = `
-    <div class="modal fade" id="replaceBannerModal" tabindex="-1"><div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Replace Banner Image</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input id="replaceBannerFile" type="file" accept="image/*" class="form-control" />
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button class="btn btn-primary" id="confirmReplaceBanner">Replace</button>
-      </div>
-    </div></div></div>
+    <div class="modal fade" id="replaceBannerModal" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Replace Banner Image</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <input id="replaceBannerFile" type="file" accept="image/*" class="form-control" />
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button class="btn btn-primary" id="confirmReplaceBanner">Replace</button>
+        </div>
+      </div></div>
+    </div>
   `;
   document.body.insertAdjacentHTML('beforeend', html);
   const modalEl = document.getElementById('replaceBannerModal');
@@ -241,7 +286,7 @@ function openReplaceBannerImageModal(bannerId) {
   document.getElementById('confirmReplaceBanner').addEventListener('click', async () => {
     const fileInput = document.getElementById('replaceBannerFile');
     if (!fileInput.files || fileInput.files.length === 0) {
-      adminPanel.showNotification('Select an image', 'warning');
+      notify('Select an image', 'warning');
       return;
     }
     const file = fileInput.files[0];
@@ -255,53 +300,55 @@ function openReplaceBannerImageModal(bannerId) {
         headers,
         body: formData
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.message || 'Replace failed');
+      const data = await safeJson(resp);
+      if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
-      adminPanel.showNotification('Banner image replaced', 'success');
+      notify('Banner image replaced', 'success');
       modal.hide();
-      loadBanners();
+      await loadBanners();
     } catch (err) {
       console.error('Error replacing image:', err);
-      adminPanel.showNotification(err.message || 'Failed to replace image', 'danger');
+      notify('Failed to replace image: ' + (err.message || ''), 'error');
     }
   });
 }
 
+/* Toggle banner status */
 async function toggleBanner(id) {
   try {
-    // Use API.request to send PATCH
     const url = API.buildURL('/banners/:id/toggle', { id });
     await API.request(url, { method: 'PATCH' });
-    adminPanel.showNotification('Banner status toggled', 'success');
-    loadBanners();
+    notify('Banner status toggled', 'success');
+    await loadBanners();
   } catch (err) {
     console.error('Error toggling banner:', err);
-    adminPanel.showNotification('Failed to toggle banner', 'danger');
+    notify('Failed to toggle banner', 'error');
   }
 }
 
+/* Soft delete banner */
 async function softDeleteBanner(id) {
   if (!confirm('Move banner to trash?')) return;
   try {
-    await API.delete('/banners/admin/:id', { id });
-    adminPanel.showNotification('Banner soft deleted', 'success');
-    loadBanners();
+    await API.delete('/banners/:id', { id });
+    notify('Banner moved to trash', 'success');
+    await loadBanners();
   } catch (err) {
     console.error('Error deleting banner:', err);
-    adminPanel.showNotification('Failed to delete banner', 'danger');
+    notify('Failed to delete banner', 'error');
   }
 }
 
+/* Permanent delete banner */
 async function permanentlyDeleteBanner(id) {
   if (!confirm('Permanently delete this banner? This cannot be undone.')) return;
   try {
-    await API.delete('/banners/admin/:id/permanent', { id });
-    adminPanel.showNotification('Banner permanently deleted', 'success');
-    loadBanners();
+    await API.delete('/banners/:id/permanent', { id });
+    notify('Banner permanently deleted', 'success');
+    await loadBanners();
   } catch (err) {
     console.error('Error permanently deleting banner:', err);
-    adminPanel.showNotification('Failed to permanently delete', 'danger');
+    notify('Failed to permanently delete banner', 'error');
   }
 }
 
@@ -312,43 +359,41 @@ async function permanentlyDeleteBanner(id) {
 async function loadStories() {
   const tbody = document.getElementById('storiesTableBody');
   const storyCount = document.getElementById('storyCount');
-  tbody.innerHTML = `<tr><td colspan="8" class="text-center">Loading...</td></tr>`;
-  storyCount.textContent = '(loading...)';
+  if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Loading...</td></tr>`;
+  if (storyCount) storyCount.textContent = '(loading...)';
 
   try {
     const res = await API.get('/success-stories/admin/all', {}, { page: 1, limit: 200 });
-    const stories = res.data || [];
-
-    storyCount.textContent = `(${res.pagination?.total ?? stories.length})`;
+    const stories = res.data || res || [];
+    if (storyCount) storyCount.textContent = `(${res.pagination?.total ?? stories.length})`;
 
     if (!stories || stories.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center">No success stories found</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">No success stories found</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = '';
-    stories.forEach((s, i) => {
-      tbody.insertAdjacentHTML('beforeend', renderStoryRow(s, i + 1));
-    });
-
+    if (tbody) {
+      tbody.innerHTML = '';
+      stories.forEach((s, i) => tbody.insertAdjacentHTML('beforeend', renderStoryRow(s, i + 1)));
+    }
   } catch (err) {
     console.error('Error loading stories:', err);
-    adminPanel.showNotification('Failed to load success stories', 'danger');
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center">Failed to load</td></tr>`;
-    storyCount.textContent = '(error)';
+    notify('Failed to load success stories', 'error');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Failed to load</td></tr>`;
+    if (storyCount) storyCount.textContent = '(error)';
   }
 }
 
 function renderStoryRow(s, idx) {
   const activeBadge = s.isActive ? `<span class="badge bg-success">Active</span>` : `<span class="badge bg-warning">Inactive</span>`;
-  const created = new Date(s.createdAt).toLocaleDateString();
-  const imageUrl = s.imageUrl || '';
+  const created = s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-';
+  const imageUrl = s.imageUrl || s.s3Url || '';
 
   return `
     <tr>
       <td>${idx}</td>
-      <td><img src="${imageUrl}" class="thumb" alt="${escapeHtml(s.altText || s.title)}"></td>
-      <td style="max-width:220px;">${escapeHtml(s.title)}<br/><small class="text-muted">${truncateText(s.description || '', 80)}</small></td>
+      <td><img src="${escapeHtml(imageUrl)}" class="thumb" style="width:70px;height:45px;object-fit:cover" alt="${escapeHtml(s.altText || s.title || '')}"></td>
+      <td style="max-width:220px;"><strong>${escapeHtml(s.title || '')}</strong><div class="text-muted small">${escapeHtml((s.description || '').substring(0, 120))}</div></td>
       <td>${escapeHtml(s.platform || 'both')}</td>
       <td>${s.displayOrder ?? 0}</td>
       <td>${activeBadge}</td>
@@ -366,27 +411,29 @@ function renderStoryRow(s, idx) {
   `;
 }
 
-/* Upload story (multipart) */
 async function uploadStory() {
-  const title = document.getElementById('storyTitle').value.trim();
-  const description = document.getElementById('storyDescription').value.trim();
-  const platform = document.getElementById('storyPlatform').value;
-  const displayOrder = document.getElementById('storyOrder').value;
+  const titleEl = document.getElementById('storyTitle');
+  const descEl = document.getElementById('storyDescription');
+  const platformEl = document.getElementById('storyPlatform');
+  const orderEl = document.getElementById('storyOrder');
   const fileInput = document.getElementById('storyImage');
 
+  const title = titleEl?.value?.trim() || '';
+  const description = descEl?.value?.trim() || '';
+  const platform = platformEl?.value || 'both';
+  const displayOrder = orderEl?.value || 0;
+
   if (!title) {
-    adminPanel.showNotification('Enter story title', 'warning');
+    notify('Enter story title', 'warning');
     return;
   }
-
-  if (!fileInput.files || fileInput.files.length === 0) {
-    adminPanel.showNotification('Select an image file', 'warning');
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    notify('Select an image file', 'warning');
     return;
   }
 
   const file = fileInput.files[0];
   const formData = new FormData();
-
   formData.append('title', title);
   formData.append('description', description);
   formData.append('platform', platform);
@@ -400,59 +447,55 @@ async function uploadStory() {
       headers,
       body: formData
     });
+    const data = await safeJson(resp);
+    if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.message || 'Upload failed');
-
-    adminPanel.showNotification('Success story uploaded', 'success');
+    notify('Success story uploaded', 'success');
     clearStoryForm();
-    loadStories();
+    await loadStories();
   } catch (err) {
     console.error('Error uploading story:', err);
-    adminPanel.showNotification(err.message || 'Story upload failed', 'danger');
+    notify('Story upload failed: ' + (err.message || ''), 'error');
   }
 }
 
 function clearStoryForm() {
-  document.getElementById('storyUploadForm').reset();
+  const form = document.getElementById('storyUploadForm');
+  if (form) form.reset();
 }
 
-/* Edit story modal */
 function openEditStoryModal(storyId) {
   (async () => {
     try {
       const res = await API.get('/success-stories/:id', { id: storyId });
-      const s = res.data;
+      const s = res.data || res;
       injectEditStoryModal(s);
     } catch (err) {
       console.error('Error loading story:', err);
-      adminPanel.showNotification('Failed to load story', 'danger');
+      notify('Failed to load story', 'error');
     }
   })();
 }
 
 function injectEditStoryModal(s) {
-  const old = document.getElementById('editStoryModal');
-  if (old) old.remove();
+  const existing = document.getElementById('editStoryModal');
+  if (existing) existing.remove();
 
   const html = `
-    <div class="modal fade" id="editStoryModal" tabindex="-1"><div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Edit Story - ${escapeHtml(s.title)}</h5>
+    <div class="modal fade" id="editStoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Edit Story - ${escapeHtml(s.title || '')}</h5>
         <button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
         <form id="editStoryForm">
-          <div class="mb-2"><label class="form-label">Title</label><input id="editStoryTitle" class="form-control" value="${escapeHtml(s.title)}"></div>
-          <div class="mb-2"><label class="form-label">Description</label><textarea id="editStoryDescription" class="form-control">${escapeHtml(s.description||'')}</textarea></div>
+          <div class="mb-2"><label class="form-label">Title</label><input id="editStoryTitle" class="form-control" value="${escapeHtml(s.title || '')}"></div>
+          <div class="mb-2"><label class="form-label">Description</label><textarea id="editStoryDescription" class="form-control">${escapeHtml(s.description || '')}</textarea></div>
           <div class="mb-2"><label class="form-label">Platform</label>
             <select id="editStoryPlatform" class="form-select">
               <option value="both" ${s.platform==='both'?'selected':''}>Both</option>
               <option value="web" ${s.platform==='web'?'selected':''}>Web</option>
               <option value="app" ${s.platform==='app'?'selected':''}>App</option>
             </select></div>
-          <div class="mb-2 row">
-            <div class="col"><label class="form-label">Display Order</label><input id="editStoryOrder" type="number" class="form-control" value="${s.displayOrder||0}"></div>
-          </div>
+          <div class="mb-2 row"><div class="col"><label class="form-label">Display Order</label><input id="editStoryOrder" type="number" class="form-control" value="${s.displayOrder||0}"></div></div>
           <div class="mb-2"><label class="form-label">Active</label>
             <select id="editStoryActive" class="form-select">
               <option value="true" ${s.isActive ? 'selected' : ''}>Active</option>
@@ -461,10 +504,7 @@ function injectEditStoryModal(s) {
           </div>
         </form>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button class="btn btn-primary" id="saveStoryChanges">Save</button>
-      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" id="saveStoryChanges">Save</button></div>
     </div></div></div>
   `;
   document.body.insertAdjacentHTML('beforeend', html);
@@ -477,38 +517,30 @@ function injectEditStoryModal(s) {
       title: document.getElementById('editStoryTitle').value.trim(),
       description: document.getElementById('editStoryDescription').value.trim(),
       platform: document.getElementById('editStoryPlatform').value,
-      displayOrder: document.getElementById('editStoryOrder').value,
+      displayOrder: Number(document.getElementById('editStoryOrder').value) || 0,
       isActive: document.getElementById('editStoryActive').value === 'true'
     };
     try {
       await API.put('/success-stories/:id', data, { id: s._id });
-      adminPanel.showNotification('Success story updated', 'success');
+      notify('Success story updated', 'success');
       modal.hide();
-      loadStories();
+      await loadStories();
     } catch (err) {
       console.error('Error updating story:', err);
-      adminPanel.showNotification('Failed to update story', 'danger');
+      notify('Failed to update story', 'error');
     }
   });
 }
 
-/* Replace story image modal */
 function openReplaceStoryImageModal(storyId) {
-  const old = document.getElementById('replaceStoryModal');
-  if (old) old.remove();
+  const existing = document.getElementById('replaceStoryModal');
+  if (existing) existing.remove();
 
   const html = `
-    <div class="modal fade" id="replaceStoryModal" tabindex="-1"><div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Replace Story Image</h5>
-        <button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input id="replaceStoryFile" type="file" accept="image/*" class="form-control" />
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button class="btn btn-primary" id="confirmReplaceStory">Replace</button>
-      </div>
+    <div class="modal fade" id="replaceStoryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Replace Story Image</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><input id="replaceStoryFile" type="file" accept="image/*" class="form-control" /></div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" id="confirmReplaceStory">Replace</button></div>
     </div></div></div>
   `;
   document.body.insertAdjacentHTML('beforeend', html);
@@ -519,7 +551,7 @@ function openReplaceStoryImageModal(storyId) {
   document.getElementById('confirmReplaceStory').addEventListener('click', async () => {
     const fileInput = document.getElementById('replaceStoryFile');
     if (!fileInput.files || fileInput.files.length === 0) {
-      adminPanel.showNotification('Select an image', 'warning');
+      notify('Select an image', 'warning');
       return;
     }
     const file = fileInput.files[0];
@@ -533,15 +565,15 @@ function openReplaceStoryImageModal(storyId) {
         headers,
         body: formData
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.message || 'Replace failed');
+      const data = await safeJson(resp);
+      if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
-      adminPanel.showNotification('Story image replaced', 'success');
+      notify('Story image replaced', 'success');
       modal.hide();
-      loadStories();
+      await loadStories();
     } catch (err) {
       console.error('Error replacing story image:', err);
-      adminPanel.showNotification(err.message || 'Failed to replace image', 'danger');
+      notify('Failed to replace image', 'error');
     }
   });
 }
@@ -550,44 +582,43 @@ async function toggleStory(id) {
   try {
     const url = API.buildURL('/success-stories/:id/toggle', { id });
     await API.request(url, { method: 'PATCH' });
-    adminPanel.showNotification('Success story status toggled', 'success');
-    loadStories();
+    notify('Success story status toggled', 'success');
+    await loadStories();
   } catch (err) {
     console.error('Error toggling story:', err);
-    adminPanel.showNotification('Failed to toggle story', 'danger');
+    notify('Failed to toggle story', 'error');
   }
 }
 
 async function softDeleteStory(id) {
   if (!confirm('Move story to trash?')) return;
   try {
-    await API.delete('/success-stories/admin/:id', { id });
-    adminPanel.showNotification('Success story soft deleted', 'success');
-    loadStories();
+    await API.delete('/success-stories/:id', { id });
+    notify('Success story moved to trash', 'success');
+    await loadStories();
   } catch (err) {
     console.error('Error deleting story:', err);
-    adminPanel.showNotification('Failed to delete story', 'danger');
+    notify('Failed to delete story', 'error');
   }
 }
 
 async function permanentlyDeleteStory(id) {
   if (!confirm('Permanently delete this story? This cannot be undone.')) return;
   try {
-    await API.delete('/success-stories/admin/:id/permanent', { id });
-    adminPanel.showNotification('Success story permanently deleted', 'success');
-    loadStories();
+    await API.delete('/success-stories/:id/permanent', { id });
+    notify('Success story permanently deleted', 'success');
+    await loadStories();
   } catch (err) {
     console.error('Error permanently deleting story:', err);
-    adminPanel.showNotification('Failed to permanently delete', 'danger');
+    notify('Failed to permanently delete story', 'error');
   }
 }
 
 /* -----------------------------
-   Small helpers
+   helpers
    ----------------------------- */
 
-function truncateText(text, max = 60) {
-  if (!text) return '';
+function truncateText(text = '', max = 60) {
   return text.length > max ? text.substring(0, max) + '...' : text;
 }
 
@@ -595,3 +626,16 @@ function escapeHtml(s) {
   if (!s) return '';
   return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
+/* expose functions for onclick usage in HTML */
+window.openEditBannerModal = openEditBannerModal;
+window.openReplaceBannerImageModal = openReplaceBannerImageModal;
+window.toggleBanner = toggleBanner;
+window.softDeleteBanner = softDeleteBanner;
+window.permanentlyDeleteBanner = permanentlyDeleteBanner;
+
+window.openEditStoryModal = openEditStoryModal;
+window.openReplaceStoryImageModal = openReplaceStoryImageModal;
+window.toggleStory = toggleStory;
+window.softDeleteStory = softDeleteStory;
+window.permanentlyDeleteStory = permanentlyDeleteStory;

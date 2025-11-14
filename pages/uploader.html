@@ -1,295 +1,387 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Panel - Image Uploader</title>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Admin Panel - Image Uploader</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Styles -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="../assets/css/style.css">
-  <link rel="stylesheet" href="../assets/css/responsive.css">
+    <!-- Page-only styles -->
+    <style>
+      .thumb {
+        width: 80px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #e5e5e5;
+      }
 
-  <!-- Page-only styles -->
-  <style>
-    .thumb {
-      width: 80px;
-      height: 50px;
-      object-fit: cover;
-      border-radius: 4px;
-      border: 1px solid #e5e5e5;
-    }
+      .cursor-grab {
+        cursor: grab;
+      }
+    </style>
+  </head>
 
-    .cursor-grab {
-      cursor: grab;
-    }
-  </style>
-</head>
+  <body>
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
-<body>
+        // If not logged in → redirect
+        if (!token) {
+          window.location.href = "pages/login.html";
+          return;
+        }
 
-  <!-- NAVBAR -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-    <div class="container-fluid">
+        // If logged in but NOT admin → logout and redirect
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "pages/login.html";
+          return;
+        }
+      })();
+    </script>
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
 
-      <button class="btn btn-dark" id="sidebarToggle">
-        <i class="bi bi-list"></i>
-      </button>
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
 
-      <a class="navbar-brand ms-3" href="../index.html">
-        <i class="bi bi-gear-fill"></i> Admin Panel
-      </a>
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-bell"></i>
+              <span class="badge bg-danger">3</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li><a class="dropdown-item">New user registered</a></li>
+            </ul>
+          </li>
 
-      <ul class="navbar-nav ms-auto">
-
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-            <i class="bi bi-bell"></i>
-            <span class="badge bg-danger">3</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><h6 class="dropdown-header">Notifications</h6></li>
-            <li><a class="dropdown-item">New user registered</a></li>
-          </ul>
-        </li>
-
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-            <i class="bi bi-person-circle"></i> Admin
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="profile.html">Profile</a></li>
-            <li><a class="dropdown-item" href="settings.html">Settings</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="../login.html">Logout</a></li>
-          </ul>
-        </li>
-
-      </ul>
-
-    </div>
-  </nav>
-
-  <!-- SIDEBAR (dynamic like Users & Products) -->
-  <div id="sidebar" class="sidebar"></div>
-
-  <!-- MAIN CONTENT WRAPPER -->
-  <div class="main-content">
-    <div class="container-fluid">
-
-      <!-- HEADER -->
-      <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2">Image Uploader</h1>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li>
+                <a class="dropdown-item" href="settings.html">Settings</a>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" href="../login.html">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
       </div>
+    </nav>
 
-      <!-- UPLOAD FORMS -->
-      <div class="row g-3 mb-4">
+    <!-- SIDEBAR (dynamic like Users & Products) -->
+    <div id="sidebar" class="sidebar"></div>
 
-        <!-- Banners -->
-        <div class="col-md-6">
-          <div class="card shadow-sm">
-            <div class="card-header">
-              <strong>Banners</strong>
-              <small class="text-muted ms-2">Upload & manage banners</small>
+    <!-- MAIN CONTENT WRAPPER -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <!-- HEADER -->
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Image Uploader</h1>
+        </div>
+
+        <!-- UPLOAD FORMS -->
+        <div class="row g-3 mb-4">
+          <!-- Banners -->
+          <div class="col-md-6">
+            <div class="card shadow-sm">
+              <div class="card-header">
+                <strong>Banners</strong>
+                <small class="text-muted ms-2">Upload & manage banners</small>
+              </div>
+              <div class="card-body">
+                <form id="bannerUploadForm">
+                  <div class="mb-2">
+                    <label class="form-label">Title *</label>
+                    <input id="bannerTitle" class="form-control" required />
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label">Description</label>
+                    <textarea
+                      id="bannerDescription"
+                      class="form-control"
+                      rows="2"
+                    ></textarea>
+                  </div>
+
+                  <div class="mb-2 row">
+                    <div class="col">
+                      <label class="form-label">Platform</label>
+                      <select id="bannerPlatform" class="form-select">
+                        <option value="both">Both</option>
+                        <option value="web">Web</option>
+                        <option value="app">App</option>
+                      </select>
+                    </div>
+                    <div class="col">
+                      <label class="form-label">Display Order</label>
+                      <input
+                        id="bannerOrder"
+                        type="number"
+                        class="form-control"
+                        value="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label">Link URL</label>
+                    <input id="bannerLink" class="form-control" />
+                  </div>
+
+                  <div class="mb-2">
+                    <label class="form-label">Image</label>
+                    <input
+                      id="bannerImage"
+                      type="file"
+                      accept="image/*"
+                      class="form-control"
+                    />
+                  </div>
+
+                  <div class="d-flex gap-2">
+                    <button
+                      id="btnUploadBanner"
+                      type="button"
+                      class="btn btn-primary"
+                    >
+                      Upload Banner
+                    </button>
+                    <button
+                      id="btnClearBanner"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
-            <div class="card-body">
-              <form id="bannerUploadForm">
-                <div class="mb-2">
-                  <label class="form-label">Title *</label>
-                  <input id="bannerTitle" class="form-control" required>
-                </div>
+          </div>
 
-                <div class="mb-2">
-                  <label class="form-label">Description</label>
-                  <textarea id="bannerDescription" class="form-control" rows="2"></textarea>
-                </div>
-
-                <div class="mb-2 row">
-                  <div class="col">
-                    <label class="form-label">Platform</label>
-                    <select id="bannerPlatform" class="form-select">
-                      <option value="both">Both</option>
-                      <option value="web">Web</option>
-                      <option value="app">App</option>
-                    </select>
+          <!-- Success Stories -->
+          <div class="col-md-6">
+            <div class="card shadow-sm">
+              <div class="card-header">
+                <strong>Success Stories</strong>
+                <small class="text-muted ms-2">Upload story images</small>
+              </div>
+              <div class="card-body">
+                <form id="storyUploadForm">
+                  <div class="mb-2">
+                    <label class="form-label">Title *</label>
+                    <input id="storyTitle" class="form-control" required />
                   </div>
-                  <div class="col">
-                    <label class="form-label">Display Order</label>
-                    <input id="bannerOrder" type="number" class="form-control" value="0">
+
+                  <div class="mb-2">
+                    <label class="form-label">Description</label>
+                    <textarea
+                      id="storyDescription"
+                      class="form-control"
+                      rows="2"
+                    ></textarea>
                   </div>
-                </div>
 
-                <div class="mb-2">
-                  <label class="form-label">Link URL</label>
-                  <input id="bannerLink" class="form-control">
-                </div>
+                  <div class="mb-2 row">
+                    <div class="col">
+                      <label class="form-label">Platform</label>
+                      <select id="storyPlatform" class="form-select">
+                        <option value="both">Both</option>
+                        <option value="web">Web</option>
+                        <option value="app">App</option>
+                      </select>
+                    </div>
+                    <div class="col">
+                      <label class="form-label">Display Order</label>
+                      <input
+                        id="storyOrder"
+                        type="number"
+                        class="form-control"
+                        value="0"
+                      />
+                    </div>
+                  </div>
 
-                <div class="mb-2">
-                  <label class="form-label">Image</label>
-                  <input id="bannerImage" type="file" accept="image/*" class="form-control">
-                </div>
+                  <div class="mb-2">
+                    <label class="form-label">Image</label>
+                    <input
+                      id="storyImage"
+                      type="file"
+                      accept="image/*"
+                      class="form-control"
+                    />
+                  </div>
 
-                <div class="d-flex gap-2">
-                  <button id="btnUploadBanner" type="button" class="btn btn-primary">Upload Banner</button>
-                  <button id="btnClearBanner" type="button" class="btn btn-outline-secondary">Clear</button>
-                </div>
-              </form>
+                  <div class="d-flex gap-2">
+                    <button
+                      id="btnUploadStory"
+                      type="button"
+                      class="btn btn-primary"
+                    >
+                      Upload Story
+                    </button>
+                    <button
+                      id="btnClearStory"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Success Stories -->
-        <div class="col-md-6">
-          <div class="card shadow-sm">
-            <div class="card-header">
-              <strong>Success Stories</strong>
-              <small class="text-muted ms-2">Upload story images</small>
+        <!-- TABLES SECTION -->
+        <div class="row g-3">
+          <!-- Banners table -->
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div
+                class="card-header d-flex justify-content-between align-items-center"
+              >
+                <div>
+                  <strong>All Banners</strong>
+                  <small class="text-muted ms-2" id="bannerCount"
+                    >(loading...)</small
+                  >
+                </div>
+                <button
+                  id="btnRefreshBanners"
+                  class="btn btn-sm btn-outline-primary"
+                >
+                  Refresh
+                </button>
+              </div>
+
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Preview</th>
+                        <th>Title</th>
+                        <th>Platform</th>
+                        <th>Order</th>
+                        <th>Active</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="bannersTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center">Loading...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-            <div class="card-body">
-              <form id="storyUploadForm">
-                <div class="mb-2">
-                  <label class="form-label">Title *</label>
-                  <input id="storyTitle" class="form-control" required>
-                </div>
+          </div>
 
-                <div class="mb-2">
-                  <label class="form-label">Description</label>
-                  <textarea id="storyDescription" class="form-control" rows="2"></textarea>
+          <!-- Stories table -->
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div
+                class="card-header d-flex justify-content-between align-items-center"
+              >
+                <div>
+                  <strong>All Success Stories</strong>
+                  <small class="text-muted ms-2" id="storyCount"
+                    >(loading...)</small
+                  >
                 </div>
+                <button
+                  id="btnRefreshStories"
+                  class="btn btn-sm btn-outline-primary"
+                >
+                  Refresh
+                </button>
+              </div>
 
-                <div class="mb-2 row">
-                  <div class="col">
-                    <label class="form-label">Platform</label>
-                    <select id="storyPlatform" class="form-select">
-                      <option value="both">Both</option>
-                      <option value="web">Web</option>
-                      <option value="app">App</option>
-                    </select>
-                  </div>
-                  <div class="col">
-                    <label class="form-label">Display Order</label>
-                    <input id="storyOrder" type="number" class="form-control" value="0">
-                  </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Preview</th>
+                        <th>Title</th>
+                        <th>Platform</th>
+                        <th>Order</th>
+                        <th>Active</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="storiesTableBody">
+                      <tr>
+                        <td colspan="8" class="text-center">Loading...</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-
-                <div class="mb-2">
-                  <label class="form-label">Image</label>
-                  <input id="storyImage" type="file" accept="image/*" class="form-control">
-                </div>
-
-                <div class="d-flex gap-2">
-                  <button id="btnUploadStory" type="button" class="btn btn-primary">Upload Story</button>
-                  <button id="btnClearStory" type="button" class="btn btn-outline-secondary">Clear</button>
-                </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>
-
       </div>
+    </div>
 
-      <!-- TABLES SECTION -->
-      <div class="row g-3">
-
-        <!-- Banners table -->
-        <div class="col-12">
-          <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <div>
-                <strong>All Banners</strong>
-                <small class="text-muted ms-2" id="bannerCount">(loading...)</small>
-              </div>
-              <button id="btnRefreshBanners" class="btn btn-sm btn-outline-primary">Refresh</button>
-            </div>
-
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Preview</th>
-                      <th>Title</th>
-                      <th>Platform</th>
-                      <th>Order</th>
-                      <th>Active</th>
-                      <th>Created</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="bannersTableBody">
-                    <tr><td colspan="8" class="text-center">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Stories table -->
-        <div class="col-12">
-          <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <div>
-                <strong>All Success Stories</strong>
-                <small class="text-muted ms-2" id="storyCount">(loading...)</small>
-              </div>
-              <button id="btnRefreshStories" class="btn btn-sm btn-outline-primary">Refresh</button>
-            </div>
-
-            <div class="card-body">
-              <div class="table-responsive">
-                <table class="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Preview</th>
-                      <th>Title</th>
-                      <th>Platform</th>
-                      <th>Order</th>
-                      <th>Active</th>
-                      <th>Created</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="storiesTableBody">
-                    <tr><td colspan="8" class="text-center">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
+    <!-- FOOTER -->
+    <footer class="footer mt-auto py-3 bg-light">
+      <div class="container-fluid text-center">
+        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
       </div>
+    </footer>
 
-    </div>
-  </div>
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- FOOTER -->
-  <footer class="footer mt-auto py-3 bg-light">
-    <div class="container-fluid text-center">
-      <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
-    </div>
-  </footer>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/sidebar.js"></script>
+    <script src="../assets/js/main.js"></script>
 
-  <!-- JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-  <script src="../assets/js/navigation.js"></script>
-  <script src="../assets/js/sidebar.js"></script>
-  <script src="../assets/js/main.js"></script>
-
-  <script src="../assets/js/image-uploader.js"></script>
-
-</body>
+    <script src="../assets/js/image-uploader.js"></script>
+  </body>
 </html>

@@ -34,6 +34,16 @@ const NAV_CONFIG = {
             href: 'products.html',
             hrefFromRoot: 'pages/products.html'
         },
+
+        /* ⭐ ADDED — Image Uploader */
+        {
+            id: 'uploader',
+            label: 'Image Uploader',
+            icon: 'bi-image',
+            href: 'uploader.html',
+            hrefFromRoot: 'pages/uploader.html'
+        },
+
         {
             id: 'orders',
             label: 'Orders',
@@ -87,10 +97,8 @@ function getActiveNavItem() {
     const currentPath = window.location.pathname.toLowerCase();
     const currentPage = currentPath.split('/').pop() || 'index.html';
 
-    // Remove query parameters if any
     const cleanPage = currentPage.split('?')[0];
 
-    // Find matching navigation item
     const activeItem = NAV_CONFIG.items.find(item => {
         const itemPage = item.hrefFromRoot.split('/').pop().split('?')[0];
         return cleanPage === itemPage || cleanPage === item.href.split('?')[0];
@@ -120,7 +128,9 @@ function renderNavigation(containerId = 'sidebar') {
 
                     return `
                         <li class="nav-item">
-                            <a class="nav-link ${isActive ? 'active' : ''}" href="${href}">
+                            <a class="nav-link ${isActive ? 'active' : ''}" 
+                               data-nav-id="${item.id}"
+                               href="${href}">
                                 <i class="bi ${item.icon} me-2"></i>${item.label}
                             </a>
                         </li>
@@ -153,7 +163,6 @@ function renderNavigation(containerId = 'sidebar') {
  * Initialize navigation on page load
  */
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if sidebar exists on this page
     if (document.getElementById('sidebar')) {
         renderNavigation('sidebar');
     }
@@ -173,6 +182,22 @@ function updateActiveNav(itemId) {
         activeLink.classList.add('active');
     }
 }
+
+/* ⭐ SIDEBAR TOGGLE RE-ADDED */
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    const main = document.querySelector('.main-content');
+
+    if (toggleBtn && sidebar) {
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            if (main) {
+                main.classList.toggle('expanded');
+            }
+        });
+    }
+});
 
 // Export functions
 if (typeof window !== 'undefined') {
