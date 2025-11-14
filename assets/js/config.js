@@ -1,9 +1,17 @@
 /*******************************
- * BASE URL (CHANGE ONLY THIS)
+ * BASE URL (AUTO + SAFE)
  *******************************/
-const BASE_URL = "https://api.epielio.com/api";
-// const BASE_URL = "http://localhost:5000/api"; // For local dev
+const BASE_URL = (() => {
+  const prodURL = "https://api.epielio.com/api";
+  const localURL = "http://localhost:5000/api";
 
+  // If running on localhost → use local server
+  if (window.location.hostname === "localhost") return localURL;
+  if (window.location.hostname === "127.0.0.1") return localURL;
+
+  // Always use HTTPS in production (prevents mixed-content)
+  return prodURL;
+})();
 
 
 /*******************************
@@ -63,33 +71,11 @@ const API_CONFIG = {
 };
 
 
-
-/*******************************
- * APP CONFIG
- *******************************/
-const APP_CONFIG = {
-  name: "Admin Panel",
-  version: "1.0.0",
-
-  pagination: {
-    defaultPageSize: 10,
-    pageSizeOptions: [5, 10, 25, 50, 100],
-  },
-
-  dateFormat: "YYYY-MM-DD",
-  dateTimeFormat: "YYYY-MM-DD HH:mm:ss",
-
-  maxFileSize: 5 * 1024 * 1024,
-  allowedImageFormats: ["jpg", "jpeg", "png", "gif", "webp"],
-};
-
-
-
 /*******************************
  * AUTH HANDLER
  *******************************/
 const AUTH = {
-  getToken: function () {
+  getToken() {
     return (
       localStorage.getItem("authToken") ||
       localStorage.getItem("epi_admin_token") ||
@@ -97,27 +83,26 @@ const AUTH = {
     );
   },
 
-  setToken: function (token) {
+  setToken(token) {
     if (!token) return;
     localStorage.setItem("authToken", token);
     localStorage.setItem("epi_admin_token", token);
   },
 
-  removeToken: function () {
+  removeToken() {
     localStorage.removeItem("authToken");
     localStorage.removeItem("epi_admin_token");
   },
 
-  isAuthenticated: function () {
+  isAuthenticated() {
     return !!this.getToken();
   },
 
-  getAuthHeaders: function () {
+  getAuthHeaders() {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
 };
-
 
 
 /*******************************
@@ -165,11 +150,9 @@ const API = {
 
   get(endpoint, params = {}, query = {}) {
     let url = this.buildURL(endpoint, params);
-
     if (Object.keys(query).length) {
       url += "?" + new URLSearchParams(query).toString();
     }
-
     return this.request(url, { method: "GET" });
   },
 
@@ -194,7 +177,6 @@ const API = {
     return this.request(url, { method: "DELETE" });
   },
 };
-
 
 
 /*******************************
