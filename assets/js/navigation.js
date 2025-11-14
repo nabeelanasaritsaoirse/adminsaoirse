@@ -44,6 +44,15 @@ const NAV_CONFIG = {
             hrefFromRoot: 'pages/uploader.html'
         },
 
+        /* ⭐ ADDED — Coupons (matches pages/coupons.html) */
+        {
+            id: 'coupons',
+            label: 'Coupons',
+            icon: 'bi-ticket-perforated',
+            href: 'coupons.html',
+            hrefFromRoot: 'pages/coupons.html'
+        },
+
         {
             id: 'orders',
             label: 'Orders',
@@ -99,9 +108,25 @@ function getActiveNavItem() {
 
     const cleanPage = currentPage.split('?')[0];
 
+    // Try to find a matching navigation item by filename, href, or id.
     const activeItem = NAV_CONFIG.items.find(item => {
-        const itemPage = item.hrefFromRoot.split('/').pop().split('?')[0];
-        return cleanPage === itemPage || cleanPage === item.href.split('?')[0];
+        // Normalize potential values for comparison
+        const hrefFromRootFile = (item.hrefFromRoot || '').split('/').pop().split('?')[0].toLowerCase();
+        const hrefFile = (item.href || '').split('/').pop().split('?')[0].toLowerCase();
+        const itemId = (item.id || '').toLowerCase();
+
+        // Direct filename match (e.g., 'coupon.html')
+        if (cleanPage === hrefFromRootFile || cleanPage === hrefFile) return true;
+
+        // If the nav item uses an anchor (e.g. '#orders'), match when the URL contains the id
+        if (hrefFile.startsWith('#') || hrefFromRootFile.startsWith('#')) {
+            if (currentPath.includes('/' + itemId) || window.location.hash.replace('#', '') === itemId) return true;
+        }
+
+        // Fallback: match by id if page name contains the id (useful for unconventional filenames)
+        if (cleanPage.includes(itemId) && itemId.length > 0) return true;
+
+        return false;
     });
 
     return activeItem ? activeItem.id : 'dashboard';
