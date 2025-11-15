@@ -19,9 +19,14 @@ function initUserManagement() {
  ********************************************/
 async function loadUsers() {
     try {
-        const response = await API.get(API_CONFIG.endpoints.users.getAll);
+        const url = API.buildURL(API_CONFIG.endpoints.users.getAll);
 
-        const users = response.data || response; // safe for both formats
+        const response = await API.request(url, {
+            method: "GET",
+            headers: AUTH.getAuthHeaders(),
+        });
+
+        const users = response.data || response;
         renderUsersTable(users);
 
     } catch (err) {
@@ -29,6 +34,7 @@ async function loadUsers() {
         alert("Failed to load users from the server");
     }
 }
+
 
 
 function renderUsersTable(users) {

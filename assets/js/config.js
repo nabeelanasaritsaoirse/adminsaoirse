@@ -1,26 +1,16 @@
 /*******************************
- * BASE URL (AUTO + SAFE)
+ * BASE URL (FORCE PRODUCTION)
  *******************************/
-const BASE_URL = (() => {
-  const prodURL = "https://api.epielio.com/api";
-  const localURL = "http://localhost:5000/api";
-
-  if (window.location.hostname === "localhost") return localURL;
-  if (window.location.hostname === "127.0.0.1") return localURL;
-
-  return prodURL;
-})();
-
+const BASE_URL = "https://api.epielio.com/api";
 
 /*******************************
- * APP CONFIG (YOU DIDN’T HAVE THIS — ADDED)
+ * APP CONFIG 
  *******************************/
 const APP_CONFIG = {
   version: "1.0.0",
   dateFormat: "YYYY-MM-DD",
   maxFileSize: 5 * 1024 * 1024
 };
-
 
 /*******************************
  * API CONFIGURATION
@@ -46,28 +36,28 @@ const API_CONFIG = {
   }
 };
 
-
 /*******************************
- * AUTH HANDLER
+ * AUTH HANDLER (FIXED)
  *******************************/
 const AUTH = {
+  // FIXED PRIORITY → admin token first
   getToken() {
     return (
-      localStorage.getItem("authToken") ||
       localStorage.getItem("epi_admin_token") ||
+      localStorage.getItem("authToken") ||
       null
     );
   },
 
   setToken(token) {
     if (!token) return;
-    localStorage.setItem("authToken", token);
     localStorage.setItem("epi_admin_token", token);
+    localStorage.setItem("authToken", token);
   },
 
   removeToken() {
-    localStorage.removeItem("authToken");
     localStorage.removeItem("epi_admin_token");
+    localStorage.removeItem("authToken");
   },
 
   getAuthHeaders() {
@@ -76,9 +66,8 @@ const AUTH = {
   },
 };
 
-
 /*******************************
- * API WRAPPER
+ * API WRAPPER (FIXED)
  *******************************/
 const API = {
   buildURL(endpoint, params = {}) {
@@ -93,9 +82,12 @@ const API = {
 
   async request(url, options = {}) {
     try {
+      const token = AUTH.getToken();
+
+      // FIXED: Make sure Authorization header is ALWAYS attached
       const headers = {
         "Content-Type": "application/json",
-        ...AUTH.getAuthHeaders(),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       };
 
@@ -146,7 +138,6 @@ const API = {
     return this.request(url, { method: "DELETE" });
   },
 };
-
 
 /*******************************
  * EXPORT GLOBAL
