@@ -1,0 +1,101 @@
+name: 🧩 GitHub Conflict Management
+run-name: "🚀 GitHub Conflict Management triggered by ${{ github.actor }} on branch ${{ github.ref_name }}"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # Uncomment if you want it to run on direct pushes as well
+  # push:
+  #   branches:
+  #     - main
+  #     - dev
+  #     - feature/**
+
+jobs:
+  # ----------------------------------------------------------
+  # Job 1: Label any PRs that currently have merge conflicts
+  # ----------------------------------------------------------
+  label_conflicts:
+    name: Label PRs with Conflicts
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏷️ Label conflicting PRs
+        uses: prince-chrismc/label-merge-conflicts-action@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          conflict_label_name: "⚠️ merge conflict"
+          conflict_comment: "🚨 Merge conflict detected! Please sync your branch with the base branch."
+          detect_merge_changes: false
+          max_retries: 10
+          wait_ms: 15000
+
+  # ----------------------------------------------------------
+  # Job 2: Find unresolved conflict markers in code
+  # ----------------------------------------------------------
+  conflict_finder:
+    name: Check for leftover merge markers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🔍 Scan for conflict markers
+        id: scan
+        uses: olivernybroe/action-conflict-finder@v4.0
+        continue-on-error: true
+
+      # 🟥 Label PR if conflict markers found
+      - name: 🚫 Label PR with conflict markers
+        if: steps.scan.outcome == 'failure'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: "🚫 conflict markers"
+
+      # 🟩 Label PR as verified clean
+      - name: ✅ Label PR as verified clean
+        if: steps.scan.outcome == 'success'
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: "✅ verified clean"
+
+      # 🧹 Remove old conflict labels once resolved
+      - name: 🧹 Remove conflict-related labels
+        if: steps.scan.outcome == 'success'
+        uses: actions-ecosystem/action-remove-labels@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: "⚠️ merge conflict, 🚫 conflict markers"
+
+      - name: ✅ Report success
+        if: success()
+        run: echo "No merge conflict markers found in code."
+
+      - name: ❌ Fail if conflicts found
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo "Merge conflict markers found in code!"
+          exit 1
+
+      # ----------------------------------------------------------
+  # Job 3: Create GitHub Issue if conflicts are found
+  # ----------------------------------------------------------
+  create_issue_on_failure:
+    name: 📝 Create Issue for Detected Conflicts
+    runs-on: ubuntu-latest
+    needs: [label_conflicts, conflict_finder]
+    if: failure()  # Runs only when previous jobs fail
+
+    steps:
+      - name: 🧾 Create issue for merge conflicts
+        uses: peter-evans/create-issue-from-file@v4
+        with:
+          title: "⚠️ Merge Conflict Detected in PR #${{ github.event.pull_request.number }}"
+          content-filepath: .github/ISSUE_TEMPLATES/conflict-report.md
+          labels: "⚠️ merge conflict, automation"
+          assignees: ${{ github.actor }}
