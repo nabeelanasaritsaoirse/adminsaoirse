@@ -1,5 +1,5 @@
 name: 🧩 GitHub Conflict Management
-run-name: "🚀 GitHub Conflict Management triggered by ${{ github.actor }} on branch ${{ github.ref_name }}"
+run-name: "🚀 Conflict Check triggered by ${{ github.actor }} on PR #${{ github.event.pull_request.number }}"
 
 permissions:
   contents: read
@@ -9,96 +9,86 @@ permissions:
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  # Uncomment if you want it to run on direct pushes as well
-  # push:
-  #   branches:
-  #     - main
-  #     - dev
-  #     - feature/**
 
 jobs:
-  # ----------------------------------------------------------
-  # Job 1: Label any PRs that currently have merge conflicts
-  # ----------------------------------------------------------
-  label_conflicts:
-    name: Label PRs with Conflicts
+  detect_conflict:
+    name: 🔍 Detect Merge Conflicts
     runs-on: ubuntu-latest
+
+    outputs:
+      has_conflict: ${{ steps.detect.outputs.conflict_found }}
+      commit_sha: ${{ steps.get_commit.outputs.sha }}
+      commit_author: ${{ steps.get_commit.outputs.author }}
+      base_branch: ${{ steps.get_branch.outputs.base }}
+      head_branch: ${{ steps.get_branch.outputs.head }}
+
     steps:
-      - name: 🏷️ Label conflicting PRs
-        uses: prince-chrismc/label-merge-conflicts-action@v3
+      - name: 📝 Check merge conflict status
+        id: detect
+        uses: eps1lon/actions-pr-check-merge-conflict@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          conflict_label_name: "⚠️ merge conflict"
-          conflict_comment: "🚨 Merge conflict detected! Please sync your branch with the base branch."
-          detect_merge_changes: false
-          max_retries: 10
-          wait_ms: 15000
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # ----------------------------------------------------------
-  # Job 2: Find unresolved conflict markers in code
-  # ----------------------------------------------------------
-  conflict_finder:
-    name: Check for leftover merge markers
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 🔍 Scan for conflict markers
-        id: scan
-        uses: olivernybroe/action-conflict-finder@v4.0
-        continue-on-error: true
-
-      # 🟥 Label PR if conflict markers found
-      - name: 🚫 Label PR with conflict markers
-        if: steps.scan.outcome == 'failure'
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: "🚫 conflict markers"
-
-      # 🟩 Label PR as verified clean
-      - name: ✅ Label PR as verified clean
-        if: steps.scan.outcome == 'success'
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: "✅ verified clean"
-
-      # 🧹 Remove old conflict labels once resolved
-      - name: 🧹 Remove conflict-related labels
-        if: steps.scan.outcome == 'success'
-        uses: actions-ecosystem/action-remove-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: "⚠️ merge conflict, 🚫 conflict markers"
-
-      - name: ✅ Report success
-        if: success()
-        run: echo "No merge conflict markers found in code."
-
-      - name: ❌ Fail if conflicts found
-        if: steps.scan.outcome == 'failure'
+      - name: 📌 Get commit info
+        id: get_commit
         run: |
-          echo "Merge conflict markers found in code!"
-          exit 1
+          echo "sha=$(jq -r '.pull_request.head.sha' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          echo "author=$(jq -r '.pull_request.head.user.login' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
 
-      # ----------------------------------------------------------
-  # Job 3: Create GitHub Issue if conflicts are found
-  # ----------------------------------------------------------
-  create_issue_on_failure:
-    name: 📝 Create Issue for Detected Conflicts
+      - name: 📌 Get branch info
+        id: get_branch
+        run: |
+          echo "base=$(jq -r '.pull_request.base.ref' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+          echo "head=$(jq -r '.pull_request.head.ref' <<< '${{ toJson(github.event) }}')" >> $GITHUB_OUTPUT
+
+  create_issue:
+    name: 📝 Create Merge Conflict Issue
     runs-on: ubuntu-latest
-    needs: [label_conflicts, conflict_finder]
-    if: failure()
-  
+    needs: detect_conflict
+    if: needs.detect_conflict.outputs.has_conflict == 'true'
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-  
-      - name: 🧾 Create issue for merge conflicts
-        uses: peter-evans/create-issue-from-file@v4
+      - name: 📄 Generate Issue Content
+        id: issue
+        run: |
+          cat > conflict_issue.md << 'EOF'
+          ## ⚠️ Merge Conflict Detected
+
+          A merge conflict has been detected in **PR #${{ github.event.pull_request.number }}**.
+
+          ### 🔀 Commit Causing Conflict
+          - **Commit SHA:** `${{ needs.detect_conflict.outputs.commit_sha }}`
+          - **Author:** **${{ needs.detect_conflict.outputs.commit_author }}**
+
+          ### 🔧 Branch Details
+          - **Base Branch:** `${{ needs.detect_conflict.outputs.base_branch }}`
+          - **Your Branch:** `${{ needs.detect_conflict.outputs.head_branch }}`
+
+          ---
+
+          ## 📌 Steps to Fix
+
+          Run these commands:
+
+          ```bash
+          git checkout ${{ needs.detect_conflict.outputs.head_branch }}
+          git pull
+          git merge origin/${{ needs.detect_conflict.outputs.base_branch }}
+          # Resolve conflicts locally
+          git add .
+          git commit -m "fix: resolve merge conflicts"
+          git push
+          ```
+
+          ---
+
+          This issue was automatically generated.
+          EOF
+
+      - name: 🧾 Create GitHub Issue
+        uses: peter-evans/create-issue@v4
         with:
-          title: "⚠️ Merge Conflict Detected in PR #${{ github.event.pull_request.number }}"
-          content-filepath: .github/ISSUE_TEMPLATES/conflict-report.md
+          title: "⚠️ Merge Conflict in PR #${{ github.event.pull_request.number }}"
+          assignees: ${{ needs.detect_conflict.outputs.commit_author }}
           labels: "⚠️ merge conflict, automation"
-          assignees: ${{ github.actor }}
+          body-file: conflict_issue.md
