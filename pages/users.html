@@ -90,7 +90,8 @@
               </li>
               <li><hr class="dropdown-divider" /></li>
               <li>
-                <a class="dropdown-item" id="logoutBtn">Logout</a> <!-- FIXED -->
+                <a class="dropdown-item" id="logoutBtn">Logout</a>
+                <!-- FIXED -->
               </li>
             </ul>
           </li>
@@ -187,17 +188,44 @@
             <form id="addUserForm">
               <div class="mb-3">
                 <label class="form-label">Full Name</label>
-                <input type="text" id="userName" class="form-control" required />
+                <input
+                  type="text"
+                  id="userName"
+                  class="form-control"
+                  required
+                />
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Email</label>
-                <input type="email" id="userEmail" class="form-control" required />
+                <input
+                  type="email"
+                  id="userEmail"
+                  class="form-control"
+                  required
+                />
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Password</label>
-                <input type="password" id="userPassword" class="form-control" required />
+                <input
+                  type="password"
+                  id="userPassword"
+                  class="form-control"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Phone Number</label>
+                <input
+                  type="text"
+                  id="userPhone"
+                  class="form-control"
+                  maxlength="10"
+                  oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)"
+                  required
+                />
               </div>
 
               <div class="mb-3">
@@ -211,8 +239,12 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button class="btn btn-primary" type="submit" form="addUserForm">Create User</button>
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-primary" type="submit" form="addUserForm">
+              Create User
+            </button>
           </div>
         </div>
       </div>
