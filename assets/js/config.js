@@ -9,7 +9,10 @@ const BASE_URL = "https://api.epielio.com/api";
 const APP_CONFIG = {
   version: "1.0.0",
   dateFormat: "YYYY-MM-DD",
-  maxFileSize: 5 * 1024 * 1024
+  maxFileSize: 5 * 1024 * 1024,
+  categories: {
+    maxLevels: 5
+  }
 };
 
 /*******************************
@@ -32,6 +35,21 @@ const API_CONFIG = {
       create: "/users/admin/create",
       update: "/users/admin/:userId",
       delete: "/users/admin/:userId",
+    },
+
+    categories: {
+      getAll: "/categories",
+      getById: "/categories/:categoryId",
+      create: "/categories",
+      update: "/categories/:categoryId",
+      delete: "/categories/:categoryId",
+      toggleStatus: "/categories/:categoryId",
+      uploadImage: "/categories/:categoryId/upload-image",
+      deleteImage: "/categories/:categoryId/image",
+      search: "/categories/search/:query",
+      withSubcategories: "/categories/:categoryId/with-subcategories",
+      dropdown: "/categories/dropdown/all",
+      reorder: "/categories/bulk/reorder"
     }
   }
 };
@@ -40,7 +58,6 @@ const API_CONFIG = {
  * AUTH HANDLER (FIXED)
  *******************************/
 const AUTH = {
-  // FIXED PRIORITY → admin token first
   getToken() {
     return (
       localStorage.getItem("epi_admin_token") ||
@@ -84,7 +101,6 @@ const API = {
     try {
       const token = AUTH.getToken();
 
-      // FIXED: Make sure Authorization header is ALWAYS attached
       const headers = {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -95,11 +111,17 @@ const API = {
 
       const res = await fetch(url, config);
 
-      const json = await res.json().catch(() => {
-        throw new Error("Invalid JSON response from server");
-      });
+      // Handle non-JSON responses
+      if (res.status === 204) {
+        return { success: true };
+      }
 
-      if (!res.ok) throw new Error(json.message || "API Error");
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : {};
+
+      if (!res.ok) {
+        throw new Error(json.message || `HTTP ${res.status}: ${res.statusText}`);
+      }
 
       return json;
 
