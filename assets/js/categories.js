@@ -1,5 +1,3 @@
-
-
 // Simple safe utils if window.utils is not present
 window.utils = window.utils || {};
 window.utils.debounce = window.utils.debounce || function (fn, delay) {
@@ -88,25 +86,38 @@ function setupEventListeners() {
 async function loadCategories() {
   try {
     showLoading(true);
-    // includeInactive true as earlier code used
-    const response = await API.get(API_CONFIG.endpoints.categories.getAll, {}, { includeInactive: true });
+    
+    // Use the correct endpoint from API_CONFIG
+    const response = await API.get(API_CONFIG.endpoints.categories.getAll);
+    
+    // Handle different response structures
+    let categoriesData = [];
+    
+    if (response && response.success !== false) {
+      // If response has data property
+      if (response.data && Array.isArray(response.data)) {
+        categoriesData = response.data;
+      } 
+      // If response is directly the array
+      else if (Array.isArray(response)) {
+        categoriesData = response;
+      }
+      // If response has categories property
+      else if (response.categories && Array.isArray(response.categories)) {
+        categoriesData = response.categories;
+      }
+    }
 
-    // normalize response shape: either response.data or response (array)
-    const payload = response && response.data ? response.data : response;
-
-    categories = Array.isArray(payload) ? payload : [];
-
-    // normalize some fields to avoid runtime errors
-    categories = categories.map(c => ({
+    categories = categoriesData.map(c => ({
       _id: c._id || c.id || '',
       name: c.name || '',
       slug: c.slug || '',
       description: c.description || '',
       level: Number(c.level || 0),
       parentCategory: c.parentCategory || null,
-      isActive: !!c.isActive,
+      isActive: c.isActive !== undefined ? c.isActive : true,
       isFeatured: !!c.isFeatured,
-      showInMenu: !!c.showInMenu,
+      showInMenu: c.showInMenu !== undefined ? c.showInMenu : true,
       productCount: Number(c.productCount || 0),
       displayOrder: Number(c.displayOrder || 0),
       icon: c.icon || '',
@@ -503,7 +514,7 @@ async function saveCategory() {
   try {
     showLoading(true);
     if (currentCategoryId) {
-      await API.put(API_CONFIG.endpoints.categories.update, payload, { id: currentCategoryId });
+      await API.put(API_CONFIG.endpoints.categories.update, payload, { categoryId: currentCategoryId });
       window.adminPanel.showNotification('Category updated successfully', 'success');
     } else {
       await API.post(API_CONFIG.endpoints.categories.create, payload);
@@ -511,7 +522,10 @@ async function saveCategory() {
     }
     // close modal
     const modalEl = document.getElementById('categoryModal');
-    if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+    if (modalEl) {
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+    }
     await loadCategories();
   } catch (err) {
     console.error('Save category error:', err);
@@ -524,7 +538,7 @@ async function saveCategory() {
 async function toggleCategoryStatus(categoryId) {
   try {
     showLoading(true);
-    await API.put(API_CONFIG.endpoints.categories.toggleStatus, {}, { id: categoryId });
+    await API.put(API_CONFIG.endpoints.categories.toggleStatus, {}, { categoryId: categoryId });
     window.adminPanel.showNotification('Category status updated', 'success');
     await loadCategories();
   } catch (err) {
@@ -553,7 +567,7 @@ async function deleteCategory(categoryId) {
 
   try {
     showLoading(true);
-    await API.delete(API_CONFIG.endpoints.categories.delete, { id: categoryId }, { force: true });
+    await API.delete(API_CONFIG.endpoints.categories.delete, { categoryId: categoryId });
     window.adminPanel.showNotification('Category deleted successfully', 'success');
     await loadCategories();
   } catch (err) {
@@ -605,7 +619,7 @@ window.openAddCategoryModal = openAddCategoryModal;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.toggleCategoryStatus = toggleCategoryStatus;
-window.toggleChildren = function (el) { // kept for compatibility if used inline
+window.toggleChildren = function (el) {
   if (!el) return;
   const li = el.closest('li');
   if (!li) return;
