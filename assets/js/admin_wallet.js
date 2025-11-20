@@ -1,11 +1,9 @@
 // assets/js/admin_wallet.js
 (() => {
-  // endpoint: API.buildURL uses BASE_URL from config.js so endpoint must be '/admin/wallet'
   const API_ENDPOINT = '/admin/wallet';
-
   const $ = id => document.getElementById(id);
 
-  // Elements (match HTML you supplied)
+  // Elements
   const searchInput = $('searchInput');
   const searchBtn = $('searchBtn');
   const walletCard = $('walletCard');
@@ -18,47 +16,45 @@
   const addMoneyBtn = $('addMoneyBtn');
   const deductMoneyBtn = $('deductMoneyBtn');
 
-  // Optional modals (only initialize if present)
-  const creditModalEl = $('#creditModal');
-  const debitModalEl = $('#debitModal');
-  let creditModal = null;
-  let debitModal = null;
-  try {
-    if (creditModalEl) creditModal = new bootstrap.Modal(creditModalEl);
-    if (debitModalEl) debitModal = new bootstrap.Modal(debitModalEl);
-  } catch (e) {
-    // ignore bootstrap modal errors if elements not present
-    console.warn('Bootstrap modal init skipped or failed:', e.message);
+  function resetUI() {
+    walletBalanceEl.innerText = "₹ 0";
+    holdBalanceEl.innerText = "₹ 0";
+    referralBonusEl.innerText = "₹ 0";
+    investedAmountEl.innerText = "₹ 0";
+    txnTable.innerHTML = "";
   }
 
-  // helpers
-  function getAuthHeaders() {
-    // config.js AUTH.getToken handles admin token or fallback
-    const token = AUTH.getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }
-
+  /* ---------------------------------------
+      SEARCH WALLET
+  ----------------------------------------*/
   async function searchWallet() {
     const q = searchInput.value.trim();
-    if (!q) {
-      return alert('Enter phone or email to search');
-    }
+    if (!q) return alert('Enter phone or email to search');
 
-    // decide whether it's phone or email
+    resetUI();
+
     let query = {};
     if (q.includes('@')) query.email = q;
     else query.phone = q;
 
-    // Call API wrapper
+    // 🔥 LOGS ADDED
+    console.log("🔍 SEARCH QUERY:", query);
+
+    const finalURL = API.buildURL(API_ENDPOINT, {}) + "?" + new URLSearchParams(query).toString();
+    console.log("🌐 FINAL REQUEST URL:", finalURL);
+
     try {
       const data = await API.get(API_ENDPOINT, {}, query);
-      // success path
-      if (!data || !data.success) {
-        alert(data?.message || 'No data returned');
+
+      // 🔥 LOG RESPONSE
+      console.log("📩 API RESPONSE:", data);
+
+      if (!data?.success) {
+        alert(data?.message || 'User not found');
+        walletCard.classList.add('d-none');
         return;
       }
 
-      // Show wallet card and populate
       walletCard.classList.remove('d-none');
 
       walletBalanceEl.innerText = `₹ ${data.availableBalance ?? 0}`;
@@ -66,67 +62,76 @@
       referralBonusEl.innerText = `₹ ${data.referralBonus ?? 0}`;
       investedAmountEl.innerText = `₹ ${data.investedAmount ?? 0}`;
 
-      // Transactions list
-      txnTable.innerHTML = '';
+      txnTable.innerHTML = "";
       (data.transactions || []).forEach(tx => {
-        const tr = document.createElement('tr');
+        const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${new Date(tx.createdAt).toLocaleString()}</td>
           <td>${tx.type}</td>
           <td>₹ ${tx.amount}</td>
-          <td>${tx.description || ''}</td>
+          <td>${tx.description || ""}</td>
         `;
         txnTable.appendChild(tr);
       });
 
     } catch (err) {
-      console.error('Wallet search error:', err);
-      alert(err.message || 'Server/API error (check console)');
+      console.error("❌ WALLET SEARCH ERROR:", err);
+      alert("Server error");
     }
   }
 
+  /* ---------------------------------------
+      ADD/DEDUCT MONEY
+  ----------------------------------------*/
   async function adjustBalance(action) {
-    // action: 'credit' or 'debit'
     const q = searchInput.value.trim();
-    if (!q) return alert('Enter phone or email to identify user');
+    if (!q) return alert('Enter phone/email first');
+
     const amount = Number(adjustAmount.value);
     if (!amount || amount <= 0) return alert('Invalid amount');
 
-    const body = {};
+    const body = {
+      amount,
+      description: action === 'credit' ? "Admin credit" : "Admin debit"
+    };
+
     if (q.includes('@')) body.email = q;
     else body.phone = q;
-    body.amount = amount;
-    body.description = (action === 'credit') ? 'Admin credit' : 'Admin debit';
+
+    // LOG for debugging
+    console.log(`⚡ ${action.toUpperCase()} REQUEST BODY:`, body);
 
     try {
-      const endpoint = (action === 'credit') ? '/admin/wallet/credit' : '/admin/wallet/debit';
+      const endpoint = action === 'credit'
+        ? '/admin/wallet/credit'
+        : '/admin/wallet/debit';
+
       const res = await API.post(endpoint, body);
-      if (!res || !res.success) {
-        alert(res?.message || 'Error');
-        return;
-      }
-      alert(res.message || 'Success');
-      // refresh wallet
+
+      console.log(`📩 ${action.toUpperCase()} RESPONSE:`, res);
+
+      if (!res?.success) return alert(res?.message || "Error");
+
+      alert(res.message || "Success");
+
+      adjustAmount.value = "";
       await searchWallet();
-      adjustAmount.value = '';
+
     } catch (err) {
-      console.error(`${action} error:`, err);
-      alert(err.message || 'Server error');
+      console.error(`❌ ${action.toUpperCase()} ERROR:`, err);
+      alert("Server error");
     }
   }
 
-  // wire events
   if (searchBtn) searchBtn.addEventListener('click', searchWallet);
-  if (searchInput) searchInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') searchWallet();
-  });
+  if (searchInput) {
+    searchInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') searchWallet();
+    });
+  }
 
-  if (addMoneyBtn) addMoneyBtn.addEventListener('click', () => adjustBalance('credit'));
-  if (deductMoneyBtn) deductMoneyBtn.addEventListener('click', () => adjustBalance('debit'));
+  if (addMoneyBtn) addMoneyBtn.addEventListener('click', () => adjustBalance("credit"));
+  if (deductMoneyBtn) deductMoneyBtn.addEventListener('click', () => adjustBalance("debit"));
 
-  // expose for console debugging
-  window.adminWallet = {
-    searchWallet,
-    adjustBalance
-  };
+  window.adminWallet = { searchWallet, adjustBalance };
 })();
