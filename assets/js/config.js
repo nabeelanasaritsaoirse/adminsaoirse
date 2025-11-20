@@ -44,12 +44,34 @@ const API_CONFIG = {
       update: "/categories/:categoryId",
       delete: "/categories/:categoryId",
       toggleStatus: "/categories/:categoryId",
+      toggleFeatured: "/categories/:categoryId/toggle-featured",
       uploadImage: "/categories/:categoryId/upload-image",
       deleteImage: "/categories/:categoryId/image",
       search: "/categories/search/:query",
       withSubcategories: "/categories/:categoryId/with-subcategories",
       dropdown: "/categories/dropdown/all",
+      getFeatured: "/categories/featured/all",
       reorder: "/categories/bulk/reorder"
+    },
+
+    products: {
+      getAll: "/products",
+      getById: "/products/:productId",
+      create: "/products",
+      update: "/products/:productId",
+      delete: "/products/:productId",
+      toggleStatus: "/products/:productId/toggle-status",
+      search: "/products/search",
+      uploadImage: "/products/:productId/upload-image",
+      deleteImage: "/products/:productId/image/:imageId"
+    },
+
+    about: {
+      getAll: "/about/admin/all",
+      getById: "/about/:aboutId",
+      create: "/about",
+      update: "/about/:aboutId",
+      delete: "/about/:aboutId"
     }
   }
 };
@@ -158,6 +180,14 @@ const API = {
   delete(endpoint, params = {}) {
     const url = this.buildURL(endpoint, params);
     return this.request(url, { method: "DELETE" });
+  },
+
+  patch(endpoint, data, params = {}) {
+    const url = this.buildURL(endpoint, params);
+    return this.request(url, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
   },
 };
 
