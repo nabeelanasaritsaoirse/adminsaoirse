@@ -31,17 +31,15 @@
         const token = localStorage.getItem("epi_admin_token");
         const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
 
-        // If not logged in → redirect
         if (!token) {
-          window.location.href = "pages/login.html";
+          window.location.href = "login.html";
           return;
         }
 
-        // If logged in but NOT admin → logout and redirect
         if (user.role !== "admin") {
           localStorage.removeItem("epi_admin_token");
           localStorage.removeItem("epi_admin_user");
-          window.location.href = "pages/login.html";
+          window.location.href = "login.html";
           return;
         }
       })();

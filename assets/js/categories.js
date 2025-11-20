@@ -14,8 +14,8 @@ window.utils.formatDate = window.utils.formatDate || function (d) {
 // adminPanel fallback for notifications and confirm
 window.adminPanel = window.adminPanel || {
   showNotification: function (msg, type = 'info') {
-    // type: success | error | info
     if (type === 'error') console.error(msg);
+    else if (type === 'success') console.log('Success:', msg);
     else console.log(msg);
     alert(msg);
   },
@@ -90,41 +90,44 @@ async function loadCategories() {
     // Use the correct endpoint from API_CONFIG
     const response = await API.get(API_CONFIG.endpoints.categories.getAll);
     
-    // Handle different response structures
+    // Handle response structure
     let categoriesData = [];
     
     if (response && response.success !== false) {
-      // If response has data property
+      // If response has data property with array
       if (response.data && Array.isArray(response.data)) {
         categoriesData = response.data;
       } 
-      // If response is directly the array
+      // If response is directly the array (fallback)
       else if (Array.isArray(response)) {
         categoriesData = response;
-      }
-      // If response has categories property
-      else if (response.categories && Array.isArray(response.categories)) {
-        categoriesData = response.categories;
       }
     }
 
     categories = categoriesData.map(c => ({
       _id: c._id || c.id || '',
+      categoryId: c.categoryId || '',
       name: c.name || '',
       slug: c.slug || '',
       description: c.description || '',
-      level: Number(c.level || 0),
-      parentCategory: c.parentCategory || null,
+      level: c.level || 0, // Will be calculated based on parent
+      parentCategory: c.parentCategoryId || null,
+      parentCategoryId: c.parentCategoryId || null,
       isActive: c.isActive !== undefined ? c.isActive : true,
-      isFeatured: !!c.isFeatured,
-      showInMenu: c.showInMenu !== undefined ? c.showInMenu : true,
-      productCount: Number(c.productCount || 0),
+      isFeatured: false, // Not in your API response
+      showInMenu: true, // Not in your API response
+      productCount: 0, // Not in your API response
       displayOrder: Number(c.displayOrder || 0),
-      icon: c.icon || '',
-      images: Array.isArray(c.images) ? c.images : [],
-      seo: c.seo || {},
-      createdAt: c.createdAt || c.created_at || new Date().toISOString()
+      icon: '', // Not in your API response
+      images: [], // Not in your API response
+      seo: c.meta || {},
+      subCategories: c.subCategories || [],
+      createdAt: c.createdAt || new Date().toISOString(),
+      updatedAt: c.updatedAt || new Date().toISOString()
     }));
+
+    // Calculate levels based on parent relationships
+    calculateCategoryLevels();
 
     updateStats();
     renderCategories();
@@ -137,13 +140,60 @@ async function loadCategories() {
   }
 }
 
+// Calculate category levels based on parent relationships
+function calculateCategoryLevels() {
+  const categoryMap = new Map();
+  categories.forEach(cat => {
+    categoryMap.set(cat._id, cat);
+  });
+
+  categories.forEach(cat => {
+    let level = 0;
+    let current = cat;
+    
+    // Traverse up the parent chain to calculate level
+    while (current.parentCategoryId) {
+      const parent = categoryMap.get(current.parentCategoryId);
+      if (!parent) break;
+      level++;
+      current = parent;
+    }
+    
+    cat.level = level;
+  });
+}
+
+/* ---------- Get Featured Categories ---------- */
+
+function getFeaturedCategories() {
+  return categories.filter(c => c.isFeatured && c.isActive);
+}
+
+async function fetchFeaturedCategoriesFromAPI() {
+  try {
+    const response = await API.get(API_CONFIG.endpoints.categories.getFeatured);
+    let featured = [];
+    
+    if (response && response.data && Array.isArray(response.data)) {
+      featured = response.data;
+    } else if (Array.isArray(response)) {
+      featured = response;
+    }
+    
+    return featured;
+  } catch (error) {
+    console.error('Error fetching featured categories:', error);
+    return [];
+  }
+}
+
 /* ---------- Stats & Filters ---------- */
 
 function updateStats() {
   const total = categories.length;
   const active = categories.filter(c => c.isActive).length;
-  const featured = categories.filter(c => c.isFeatured).length;
-  const root = categories.filter(c => !c.parentCategory || c.level === 0).length;
+  const featured = categories.filter(c => c.isFeatured && c.isActive).length;
+  const root = categories.filter(c => !c.parentCategoryId).length;
 
   if (totalCategoriesCount) totalCategoriesCount.textContent = total;
   if (activeCategoriesCount) activeCategoriesCount.textContent = active;
@@ -203,7 +253,7 @@ function renderCategories() {
 
 function renderTreeView(container) {
   const filtered = getFilteredCategories();
-  const roots = filtered.filter(c => !c.parentCategory || c.level === 0);
+  const roots = filtered.filter(c => !c.parentCategoryId);
 
   if (roots.length === 0) {
     container.innerHTML = '<div class="empty-state text-center py-5"><i class="bi bi-folder-x fs-2"></i><p class="mt-2">No categories found</p></div>';
@@ -223,7 +273,7 @@ function renderTreeView(container) {
 
 function renderCategoryTreeItem(category, allCategories) {
   const li = document.createElement('li');
-  const children = allCategories.filter(c => c.parentCategory === category._id);
+  const children = allCategories.filter(c => c.parentCategoryId === category._id);
   const hasChildren = children.length > 0;
 
   const itemDiv = document.createElement('div');
@@ -261,7 +311,8 @@ function renderCategoryTreeItem(category, allCategories) {
 
   const titleWrap = document.createElement('div');
   titleWrap.innerHTML = `<strong>${escapeHtml(category.name)}</strong>
-    <div class="small text-muted">${escapeHtml(category.description || '')}</div>`;
+    <div class="small text-muted">${escapeHtml(category.description || '')}</div>
+    <div class="small"><code>${escapeHtml(category.categoryId)}</code></div>`;
   left.appendChild(titleWrap);
 
   // badges
@@ -287,6 +338,12 @@ function renderCategoryTreeItem(category, allCategories) {
   editBtn.onclick = () => editCategory(category._id);
   editBtn.innerHTML = '<i class="bi bi-pencil"></i>';
 
+  const featuredBtn = document.createElement('button');
+  featuredBtn.className = `btn btn-outline-${category.isFeatured ? 'info' : 'secondary'}`;
+  featuredBtn.title = category.isFeatured ? 'Unfeature' : 'Feature';
+  featuredBtn.onclick = () => toggleCategoryFeatured(category._id);
+  featuredBtn.innerHTML = `<i class="bi bi-${category.isFeatured ? 'star-fill' : 'star'}"></i>`;
+
   const toggleBtn = document.createElement('button');
   toggleBtn.className = `btn btn-outline-${category.isActive ? 'warning' : 'success'}`;
   toggleBtn.title = category.isActive ? 'Deactivate' : 'Activate';
@@ -300,6 +357,7 @@ function renderCategoryTreeItem(category, allCategories) {
   delBtn.innerHTML = '<i class="bi bi-trash"></i>';
 
   actions.appendChild(editBtn);
+  actions.appendChild(featuredBtn);
   actions.appendChild(toggleBtn);
   actions.appendChild(delBtn);
 
@@ -343,6 +401,9 @@ function renderListView(container) {
       <td>
         <div class="btn-group btn-group-sm">
           <button class="btn btn-outline-primary" onclick="editCategory('${category._id}')"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-outline-${category.isFeatured ? 'info' : 'secondary'}" onclick="toggleCategoryFeatured('${category._id}')">
+            <i class="bi bi-${category.isFeatured ? 'star-fill' : 'star'}"></i>
+          </button>
           <button class="btn btn-outline-${category.isActive ? 'warning' : 'success'}" onclick="toggleCategoryStatus('${category._id}')">
             <i class="bi bi-${category.isActive ? 'pause' : 'play'}-circle"></i>
           </button>
@@ -421,15 +482,16 @@ async function editCategory(categoryId) {
   document.getElementById('isFeatured').checked = !!category.isFeatured;
   document.getElementById('showInMenu').checked = !!category.showInMenu;
 
-  document.getElementById('metaTitle').value = (category.seo && category.seo.metaTitle) ? category.seo.metaTitle : '';
-  document.getElementById('metaDescription').value = (category.seo && category.seo.metaDescription) ? category.seo.metaDescription : '';
-  document.getElementById('metaKeywords').value = (category.seo && Array.isArray(category.seo.metaKeywords)) ? category.seo.metaKeywords.join(', ') : '';
+  // SEO fields from meta object
+  document.getElementById('metaTitle').value = (category.seo && category.seo.title) ? category.seo.title : '';
+  document.getElementById('metaDescription').value = (category.seo && category.seo.description) ? category.seo.description : '';
+  document.getElementById('metaKeywords').value = (category.seo && Array.isArray(category.seo.keywords)) ? category.seo.keywords.join(', ') : '';
 
   categoryImages = Array.isArray(category.images) ? JSON.parse(JSON.stringify(category.images)) : [];
   renderImagePreview();
 
   populateParentCategoryDropdown(categoryId);
-  document.getElementById('parentCategory').value = category.parentCategory || '';
+  document.getElementById('parentCategory').value = category.parentCategoryId || '';
 
   const modalEl = document.getElementById('categoryModal');
   if (modalEl) new bootstrap.Modal(modalEl).show();
@@ -497,19 +559,25 @@ async function saveCategory() {
   const payload = {
     name,
     description: (document.getElementById('categoryDescription')?.value || '').trim(),
-    icon: (document.getElementById('categoryIcon')?.value || '').trim(),
-    parentCategory: document.getElementById('parentCategory')?.value || null,
-    images: categoryImages,
+    parentCategoryId: document.getElementById('parentCategory')?.value || null,
     displayOrder: Number(document.getElementById('displayOrder')?.value || 0),
     isActive: !!document.getElementById('isActive')?.checked,
     isFeatured: !!document.getElementById('isFeatured')?.checked,
     showInMenu: !!document.getElementById('showInMenu')?.checked,
-    seo: {
-      metaTitle: (document.getElementById('metaTitle')?.value || '').trim(),
-      metaDescription: (document.getElementById('metaDescription')?.value || '').trim(),
-      metaKeywords: keywords
+    meta: {
+      title: (document.getElementById('metaTitle')?.value || '').trim(),
+      description: (document.getElementById('metaDescription')?.value || '').trim(),
+      keywords: keywords
     }
   };
+
+  // Add optional fields if they exist
+  const icon = (document.getElementById('categoryIcon')?.value || '').trim();
+  if (icon) payload.icon = icon;
+
+  if (categoryImages.length > 0) {
+    payload.images = categoryImages;
+  }
 
   try {
     showLoading(true);
@@ -538,12 +606,44 @@ async function saveCategory() {
 async function toggleCategoryStatus(categoryId) {
   try {
     showLoading(true);
-    await API.put(API_CONFIG.endpoints.categories.toggleStatus, {}, { categoryId: categoryId });
-    window.adminPanel.showNotification('Category status updated', 'success');
+    const category = categories.find(c => c._id === categoryId);
+    if (!category) {
+      throw new Error('Category not found');
+    }
+
+    const payload = {
+      isActive: !category.isActive
+    };
+
+    await API.put(API_CONFIG.endpoints.categories.update, payload, { categoryId: categoryId });
+    window.adminPanel.showNotification(`Category ${payload.isActive ? 'activated' : 'deactivated'} successfully`, 'success');
     await loadCategories();
   } catch (err) {
     console.error('Toggle status error:', err);
     window.adminPanel.showNotification('Failed to update category status', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function toggleCategoryFeatured(categoryId) {
+  try {
+    showLoading(true);
+    const category = categories.find(c => c._id === categoryId);
+    if (!category) {
+      throw new Error('Category not found');
+    }
+
+    const payload = {
+      isFeatured: !category.isFeatured
+    };
+
+    await API.put(API_CONFIG.endpoints.categories.update, payload, { categoryId: categoryId });
+    window.adminPanel.showNotification(`Category ${payload.isFeatured ? 'featured' : 'unfeatured'} successfully`, 'success');
+    await loadCategories();
+  } catch (err) {
+    console.error('Toggle featured error:', err);
+    window.adminPanel.showNotification('Failed to update category featured status', 'error');
   } finally {
     showLoading(false);
   }
@@ -556,7 +656,7 @@ async function deleteCategory(categoryId) {
     return;
   }
 
-  const hasChildren = categories.some(c => c.parentCategory === categoryId);
+  const hasChildren = categories.some(c => c.parentCategoryId === categoryId);
 
   let message = `Are you sure you want to delete "${cat.name}"?`;
   if (hasChildren) message += '\n\nThis category has subcategories. They will also be deleted.';
@@ -619,6 +719,7 @@ window.openAddCategoryModal = openAddCategoryModal;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.toggleCategoryStatus = toggleCategoryStatus;
+window.toggleCategoryFeatured = toggleCategoryFeatured;
 window.toggleChildren = function (el) {
   if (!el) return;
   const li = el.closest('li');
@@ -640,3 +741,5 @@ window.addImage = addImage;
 window.removeImage = removeImage;
 window.setPrimaryImage = setPrimaryImage;
 window.saveCategory = saveCategory;
+window.getFeaturedCategories = getFeaturedCategories;
+window.fetchFeaturedCategoriesFromAPI = fetchFeaturedCategoriesFromAPI;
