@@ -19,9 +19,13 @@ window.adminPanel = window.adminPanel || {
     else console.log(msg);
     alert(msg);
   },
-  confirmAction: function (message) {
-    return Promise.resolve(confirm(message));
-  }
+  confirmAction: function (message, callback) {
+    const ok = confirm(message);
+    if (typeof callback === "function") {
+        callback(ok);
+    }
+    return ok;
+}
 };
 
 /* ---------- State ---------- */
@@ -87,8 +91,12 @@ async function loadCategories() {
   try {
     showLoading(true);
     
-    // Use the correct endpoint from API_CONFIG
-    const response = await API.get(API_CONFIG.endpoints.categories.getAll);
+    // IMPORTANT: fetch both active + inactive so toggling doesn't look like delete
+    const response = await API.get(
+      API_CONFIG.endpoints.categories.getAll,
+      {},
+      { isActive: 'all' }
+    );
     
     // Handle response structure
     let categoriesData = [];
