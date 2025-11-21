@@ -70,7 +70,6 @@ function initializeActivityTable() {
     const table = document.getElementById('activityTable');
 
     if (table) {
-        // Add click event to table rows
         const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
             row.addEventListener('click', function() {
@@ -82,8 +81,6 @@ function initializeActivityTable() {
 
 /**
  * Show notification
- * @param {string} message - Notification message
- * @param {string} type - Notification type (success, danger, warning, info)
  */
 function showNotification(message, type = 'info') {
     const notificationContainer = document.getElementById('notificationContainer');
@@ -112,24 +109,22 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         alert.classList.remove('show');
         setTimeout(() => alert.remove(), 300);
-    }, 5000);
+    }, 5005);
 }
 
 /**
- * Confirm action with modal
- * @param {string} message - Confirmation message
- * @param {function} callback - Callback function if confirmed
+ * Confirm action (PROMISE-BASED FIX)
+ * - 100% compatible with categories.js and deleteCategory()
  */
-function confirmAction(message, callback) {
-    if (confirm(message)) {
-        callback();
-    }
+function confirmAction(message) {
+    return new Promise((resolve) => {
+        const result = confirm(message);
+        resolve(result);
+    });
 }
 
 /**
  * Format number with commas
- * @param {number} num - Number to format
- * @returns {string} Formatted number
  */
 function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -140,7 +135,6 @@ function formatNumber(num) {
  */
 function loadData() {
     console.log('Loading data...');
-    // Simulate API call
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({ success: true, data: [] });
@@ -150,7 +144,6 @@ function loadData() {
 
 /**
  * Export table data to CSV
- * @param {string} tableId - Table element ID
  */
 function exportTableToCSV(tableId) {
     const table = document.getElementById(tableId);
