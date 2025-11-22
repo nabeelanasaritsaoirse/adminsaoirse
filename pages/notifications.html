@@ -24,6 +24,60 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../assets/css/style.css" />
     <link rel="stylesheet" href="../assets/css/responsive.css" />
+
+    <style>
+      .image-preview {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 8px;
+        margin-top: 10px;
+      }
+      .image-upload-section {
+        display: none;
+        margin-top: 20px;
+        padding: 20px;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .engagement-toggles .form-check {
+        display: inline-block;
+        margin-right: 20px;
+      }
+      .delivery-options .form-check {
+        margin-bottom: 10px;
+      }
+      .publish-method-section {
+        display: none;
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+      }
+      .schedule-picker {
+        display: none;
+        margin-top: 15px;
+      }
+      .stats-row .card {
+        transition: transform 0.2s;
+      }
+      .stats-row .card:hover {
+        transform: translateY(-5px);
+      }
+      .badge-draft { background-color: #FFA726; }
+      .badge-scheduled { background-color: #42A5F5; }
+      .badge-published { background-color: #66BB6A; }
+      .badge-deleted { background-color: #EF5350; }
+      .analytics-card {
+        margin-bottom: 20px;
+      }
+      .top-post-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+      }
+    </style>
   </head>
 
   <body>
@@ -34,7 +88,7 @@
 
         // If not logged in → redirect
         if (!token) {
-          window.location.href = "pages/login.html";
+          window.location.href = "login.html";
           return;
         }
 
@@ -42,7 +96,7 @@
         if (user.role !== "admin") {
           localStorage.removeItem("epi_admin_token");
           localStorage.removeItem("epi_admin_user");
-          window.location.href = "pages/login.html";
+          window.location.href = "login.html";
           return;
         }
       })();
@@ -104,7 +158,7 @@
       </div>
     </nav>
 
-    <!-- DYNAMIC SIDEBAR (same structure as all fixed pages) -->
+    <!-- DYNAMIC SIDEBAR -->
     <div id="sidebar" class="sidebar"></div>
 
     <!-- MAIN CONTENT -->
@@ -121,16 +175,14 @@
         </div>
 
         <!-- STATS -->
-        <div class="row mb-4">
-          <div class="col-md-4">
+        <div class="row mb-4 stats-row">
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
             <div class="card border-start border-primary border-4 shadow-sm">
               <div class="card-body">
                 <div class="row align-items-center">
                   <div class="col">
-                    <div
-                      class="text-xs fw-bold text-primary text-uppercase mb-1"
-                    >
-                      Total Notifications
+                    <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                      Total
                     </div>
                     <div class="h5 mb-0 fw-bold" id="totalCount">0</div>
                   </div>
@@ -142,17 +194,15 @@
             </div>
           </div>
 
-          <div class="col-md-4">
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
             <div class="card border-start border-success border-4 shadow-sm">
               <div class="card-body">
                 <div class="row align-items-center">
                   <div class="col">
-                    <div
-                      class="text-xs fw-bold text-success text-uppercase mb-1"
-                    >
-                      Sent
+                    <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                      Published
                     </div>
-                    <div class="h5 mb-0 fw-bold" id="sentCount">0</div>
+                    <div class="h5 mb-0 fw-bold" id="publishedCount">0</div>
                   </div>
                   <div class="col-auto">
                     <i class="bi bi-check-circle fs-2 text-muted"></i>
@@ -162,20 +212,54 @@
             </div>
           </div>
 
-          <div class="col-md-4">
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
             <div class="card border-start border-warning border-4 shadow-sm">
               <div class="card-body">
                 <div class="row align-items-center">
                   <div class="col">
-                    <div
-                      class="text-xs fw-bold text-warning text-uppercase mb-1"
-                    >
+                    <div class="text-xs fw-bold text-warning text-uppercase mb-1">
                       Drafts
                     </div>
                     <div class="h5 mb-0 fw-bold" id="draftCount">0</div>
                   </div>
                   <div class="col-auto">
                     <i class="bi bi-file-earmark-text fs-2 text-muted"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card border-start border-info border-4 shadow-sm">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col">
+                    <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                      Scheduled
+                    </div>
+                    <div class="h5 mb-0 fw-bold" id="scheduledCount">0</div>
+                  </div>
+                  <div class="col-auto">
+                    <i class="bi bi-clock fs-2 text-muted"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card border-start border-danger border-4 shadow-sm">
+              <div class="card-body">
+                <div class="row align-items-center">
+                  <div class="col">
+                    <div class="text-xs fw-bold text-danger text-uppercase mb-1">
+                      Deleted
+                    </div>
+                    <div class="h5 mb-0 fw-bold" id="deletedCount">0</div>
+                  </div>
+                  <div class="col-auto">
+                    <i class="bi bi-trash fs-2 text-muted"></i>
                   </div>
                 </div>
               </div>
@@ -189,45 +273,111 @@
             <button
               class="nav-link active"
               data-bs-toggle="tab"
-              data-bs-target="#all"
+              data-bs-target="#notifications-tab"
             >
-              All
+              <i class="bi bi-bell"></i> Notifications
             </button>
           </li>
           <li class="nav-item">
             <button
               class="nav-link"
               data-bs-toggle="tab"
-              data-bs-target="#sent"
+              data-bs-target="#analytics-tab"
+              id="analyticsTabBtn"
             >
-              Sent
-            </button>
-          </li>
-          <li class="nav-item">
-            <button
-              class="nav-link"
-              data-bs-toggle="tab"
-              data-bs-target="#drafts"
-            >
-              Drafts
+              <i class="bi bi-bar-chart"></i> Analytics
             </button>
           </li>
         </ul>
 
-        <!-- NOTIFICATION LIST -->
-        <div class="card shadow-sm mb-4">
-          <div class="card-body">
-            <div class="tab-content">
-              <div class="tab-pane fade show active" id="all">
-                <div id="allNotificationsList"></div>
+        <!-- TAB CONTENT -->
+        <div class="tab-content">
+          <!-- NOTIFICATIONS TAB -->
+          <div class="tab-pane fade show active" id="notifications-tab">
+            <!-- Filters -->
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="searchInput"
+                      placeholder="Search title or body..."
+                    />
+                  </div>
+                  <div class="col-md-3">
+                    <select class="form-select" id="statusFilter">
+                      <option value="">All Statuses</option>
+                      <option value="DRAFT">Draft</option>
+                      <option value="SCHEDULED">Scheduled</option>
+                      <option value="PUBLISHED">Published</option>
+                      <option value="DELETED">Deleted</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <select class="form-select" id="typeFilter">
+                      <option value="">All Types</option>
+                      <option value="OFFER">Offer</option>
+                      <option value="POST">Post</option>
+                      <option value="POST_WITH_IMAGE">Post with Image</option>
+                      <option value="PRODUCT_SHARE">Product Share</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <button class="btn btn-secondary w-100" id="resetFiltersBtn">
+                      <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                  </div>
+                </div>
               </div>
+            </div>
 
-              <div class="tab-pane fade" id="sent">
-                <div id="sentNotificationsList"></div>
+            <!-- Notification List -->
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
+                <div id="notificationsList"></div>
+
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-3" id="paginationContainer">
+                  <div>
+                    <small class="text-muted">Showing <span id="showingFrom">0</span> to <span id="showingTo">0</span> of <span id="totalItems">0</span></small>
+                  </div>
+                  <nav>
+                    <ul class="pagination pagination-sm mb-0" id="paginationList"></ul>
+                  </nav>
+                </div>
               </div>
+            </div>
+          </div>
 
-              <div class="tab-pane fade" id="drafts">
-                <div id="draftNotificationsList"></div>
+          <!-- ANALYTICS TAB -->
+          <div class="tab-pane fade" id="analytics-tab">
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
+                <div class="row mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="analyticsStartDate" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="analyticsEndDate" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" id="loadAnalyticsBtn">
+                      <i class="bi bi-graph-up"></i> Load Analytics
+                    </button>
+                  </div>
+                </div>
+
+                <div id="analyticsContent">
+                  <div class="text-center text-muted py-5">
+                    <i class="bi bi-bar-chart fs-1"></i>
+                    <p class="mt-2">Select date range and click "Load Analytics"</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -235,9 +385,7 @@
       </div>
     </div>
 
-    <!-- ============ MODALS (no changes) ============ -->
-
-    <!-- Create/Edit Modal -->
+    <!-- CREATE/EDIT MODAL -->
     <div class="modal fade" id="notificationModal" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -248,40 +396,127 @@
           <div class="modal-body">
             <form id="notificationForm">
               <input type="hidden" id="notificationId" />
-              <input type="hidden" id="notificationStatus" />
+              <input type="hidden" id="currentImageUrl" />
 
+              <!-- Post Type -->
               <div class="mb-3">
-                <label class="form-label">Title *</label>
-                <input class="form-control" id="notificationTitle" required />
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Message *</label>
-                <textarea
-                  class="form-control"
-                  id="notificationMessage"
-                  rows="5"
-                  required
-                ></textarea>
-                <small class="text-muted"
-                  >Character count: <span id="charCount">0</span></small
-                >
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Type *</label>
-                <select class="form-select" id="notificationType" required>
+                <label class="form-label">Post Type <span class="text-danger">*</span></label>
+                <select class="form-select" id="postType" required>
                   <option value="">Select Type</option>
-                  <option value="info">Info</option>
-                  <option value="warning">Warning</option>
-                  <option value="success">Success</option>
-                  <option value="error">Error</option>
+                  <option value="OFFER">📢 Offer - Special offers and discounts</option>
+                  <option value="POST">📝 Post - General announcements</option>
+                  <option value="POST_WITH_IMAGE">🖼️ Post with Image - Visual announcements</option>
+                  <option value="PRODUCT_SHARE">🛍️ Product Share - Share specific product</option>
                 </select>
               </div>
 
+              <!-- Product Selector (for PRODUCT_SHARE) -->
+              <div class="mb-3" id="productSelectorContainer" style="display: none;">
+                <label class="form-label">Select Product <span class="text-danger">*</span></label>
+                <select class="form-select" id="productId">
+                  <option value="">Loading products...</option>
+                </select>
+              </div>
+
+              <!-- Title -->
               <div class="mb-3">
-                <label class="form-label">Target Audience *</label>
-                <input class="form-control" id="targetAudience" required />
+                <label class="form-label">Title <span class="text-danger">*</span></label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="notificationTitle"
+                  maxlength="200"
+                  required
+                />
+                <small class="text-muted">Max 200 characters</small>
+              </div>
+
+              <!-- Body/Message -->
+              <div class="mb-3">
+                <label class="form-label">Message <span class="text-danger">*</span></label>
+                <textarea
+                  class="form-control"
+                  id="notificationBody"
+                  rows="5"
+                  maxlength="5000"
+                  required
+                ></textarea>
+                <small class="text-muted">
+                  <span id="charCount">0</span>/5000 characters
+                  <span class="ms-2 text-warning">
+                    <i class="bi bi-info-circle"></i> First 100 chars shown in push notification
+                  </span>
+                </small>
+              </div>
+
+              <!-- Delivery Options -->
+              <div class="mb-3">
+                <label class="form-label">Delivery Options</label>
+                <div class="delivery-options">
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="sendInApp"
+                      checked
+                    />
+                    <label class="form-check-label" for="sendInApp">
+                      📱 Save in User Feed
+                      <small class="d-block text-muted">Users can see this in their notifications list</small>
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="sendPush"
+                    />
+                    <label class="form-check-label" for="sendPush">
+                      🔔 Send Push Notification
+                      <small class="d-block text-muted">Alert users immediately on their devices</small>
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="sendPushOnly"
+                    />
+                    <label class="form-check-label" for="sendPushOnly">
+                      ⚡ Push Only (No Feed)
+                      <small class="d-block text-muted">Urgent alerts that don't clutter the feed</small>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Engagement Settings -->
+              <div class="mb-3">
+                <label class="form-label">Engagement Settings</label>
+                <div class="engagement-toggles">
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="commentsEnabled"
+                      checked
+                    />
+                    <label class="form-check-label" for="commentsEnabled">
+                      💬 Enable Comments
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="likesEnabled"
+                      checked
+                    />
+                    <label class="form-check-label" for="likesEnabled">
+                      👍 Enable Likes
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div
@@ -289,8 +524,7 @@
                 id="readOnlyAlert"
                 style="display: none"
               >
-                <i class="bi bi-info-circle"></i> This notification has already
-                been sent and cannot be edited.
+                <i class="bi bi-info-circle"></i> Published notifications cannot be edited.
               </div>
             </form>
           </div>
@@ -300,16 +534,108 @@
             </button>
             <div id="actionButtons">
               <button class="btn btn-outline-primary" id="saveDraftBtn">
-                Save as Draft
+                <i class="bi bi-file-earmark"></i> Save as Draft
               </button>
-              <button class="btn btn-primary" id="sendNowBtn">Send Now</button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Delete Modal -->
+    <!-- IMAGE UPLOAD MODAL -->
+    <div class="modal fade" id="imageUploadModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Upload Image</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Select Image</label>
+              <input
+                type="file"
+                class="form-control"
+                id="imageFileInput"
+                accept="image/jpeg,image/png,image/webp"
+              />
+              <small class="text-muted">
+                Max 5MB. Formats: JPEG, PNG, WebP. Recommended: 1920x1080px
+              </small>
+            </div>
+            <div id="imagePreviewContainer" style="display: none;">
+              <img id="imagePreview" class="image-preview" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" id="uploadImageBtn">
+              <i class="bi bi-upload"></i> Upload
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUBLISH/SCHEDULE MODAL -->
+    <div class="modal fade" id="publishModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Publish Notification</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Publish Method</label>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="publishMethod"
+                  id="publishImmediate"
+                  value="immediate"
+                  checked
+                />
+                <label class="form-check-label" for="publishImmediate">
+                  🚀 Publish Immediately
+                </label>
+              </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="publishMethod"
+                  id="publishScheduled"
+                  value="scheduled"
+                />
+                <label class="form-check-label" for="publishScheduled">
+                  ⏰ Schedule for Later
+                </label>
+              </div>
+            </div>
+
+            <div class="schedule-picker" id="schedulePicker">
+              <label class="form-label">Schedule Date & Time</label>
+              <input
+                type="datetime-local"
+                class="form-control"
+                id="scheduledAt"
+              />
+              <small class="text-muted">Must be at least 5 minutes in the future</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-success" id="confirmPublishBtn">
+              <i class="bi bi-send"></i> Publish
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DELETE MODAL -->
     <div class="modal fade" id="deleteModal" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -318,13 +644,15 @@
             <button class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            Are you sure you want to delete this notification?
+            Are you sure you want to delete this notification? This action cannot be undone.
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-bs-dismiss="modal">
               Cancel
             </button>
-            <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">
+              <i class="bi bi-trash"></i> Delete
+            </button>
           </div>
         </div>
       </div>
@@ -339,10 +667,9 @@
 
     <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
-
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/utils.js"></script>
     <script src="../assets/js/navigation.js"></script>
-    <script src="../assets/js/sidebar.js"></script>
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/notifications.js"></script>
   </body>
