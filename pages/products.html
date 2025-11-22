@@ -264,6 +264,24 @@
                 </div>
               </div>
 
+              <!-- Product Images -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-images"></i> Product Images</h6>
+              <div class="mb-3">
+                <label class="form-label">Upload Images (Max 10 files, 10MB each)</label>
+                <input type="file" class="form-control" id="productImages" accept="image/jpeg,image/jpg,image/png,image/webp" multiple>
+                <small class="text-muted">Note: Images will be uploaded after product is created</small>
+              </div>
+              <div id="imagePreviewContainer" class="row g-2 mb-3"></div>
+
+              <!-- Payment Plans -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-credit-card"></i> Payment Plans (Optional)</h6>
+              <div id="plansSection">
+                <div id="plansList"></div>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="addPlanBtn">
+                  <i class="bi bi-plus"></i> Add Payment Plan
+                </button>
+              </div>
+
               <!-- Variants Section -->
               <h6 class="text-primary mb-3 mt-4"><i class="bi bi-diagram-3"></i> Variants (Optional)</h6>
               <div class="form-check mb-3">
@@ -277,6 +295,87 @@
                 <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantBtn">
                   <i class="bi bi-plus"></i> Add Variant
                 </button>
+              </div>
+
+              <!-- Product Flags -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-star"></i> Product Flags</h6>
+              <div class="row">
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="isFeatured" />
+                    <label class="form-check-label" for="isFeatured">Featured</label>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="isPopular" />
+                    <label class="form-check-label" for="isPopular">Popular</label>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="isBestSeller" />
+                    <label class="form-check-label" for="isBestSeller">Best Seller</label>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="isTrending" />
+                    <label class="form-check-label" for="isTrending">Trending</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Product Details -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-box"></i> Product Details</h6>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Warranty (Days)</label>
+                  <input type="number" class="form-control" id="warrantyDays" min="0" placeholder="e.g., 365" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Warranty Type</label>
+                  <input type="text" class="form-control" id="warrantyType" placeholder="e.g., Manufacturer Warranty" />
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Origin/Manufacturer</label>
+                  <input type="text" class="form-control" id="productOrigin" placeholder="e.g., Made in India" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Project Name (Optional)</label>
+                  <input type="text" class="form-control" id="productProject" placeholder="e.g., Premium Series 2024" />
+                </div>
+              </div>
+
+              <!-- Dimensions & Weight -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-rulers"></i> Dimensions & Weight</h6>
+              <div class="row mb-3">
+                <div class="col-md-3">
+                  <label class="form-label">Length (cm)</label>
+                  <input type="number" class="form-control" id="dimensionLength" min="0" step="0.01" placeholder="e.g., 15.5" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Width (cm)</label>
+                  <input type="number" class="form-control" id="dimensionWidth" min="0" step="0.01" placeholder="e.g., 10.5" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Height (cm)</label>
+                  <input type="number" class="form-control" id="dimensionHeight" min="0" step="0.01" placeholder="e.g., 5.2" />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Weight (kg)</label>
+                  <input type="number" class="form-control" id="productWeight" min="0" step="0.01" placeholder="e.g., 0.5" />
+                </div>
+              </div>
+
+              <!-- Tags -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-tags"></i> Tags</h6>
+              <div class="mb-3">
+                <label class="form-label">Product Tags (comma-separated)</label>
+                <input type="text" class="form-control" id="productTags" placeholder="e.g., smartphone, 5G, android, premium" />
+                <small class="text-muted">Separate tags with commas for better search and filtering</small>
               </div>
 
               <!-- Status -->
