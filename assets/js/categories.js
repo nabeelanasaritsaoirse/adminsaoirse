@@ -34,6 +34,13 @@ let categories = [];
 let currentCategoryId = null;
 let categoryImages = [];
 
+// Pagination state (backend pagination) - Note: API doc doesn't show pagination for categories, but we'll add it for consistency
+let pagination = {
+  page: 1,
+  limit: 50,
+  total: 0,
+};
+
 /* DOM elements (will be init on DOMContentLoaded) */
 let searchInput, statusFilter, levelFilter, viewModeSelect;
 let categoriesContainer;
@@ -90,22 +97,19 @@ function setupEventListeners() {
 async function loadCategories() {
   try {
     showLoading(true);
-    
-    // IMPORTANT: fetch both active + inactive so toggling doesn't look like delete
-    const response = await API.get(
-      API_CONFIG.endpoints.categories.getAll,
-      {},
-      { isActive: 'all' }
-    );
-    
+
+    // API endpoint: GET /api/categories
+    // Note: API doesn't mention isActive filter, so we fetch all and filter client-side
+    const response = await API.get("/categories", {}, {});
+
     // Handle response structure
     let categoriesData = [];
-    
+
     if (response && response.success !== false) {
       // If response has data property with array
       if (response.data && Array.isArray(response.data)) {
         categoriesData = response.data;
-      } 
+      }
       // If response is directly the array (fallback)
       else if (Array.isArray(response)) {
         categoriesData = response;
@@ -118,24 +122,27 @@ async function loadCategories() {
       name: c.name || '',
       slug: c.slug || '',
       description: c.description || '',
-      level: c.level || 0, // Will be calculated based on parent
+      level: c.level || 0,
+      path: c.path || [],
       parentCategory: c.parentCategoryId || null,
       parentCategoryId: c.parentCategoryId || null,
       isActive: c.isActive !== undefined ? c.isActive : true,
-      isFeatured: false, // Not in your API response
-      showInMenu: true, // Not in your API response
+      isFeatured: c.isFeatured || false,
+      showInMenu: c.showInMenu !== undefined ? c.showInMenu : true,
       productCount: 0, // Not in your API response
       displayOrder: Number(c.displayOrder || 0),
-      icon: '', // Not in your API response
-      images: [], // Not in your API response
-      seo: c.meta || {},
+      icon: c.icon || '',
+      image: c.image || {},
+      banner: c.banner || {},
+      images: c.images || [],
+      meta: c.meta || {},
       subCategories: c.subCategories || [],
       createdAt: c.createdAt || new Date().toISOString(),
       updatedAt: c.updatedAt || new Date().toISOString()
     }));
 
-    // Calculate levels based on parent relationships
-    calculateCategoryLevels();
+    // Update pagination total
+    pagination.total = categories.length;
 
     updateStats();
     renderCategories();
@@ -148,28 +155,6 @@ async function loadCategories() {
   }
 }
 
-// Calculate category levels based on parent relationships
-function calculateCategoryLevels() {
-  const categoryMap = new Map();
-  categories.forEach(cat => {
-    categoryMap.set(cat._id, cat);
-  });
-
-  categories.forEach(cat => {
-    let level = 0;
-    let current = cat;
-    
-    // Traverse up the parent chain to calculate level
-    while (current.parentCategoryId) {
-      const parent = categoryMap.get(current.parentCategoryId);
-      if (!parent) break;
-      level++;
-      current = parent;
-    }
-    
-    cat.level = level;
-  });
-}
 
 /* ---------- Get Featured Categories ---------- */
 
@@ -179,15 +164,16 @@ function getFeaturedCategories() {
 
 async function fetchFeaturedCategoriesFromAPI() {
   try {
-    const response = await API.get(API_CONFIG.endpoints.categories.getFeatured);
+    // GET /api/categories/featured
+    const response = await API.get("/categories/featured");
     let featured = [];
-    
+
     if (response && response.data && Array.isArray(response.data)) {
       featured = response.data;
     } else if (Array.isArray(response)) {
       featured = response;
     }
-    
+
     return featured;
   } catch (error) {
     console.error('Error fetching featured categories:', error);
@@ -252,9 +238,20 @@ function filterCategories() {
 function renderCategories() {
   if (!categoriesContainer) return;
 
-  const viewMode = viewModeSelect ? viewModeSelect.value : 'tree';
-  if (viewMode === 'list') renderListView(categoriesContainer);
-  else renderTreeView(categoriesContainer);
+  try {
+    const viewMode = viewModeSelect ? viewModeSelect.value : 'tree';
+    if (viewMode === 'list') renderListView(categoriesContainer);
+    else renderTreeView(categoriesContainer);
+  } catch (error) {
+    console.error('Error rendering categories:', error);
+    categoriesContainer.innerHTML = `
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Error rendering categories. Please refresh the page.
+        <br><small>${error.message}</small>
+      </div>
+    `;
+  }
 }
 
 /* Tree view */
@@ -279,7 +276,24 @@ function renderTreeView(container) {
   container.appendChild(ul);
 }
 
-function renderCategoryTreeItem(category, allCategories) {
+function renderCategoryTreeItem(category, allCategories, visitedIds = new Set(), depth = 0) {
+  // Prevent infinite loops with circular references
+  if (visitedIds.has(category._id)) {
+    console.warn(`Circular reference detected for category: ${category.name}`);
+    return document.createElement('li'); // Return empty element
+  }
+
+  // Limit depth to prevent performance issues
+  const MAX_DEPTH = 10;
+  if (depth >= MAX_DEPTH) {
+    console.warn(`Maximum depth (${MAX_DEPTH}) reached for category: ${category.name}`);
+    const li = document.createElement('li');
+    li.innerHTML = '<div class="text-muted small">Max depth reached...</div>';
+    return li;
+  }
+
+  visitedIds.add(category._id);
+
   const li = document.createElement('li');
   const children = allCategories.filter(c => c.parentCategoryId === category._id);
   const hasChildren = children.length > 0;
@@ -377,7 +391,9 @@ function renderCategoryTreeItem(category, allCategories) {
     const subUl = document.createElement('ul');
     subUl.className = 'subcategories list-unstyled ms-4';
     children.forEach(child => {
-      subUl.appendChild(renderCategoryTreeItem(child, allCategories));
+      // Pass a copy of visitedIds to each branch to allow siblings with same children
+      const childVisited = new Set(visitedIds);
+      subUl.appendChild(renderCategoryTreeItem(child, allCategories, childVisited, depth + 1));
     });
     li.appendChild(subUl);
   }
@@ -491,11 +507,17 @@ async function editCategory(categoryId) {
   document.getElementById('showInMenu').checked = !!category.showInMenu;
 
   // SEO fields from meta object
-  document.getElementById('metaTitle').value = (category.seo && category.seo.title) ? category.seo.title : '';
-  document.getElementById('metaDescription').value = (category.seo && category.seo.description) ? category.seo.description : '';
-  document.getElementById('metaKeywords').value = (category.seo && Array.isArray(category.seo.keywords)) ? category.seo.keywords.join(', ') : '';
+  document.getElementById('metaTitle').value = (category.meta && category.meta.title) ? category.meta.title : '';
+  document.getElementById('metaDescription').value = (category.meta && category.meta.description) ? category.meta.description : '';
+  document.getElementById('metaKeywords').value = (category.meta && Array.isArray(category.meta.keywords)) ? category.meta.keywords.join(', ') : '';
 
-  categoryImages = Array.isArray(category.images) ? JSON.parse(JSON.stringify(category.images)) : [];
+  // Handle images - single image object from API
+  categoryImages = [];
+  if (category.image && category.image.url) {
+    categoryImages.push(category.image);
+  } else if (Array.isArray(category.images) && category.images.length > 0) {
+    categoryImages = JSON.parse(JSON.stringify(category.images));
+  }
   renderImagePreview();
 
   populateParentCategoryDropdown(categoryId);
@@ -583,17 +605,22 @@ async function saveCategory() {
   const icon = (document.getElementById('categoryIcon')?.value || '').trim();
   if (icon) payload.icon = icon;
 
+  // Note: Image uploads should use separate endpoint PUT /api/categories/:categoryId/image
+  // For now, we'll only handle image objects if they exist
   if (categoryImages.length > 0) {
-    payload.images = categoryImages;
+    // Only send first image as per API doc structure { url, altText }
+    payload.image = categoryImages[0];
   }
 
   try {
     showLoading(true);
     if (currentCategoryId) {
-      await API.put(API_CONFIG.endpoints.categories.update, payload, { categoryId: currentCategoryId });
+      // UPDATE: PUT /api/categories/:categoryId
+      await API.put("/categories/:categoryId", payload, { categoryId: currentCategoryId });
       window.adminPanel.showNotification('Category updated successfully', 'success');
     } else {
-      await API.post(API_CONFIG.endpoints.categories.create, payload);
+      // CREATE: POST /api/categories
+      await API.post("/categories", payload);
       window.adminPanel.showNotification('Category created successfully', 'success');
     }
     // close modal
@@ -623,7 +650,8 @@ async function toggleCategoryStatus(categoryId) {
       isActive: !category.isActive
     };
 
-    await API.put(API_CONFIG.endpoints.categories.update, payload, { categoryId: categoryId });
+    // UPDATE: PUT /api/categories/:categoryId
+    await API.put("/categories/:categoryId", payload, { categoryId: categoryId });
     window.adminPanel.showNotification(`Category ${payload.isActive ? 'activated' : 'deactivated'} successfully`, 'success');
     await loadCategories();
   } catch (err) {
@@ -642,12 +670,9 @@ async function toggleCategoryFeatured(categoryId) {
       throw new Error('Category not found');
     }
 
-    const payload = {
-      isFeatured: !category.isFeatured
-    };
-
-    await API.put(API_CONFIG.endpoints.categories.update, payload, { categoryId: categoryId });
-    window.adminPanel.showNotification(`Category ${payload.isFeatured ? 'featured' : 'unfeatured'} successfully`, 'success');
+    // Use the toggle-featured endpoint: PUT /api/categories/:categoryId/toggle-featured
+    await API.put("/categories/:categoryId/toggle-featured", {}, { categoryId: categoryId });
+    window.adminPanel.showNotification('Category featured status toggled successfully', 'success');
     await loadCategories();
   } catch (err) {
     console.error('Toggle featured error:', err);
@@ -667,7 +692,7 @@ async function deleteCategory(categoryId) {
   const hasChildren = categories.some(c => c.parentCategoryId === categoryId);
 
   let message = `Are you sure you want to delete "${cat.name}"?`;
-  if (hasChildren) message += '\n\nThis category has subcategories. They will also be deleted.';
+  if (hasChildren) message += '\n\nThis category has subcategories. Use force=true to delete with subcategories.';
   if (cat.productCount > 0) message += `\n\nThis category has ${cat.productCount} products. You may need to reassign them.`;
 
   const confirmed = await window.adminPanel.confirmAction(message);
@@ -675,7 +700,10 @@ async function deleteCategory(categoryId) {
 
   try {
     showLoading(true);
-    await API.delete(API_CONFIG.endpoints.categories.delete, { categoryId: categoryId });
+    // DELETE: DELETE /api/categories/:categoryId
+    // If has children, use force=true query param
+    const queryParams = hasChildren ? { force: true } : {};
+    await API.delete("/categories/:categoryId", { categoryId: categoryId }, queryParams);
     window.adminPanel.showNotification('Category deleted successfully', 'success');
     await loadCategories();
   } catch (err) {
