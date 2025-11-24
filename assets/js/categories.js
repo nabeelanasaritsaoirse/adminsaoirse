@@ -95,27 +95,37 @@ function setupEventListeners() {
 /* ---------- Load ---------- */
 
 async function loadCategories() {
+  console.log('📂 [CATEGORIES] loadCategories() - Starting to load categories');
   try {
     showLoading(true);
+    console.log('⏳ [CATEGORIES] Loading overlay shown');
 
     // API endpoint: GET /api/categories
     // Note: API doesn't mention isActive filter, so we fetch all and filter client-side
+    console.log('🌐 [CATEGORIES] Calling API.get("/categories")');
     const response = await API.get("/categories", {}, {});
+    console.log('✅ [CATEGORIES] API Response received:', response);
 
     // Handle response structure
     let categoriesData = [];
+    console.log('🔍 [CATEGORIES] Checking response structure...');
 
     if (response && response.success !== false) {
       // If response has data property with array
       if (response.data && Array.isArray(response.data)) {
         categoriesData = response.data;
+        console.log('✅ [CATEGORIES] Found data array, length:', categoriesData.length);
       }
       // If response is directly the array (fallback)
       else if (Array.isArray(response)) {
         categoriesData = response;
+        console.log('✅ [CATEGORIES] Response is direct array, length:', categoriesData.length);
       }
+    } else {
+      console.warn('⚠️ [CATEGORIES] Response success is false or response is null');
     }
 
+    console.log('🔄 [CATEGORIES] Mapping categories data...');
     categories = categoriesData.map(c => ({
       _id: c._id || c.id || '',
       categoryId: c.categoryId || '',
@@ -140,17 +150,25 @@ async function loadCategories() {
       createdAt: c.createdAt || new Date().toISOString(),
       updatedAt: c.updatedAt || new Date().toISOString()
     }));
+    console.log('✅ [CATEGORIES] Categories mapped successfully. Total count:', categories.length);
 
     // Update pagination total
     pagination.total = categories.length;
+    console.log('📊 [CATEGORIES] Pagination total updated:', pagination.total);
 
+    console.log('📊 [CATEGORIES] Calling updateStats()...');
     updateStats();
+    console.log('🎨 [CATEGORIES] Calling renderCategories()...');
     renderCategories();
+    console.log('🔽 [CATEGORIES] Calling populateParentCategoryDropdown()...');
     populateParentCategoryDropdown();
+    console.log('✅ [CATEGORIES] loadCategories() completed successfully');
   } catch (error) {
-    console.error('Error loading categories:', error);
+    console.error('❌ [CATEGORIES] Error loading categories:', error);
+    console.error('❌ [CATEGORIES] Error details:', error.message, error.stack);
     window.adminPanel.showNotification('Failed to load categories: ' + (error.message || error), 'error');
   } finally {
+    console.log('⏳ [CATEGORIES] Hiding loading overlay');
     showLoading(false);
   }
 }
@@ -575,8 +593,12 @@ function renderImagePreview() {
 }
 
 async function saveCategory() {
+  console.log('💾 [CATEGORIES] saveCategory() - Starting save process');
   const name = (document.getElementById('categoryName')?.value || '').trim();
+  console.log('📝 [CATEGORIES] Category name:', name);
+
   if (!name) {
+    console.warn('⚠️ [CATEGORIES] Validation failed: Category name is required');
     window.adminPanel.showNotification('Category name is required', 'error');
     return;
   }
@@ -585,7 +607,9 @@ async function saveCategory() {
     .split(',')
     .map(k => k.trim())
     .filter(k => k);
+  console.log('🏷️ [CATEGORIES] Keywords:', keywords);
 
+  console.log('📦 [CATEGORIES] Building payload...');
   const payload = {
     name,
     description: (document.getElementById('categoryDescription')?.value || '').trim(),
@@ -603,59 +627,84 @@ async function saveCategory() {
 
   // Add optional fields if they exist
   const icon = (document.getElementById('categoryIcon')?.value || '').trim();
-  if (icon) payload.icon = icon;
+  if (icon) {
+    payload.icon = icon;
+    console.log('🎨 [CATEGORIES] Icon added to payload:', icon);
+  }
 
   // Note: Image uploads should use separate endpoint PUT /api/categories/:categoryId/image
   // For now, we'll only handle image objects if they exist
   if (categoryImages.length > 0) {
     // Only send first image as per API doc structure { url, altText }
     payload.image = categoryImages[0];
+    console.log('🖼️ [CATEGORIES] Image added to payload:', payload.image);
   }
+
+  console.log('📦 [CATEGORIES] Final payload:', payload);
 
   try {
     showLoading(true);
+    console.log('⏳ [CATEGORIES] Loading overlay shown');
+
     if (currentCategoryId) {
       // UPDATE: PUT /api/categories/:categoryId
+      console.log('🔄 [CATEGORIES] UPDATE mode - categoryId:', currentCategoryId);
+      console.log('🌐 [CATEGORIES] Calling API.put("/categories/:categoryId")');
       await API.put("/categories/:categoryId", payload, { categoryId: currentCategoryId });
+      console.log('✅ [CATEGORIES] Category updated successfully');
       window.adminPanel.showNotification('Category updated successfully', 'success');
     } else {
       // CREATE: POST /api/categories
+      console.log('➕ [CATEGORIES] CREATE mode - new category');
+      console.log('🌐 [CATEGORIES] Calling API.post("/categories")');
       await API.post("/categories", payload);
+      console.log('✅ [CATEGORIES] Category created successfully');
       window.adminPanel.showNotification('Category created successfully', 'success');
     }
     // close modal
+    console.log('🚪 [CATEGORIES] Closing modal...');
     const modalEl = document.getElementById('categoryModal');
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
+    console.log('🔄 [CATEGORIES] Reloading categories...');
     await loadCategories();
   } catch (err) {
-    console.error('Save category error:', err);
+    console.error('❌ [CATEGORIES] Save category error:', err);
+    console.error('❌ [CATEGORIES] Error details:', err.message, err.stack);
     window.adminPanel.showNotification(err.message || 'Failed to save category', 'error');
   } finally {
+    console.log('⏳ [CATEGORIES] Hiding loading overlay');
     showLoading(false);
   }
 }
 
 async function toggleCategoryStatus(categoryId) {
+  console.log('🔄 [CATEGORIES] toggleCategoryStatus() - categoryId:', categoryId);
   try {
     showLoading(true);
     const category = categories.find(c => c._id === categoryId);
+    console.log('🔍 [CATEGORIES] Found category:', category);
+
     if (!category) {
+      console.error('❌ [CATEGORIES] Category not found');
       throw new Error('Category not found');
     }
 
     const payload = {
       isActive: !category.isActive
     };
+    console.log('📦 [CATEGORIES] Payload:', payload);
 
     // UPDATE: PUT /api/categories/:categoryId
+    console.log('🌐 [CATEGORIES] Calling API.put("/categories/:categoryId")');
     await API.put("/categories/:categoryId", payload, { categoryId: categoryId });
+    console.log('✅ [CATEGORIES] Status toggled successfully');
     window.adminPanel.showNotification(`Category ${payload.isActive ? 'activated' : 'deactivated'} successfully`, 'success');
     await loadCategories();
   } catch (err) {
-    console.error('Toggle status error:', err);
+    console.error('❌ [CATEGORIES] Toggle status error:', err);
     window.adminPanel.showNotification('Failed to update category status', 'error');
   } finally {
     showLoading(false);
@@ -663,19 +712,25 @@ async function toggleCategoryStatus(categoryId) {
 }
 
 async function toggleCategoryFeatured(categoryId) {
+  console.log('⭐ [CATEGORIES] toggleCategoryFeatured() - categoryId:', categoryId);
   try {
     showLoading(true);
     const category = categories.find(c => c._id === categoryId);
+    console.log('🔍 [CATEGORIES] Found category:', category);
+
     if (!category) {
+      console.error('❌ [CATEGORIES] Category not found');
       throw new Error('Category not found');
     }
 
     // Use the toggle-featured endpoint: PUT /api/categories/:categoryId/toggle-featured
+    console.log('🌐 [CATEGORIES] Calling API.put("/categories/:categoryId/toggle-featured")');
     await API.put("/categories/:categoryId/toggle-featured", {}, { categoryId: categoryId });
+    console.log('✅ [CATEGORIES] Featured status toggled successfully');
     window.adminPanel.showNotification('Category featured status toggled successfully', 'success');
     await loadCategories();
   } catch (err) {
-    console.error('Toggle featured error:', err);
+    console.error('❌ [CATEGORIES] Toggle featured error:', err);
     window.adminPanel.showNotification('Failed to update category featured status', 'error');
   } finally {
     showLoading(false);
@@ -683,31 +738,45 @@ async function toggleCategoryFeatured(categoryId) {
 }
 
 async function deleteCategory(categoryId) {
+  console.log('🗑️ [CATEGORIES] deleteCategory() - categoryId:', categoryId);
   const cat = categories.find(c => c._id === categoryId);
+  console.log('🔍 [CATEGORIES] Found category:', cat);
+
   if (!cat) {
+    console.error('❌ [CATEGORIES] Category not found');
     window.adminPanel.showNotification('Category not found', 'error');
     return;
   }
 
   const hasChildren = categories.some(c => c.parentCategoryId === categoryId);
+  console.log('👶 [CATEGORIES] Has children:', hasChildren);
 
   let message = `Are you sure you want to delete "${cat.name}"?`;
   if (hasChildren) message += '\n\nThis category has subcategories. Use force=true to delete with subcategories.';
   if (cat.productCount > 0) message += `\n\nThis category has ${cat.productCount} products. You may need to reassign them.`;
 
+  console.log('❓ [CATEGORIES] Showing confirmation dialog...');
   const confirmed = await window.adminPanel.confirmAction(message);
-  if (!confirmed) return;
+  console.log('✅ [CATEGORIES] User confirmed:', confirmed);
+
+  if (!confirmed) {
+    console.log('❌ [CATEGORIES] User cancelled deletion');
+    return;
+  }
 
   try {
     showLoading(true);
     // DELETE: DELETE /api/categories/:categoryId
     // If has children, use force=true query param
     const queryParams = hasChildren ? { force: true } : {};
+    console.log('📦 [CATEGORIES] Query params:', queryParams);
+    console.log('🌐 [CATEGORIES] Calling API.delete("/categories/:categoryId")');
     await API.delete("/categories/:categoryId", { categoryId: categoryId }, queryParams);
+    console.log('✅ [CATEGORIES] Category deleted successfully');
     window.adminPanel.showNotification('Category deleted successfully', 'success');
     await loadCategories();
   } catch (err) {
-    console.error('Delete category error:', err);
+    console.error('❌ [CATEGORIES] Delete category error:', err);
     window.adminPanel.showNotification(err.message || 'Failed to delete category', 'error');
   } finally {
     showLoading(false);
