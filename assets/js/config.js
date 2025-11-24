@@ -72,6 +72,30 @@ const API_CONFIG = {
       create: "/about",
       update: "/about/:aboutId",
       delete: "/about/:aboutId"
+    },
+
+    notifications: {
+      getAll: "/admin/notifications",
+      getById: "/admin/notifications/:id",
+      create: "/admin/notifications/create",
+      update: "/admin/notifications/:id",
+      delete: "/admin/notifications/:id",
+      publish: "/admin/notifications/:id/publish",
+      schedule: "/admin/notifications/:id/schedule",
+      uploadImage: "/admin/notifications/:id/upload-image",
+      settings: "/admin/notifications/:id/settings",
+      analytics: "/admin/notifications/analytics",
+      deleteComment: "/admin/notifications/:notificationId/comments/:commentId"
+    },
+
+    chat: {
+      conversations: "/admin/chat/conversations",
+      messages: "/admin/chat/conversations/:conversationId/messages",
+      reports: "/admin/chat/reports",
+      reportAction: "/admin/chat/reports/:reportId/action",
+      deleteMessage: "/admin/chat/messages/:messageId",
+      broadcast: "/admin/chat/broadcast",
+      analytics: "/admin/chat/analytics"
     }
   }
 };

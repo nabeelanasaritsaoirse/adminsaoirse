@@ -83,6 +83,27 @@ const NAV_CONFIG = {
       hrefFromRoot: "pages/notifications.html",
     },
     {
+      id: "chat",
+      label: "Chat Management",
+      icon: "bi-chat-dots",
+      href: "chat.html",
+      hrefFromRoot: "pages/chat.html",
+    },
+    {
+      id: "chat-reports",
+      label: "Chat Reports",
+      icon: "bi-flag",
+      href: "chat-reports.html",
+      hrefFromRoot: "pages/chat-reports.html",
+    },
+    {
+      id: "chat-analytics",
+      label: "Chat Analytics",
+      icon: "bi-bar-chart",
+      href: "chat-analytics.html",
+      hrefFromRoot: "pages/chat-analytics.html",
+    },
+    {
       id: "settings",
       label: "Settings",
       icon: "bi-gear",

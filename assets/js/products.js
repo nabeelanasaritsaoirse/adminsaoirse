@@ -66,11 +66,15 @@ function mapUIAvailabilityToBackend(availabilityValue) {
 let products = [];
 let currentProductId = null; // NOTE: this will hold product.productId (NOT Mongo _id)
 let variantCount = 0;
+let planCount = 0;
+let selectedImageFiles = [];
 
-// Pagination state (frontend only)
+// Pagination state (backend pagination)
 let pagination = {
   page: 1,
-  perPage: 10,
+  limit: 10,
+  total: 0,
+  pages: 0,
 };
 
 /* DOM elements */
@@ -78,6 +82,8 @@ let searchInput, statusFilter, variantsFilter;
 let productsContainer;
 let productForm;
 let hasVariantsCheckbox, variantsSection, variantsList;
+let productImagesInput, imagePreviewContainer;
+let plansList;
 
 /* Stats elements */
 let totalProductsCount, publishedCount, variantsCount, totalStockCount;
@@ -110,6 +116,10 @@ function initializeDOMElements() {
   variantsSection = document.getElementById("variantsSection");
   variantsList = document.getElementById("variantsList");
 
+  productImagesInput = document.getElementById("productImages");
+  imagePreviewContainer = document.getElementById("imagePreviewContainer");
+  plansList = document.getElementById("plansList");
+
   if (hasVariantsCheckbox) {
     hasVariantsCheckbox.addEventListener("change", function () {
       if (this.checked) {
@@ -125,6 +135,11 @@ function initializeDOMElements() {
         variantCount = 0;
       }
     });
+  }
+
+  // Image preview on file select
+  if (productImagesInput) {
+    productImagesInput.addEventListener("change", handleImageSelect);
   }
 }
 
@@ -156,6 +171,11 @@ function setupEventListeners() {
     addVariantBtn.addEventListener("click", addVariantField);
   }
 
+  const addPlanBtn = document.getElementById("addPlanBtn");
+  if (addPlanBtn) {
+    addPlanBtn.addEventListener("click", addPlanField);
+  }
+
   if (productForm) {
     productForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -176,68 +196,134 @@ function setupEventListeners() {
 /* ---------- Load Categories ---------- */
 
 async function loadCategories() {
+  console.log('📂 [PRODUCTS] loadCategories() - Loading categories for dropdown');
   try {
+    // Use dropdown endpoint: GET /api/categories/dropdown/all
+    console.log('🌐 [PRODUCTS] Calling API.get("/categories/dropdown/all")');
     const response = await API.get(
-      API_CONFIG.endpoints.categories.dropdown,
+      "/categories/dropdown/all",
       {},
       {}
     );
+    console.log('✅ [PRODUCTS] Categories response:', response);
+
     const categorySelect = document.getElementById("productCategory");
 
-    if (!categorySelect) return;
+    if (!categorySelect) {
+      console.warn('⚠️ [PRODUCTS] Category select element not found');
+      return;
+    }
 
     let categories = [];
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         categories = response.data;
+        console.log('✅ [PRODUCTS] Found categories in data array, length:', categories.length);
       } else if (Array.isArray(response)) {
         categories = response;
+        console.log('✅ [PRODUCTS] Response is direct array, length:', categories.length);
       }
+    } else {
+      console.warn('⚠️ [PRODUCTS] Response success is false or response is null');
     }
 
+    console.log('🔽 [PRODUCTS] Populating category dropdown...');
     categorySelect.innerHTML = '<option value="">Select Category</option>';
     categories.forEach((cat) => {
       const option = document.createElement("option");
-      option.value = cat._id || cat.id;
+      option.value = cat._id || cat.id || cat.categoryId;
       option.textContent = cat.name || cat.categoryName;
+      option.setAttribute('data-category-name', cat.name || cat.categoryName);
       categorySelect.appendChild(option);
+
+      // Add subcategories if they exist
+      if (cat.subCategories && Array.isArray(cat.subCategories)) {
+        console.log(`📁 [PRODUCTS] Adding ${cat.subCategories.length} subcategories for:`, cat.name);
+        cat.subCategories.forEach((subCat) => {
+          const subOption = document.createElement("option");
+          subOption.value = subCat._id || subCat.id || subCat.categoryId;
+          subOption.textContent = `  → ${subCat.name || subCat.categoryName}`;
+          subOption.setAttribute('data-category-name', subCat.name || subCat.categoryName);
+          subOption.setAttribute('data-parent-id', cat._id || cat.id || cat.categoryId);
+          subOption.setAttribute('data-parent-name', cat.name || cat.categoryName);
+          categorySelect.appendChild(subOption);
+        });
+      }
     });
+    console.log('✅ [PRODUCTS] Category dropdown populated successfully');
   } catch (err) {
-    console.error("Load categories error:", err);
+    console.error("❌ [PRODUCTS] Load categories error:", err);
   }
 }
 
 /* ---------- Load Products ---------- */
 
 async function loadProducts() {
+  console.log('📦 [PRODUCTS] loadProducts() - Starting to load products');
   try {
     showLoading(true);
+    console.log('⏳ [PRODUCTS] Loading overlay shown');
 
-    // Ask backend for a large page so we see ALL products, then paginate on frontend
+    // Build query params for backend pagination and filters
+    const queryParams = {
+      page: pagination.page,
+      limit: pagination.limit,
+      region: "global", // Default to global, can be changed based on filter
+    };
+
+    // Add search filter if exists
+    if (searchInput && searchInput.value.trim()) {
+      queryParams.search = searchInput.value.trim();
+      console.log('🔍 [PRODUCTS] Search query:', queryParams.search);
+    }
+
+    // Add status filter if exists
+    if (statusFilter && statusFilter.value) {
+      queryParams.status = statusFilter.value;
+      console.log('📊 [PRODUCTS] Status filter:', queryParams.status);
+    }
+
+    // Add variants filter if exists
+    if (variantsFilter && variantsFilter.value !== "") {
+      queryParams.hasVariants = variantsFilter.value;
+      console.log('🔀 [PRODUCTS] Variants filter:', queryParams.hasVariants);
+    }
+
+    console.log('📦 [PRODUCTS] Query params:', queryParams);
+
+    // Use API endpoint: GET /api/products with query params
+    console.log('🌐 [PRODUCTS] Calling API.get("/products")');
     const response = await API.get(
-      API_CONFIG.endpoints.products.getAll,
+      "/products",
       {},
-      { region: "all", page: 1, limit: 1000 }
+      queryParams
     );
+    console.log('✅ [PRODUCTS] API Response received:', response);
 
     let productsData = [];
-    let totalFromApi = 0;
+    console.log('🔍 [PRODUCTS] Checking response structure...');
 
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         productsData = response.data;
+        console.log('✅ [PRODUCTS] Found data array, length:', productsData.length);
       } else if (Array.isArray(response)) {
         productsData = response;
+        console.log('✅ [PRODUCTS] Response is direct array, length:', productsData.length);
       }
 
-      if (
-        response.pagination &&
-        typeof response.pagination.total === "number"
-      ) {
-        totalFromApi = response.pagination.total;
+      // Update pagination state from API response
+      if (response.pagination) {
+        pagination.page = response.pagination.current || pagination.page;
+        pagination.pages = response.pagination.pages || 1;
+        pagination.total = response.pagination.total || 0;
+        console.log('📊 [PRODUCTS] Pagination updated:', pagination);
       }
+    } else {
+      console.warn('⚠️ [PRODUCTS] Response success is false or response is null');
     }
 
+    console.log('🔄 [PRODUCTS] Mapping products data...');
     products = productsData.map((p) => {
       // Normalize description - handle both string and object formats
       let descText = "";
@@ -274,26 +360,37 @@ async function loadProducts() {
         hasVariants: p.hasVariants || false,
         variants: Array.isArray(p.variants) ? p.variants : [],
         status: p.status || "draft",
+        // Product flags
+        isFeatured: p.isFeatured || false,
+        isPopular: p.isPopular || false,
+        isBestSeller: p.isBestSeller || false,
+        isTrending: p.isTrending || false,
+        // Additional product details
+        warranty: p.warranty || null,
+        origin: p.origin || "",
+        project: p.project || "",
+        dimensions: p.dimensions || null,
+        tags: Array.isArray(p.tags) ? p.tags : [],
         createdAt: p.createdAt || new Date().toISOString(),
         updatedAt: p.updatedAt || new Date().toISOString(),
       };
     });
+    console.log('✅ [PRODUCTS] Products mapped successfully. Total count:', products.length);
 
-    // reset to first page whenever products reload
-    pagination.page = 1;
-
-    const totalForStats =
-      totalFromApi && totalFromApi > 0 ? totalFromApi : products.length;
-
-    updateStats(totalForStats);
+    console.log('📊 [PRODUCTS] Calling updateStats()...');
+    updateStats(pagination.total);
+    console.log('🎨 [PRODUCTS] Calling renderProducts()...');
     renderProducts();
+    console.log('✅ [PRODUCTS] loadProducts() completed successfully');
   } catch (error) {
-    console.error("Error loading products:", error);
+    console.error("❌ [PRODUCTS] Error loading products:", error);
+    console.error("❌ [PRODUCTS] Error details:", error.message, error.stack);
     showNotification(
       "Failed to load products: " + (error.message || error),
       "error"
     );
   } finally {
+    console.log('⏳ [PRODUCTS] Hiding loading overlay');
     showLoading(false);
   }
 }
@@ -320,64 +417,15 @@ function updateStats(totalOverride) {
   if (totalStockCount) totalStockCount.textContent = totalStock;
 }
 
-function getFilteredProducts() {
-  let filtered = products.slice();
-
-  if (searchInput && searchInput.value.trim()) {
-    const q = searchInput.value.trim().toLowerCase();
-    filtered = filtered.filter(
-      (p) =>
-        (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.sku && p.sku.toLowerCase().includes(q)) ||
-        (p.brand && p.brand.toLowerCase().includes(q))
-    );
-  }
-
-  if (statusFilter && statusFilter.value) {
-    filtered = filtered.filter((p) => p.status === statusFilter.value);
-  }
-
-  if (variantsFilter && variantsFilter.value !== "") {
-    const hasVar = variantsFilter.value === "true";
-    filtered = filtered.filter((p) => p.hasVariants === hasVar);
-  }
-
-  filtered.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-  return filtered;
-}
-
 function filterProducts() {
-  // whenever filters/search change, go back to page 1
+  // whenever filters/search change, go back to page 1 and reload from backend
   pagination.page = 1;
-  renderProducts();
+  loadProducts();
 }
 
-/* ---------- Pagination helpers (frontend only) ---------- */
+/* ---------- Backend Pagination ---------- */
 
-function getPaginatedProducts(filtered) {
-  const totalItems = filtered.length;
-  const totalPages =
-    totalItems === 0 ? 1 : Math.max(1, Math.ceil(totalItems / pagination.perPage));
-
-  if (pagination.page > totalPages) {
-    pagination.page = totalPages;
-  }
-  if (pagination.page < 1) {
-    pagination.page = 1;
-  }
-
-  const startIndex = (pagination.page - 1) * pagination.perPage;
-  const paginated = filtered.slice(startIndex, startIndex + pagination.perPage);
-
-  return {
-    paginated,
-    totalPages,
-    totalItems,
-  };
-}
-
-function renderPagination(totalPages, totalItems) {
+function renderPagination() {
   if (!productsContainer) return;
 
   let paginationContainer = document.getElementById("productsPagination");
@@ -388,24 +436,43 @@ function renderPagination(totalPages, totalItems) {
     productsContainer.insertAdjacentElement("afterend", paginationContainer);
   }
 
-  if (totalItems === 0 || totalPages <= 1) {
+  const totalPages = pagination.pages || 1;
+  const currentPage = pagination.page || 1;
+
+  if (pagination.total === 0 || totalPages <= 1) {
     paginationContainer.innerHTML = "";
     return;
   }
 
   let pagesHtml = "";
 
-  const prevDisabled = pagination.page <= 1;
+  const prevDisabled = currentPage <= 1;
   pagesHtml += `
     <li class="page-item ${prevDisabled ? "disabled" : ""}">
       <button class="page-link" ${
-        prevDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${pagination.page - 1})"`
-      }>&laquo;</button>
+        prevDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${currentPage - 1})"`
+      }>&laquo; Previous</button>
     </li>
   `;
 
-  for (let i = 1; i <= totalPages; i++) {
-    const active = i === pagination.page;
+  // Show max 5 page numbers with ellipsis
+  const maxButtons = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+  if (endPage - startPage < maxButtons - 1) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+
+  if (startPage > 1) {
+    pagesHtml += `<li class="page-item"><button class="page-link" onclick="changeProductPage(1)">1</button></li>`;
+    if (startPage > 2) {
+      pagesHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    const active = i === currentPage;
     pagesHtml += `
       <li class="page-item ${active ? "active" : ""}">
         <button class="page-link" onclick="changeProductPage(${i})">${i}</button>
@@ -413,12 +480,19 @@ function renderPagination(totalPages, totalItems) {
     `;
   }
 
-  const nextDisabled = pagination.page >= totalPages;
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      pagesHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+    pagesHtml += `<li class="page-item"><button class="page-link" onclick="changeProductPage(${totalPages})">${totalPages}</button></li>`;
+  }
+
+  const nextDisabled = currentPage >= totalPages;
   pagesHtml += `
     <li class="page-item ${nextDisabled ? "disabled" : ""}">
       <button class="page-link" ${
-        nextDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${pagination.page + 1})"`
-      }>&raquo;</button>
+        nextDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${currentPage + 1})"`
+      }>Next &raquo;</button>
     </li>
   `;
 
@@ -427,21 +501,17 @@ function renderPagination(totalPages, totalItems) {
       <ul class="pagination">
         ${pagesHtml}
       </ul>
+      <div class="text-muted text-center mt-2 small">
+        Showing page ${currentPage} of ${totalPages} (${pagination.total} total products)
+      </div>
     </nav>
   `;
 }
 
 function changeProductPage(page) {
-  if (page < 1) return;
-  const filtered = getFilteredProducts();
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filtered.length / pagination.perPage)
-  );
-  if (page > totalPages) return;
-
+  if (page < 1 || page > pagination.pages) return;
   pagination.page = page;
-  renderProducts();
+  loadProducts();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -450,20 +520,17 @@ function changeProductPage(page) {
 function renderProducts() {
   if (!productsContainer) return;
 
-  const filtered = getFilteredProducts();
-  const { paginated, totalPages, totalItems } = getPaginatedProducts(filtered);
-
-  if (paginated.length === 0) {
+  if (products.length === 0) {
     productsContainer.innerHTML =
       '<div class="empty-state text-center py-5"><i class="bi bi-box-x fs-2"></i><p class="mt-2">No products found</p></div>';
-    renderPagination(1, 0);
+    renderPagination();
     return;
   }
 
-  const html = paginated.map((product) => renderProductCard(product)).join("");
+  const html = products.map((product) => renderProductCard(product)).join("");
   productsContainer.innerHTML = html;
 
-  renderPagination(totalPages, totalItems);
+  renderPagination();
 }
 
 function renderProductCard(product) {
@@ -554,9 +621,278 @@ function renderProductCard(product) {
 
 /* ---------- Modal / CRUD ---------- */
 
+/* ---------- Image Upload Functions ---------- */
+
+function handleImageSelect(e) {
+  const files = e.target.files;
+  selectedImageFiles = Array.from(files);
+
+  if (!imagePreviewContainer) return;
+
+  if (selectedImageFiles.length === 0) {
+    imagePreviewContainer.innerHTML = '';
+    return;
+  }
+
+  if (selectedImageFiles.length > 10) {
+    showNotification('Maximum 10 images allowed', 'error');
+    selectedImageFiles = selectedImageFiles.slice(0, 10);
+  }
+
+  imagePreviewContainer.innerHTML = '';
+
+  selectedImageFiles.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const col = document.createElement('div');
+      col.className = 'col-md-2';
+      col.innerHTML = `
+        <div class="position-relative">
+          <img src="${e.target.result}" class="img-thumbnail" alt="Preview">
+          <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removeImagePreview(${index})">
+            <i class="bi bi-x"></i>
+          </button>
+          ${index === 0 ? '<span class="badge bg-primary position-absolute bottom-0 start-0 m-1">Primary</span>' : ''}
+        </div>
+      `;
+      imagePreviewContainer.appendChild(col);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeImagePreview(index) {
+  selectedImageFiles.splice(index, 1);
+
+  // Re-render preview
+  if (productImagesInput) {
+    const dt = new DataTransfer();
+    selectedImageFiles.forEach(file => dt.items.add(file));
+    productImagesInput.files = dt.files;
+  }
+
+  // Trigger change event to re-render
+  handleImageSelect({ target: { files: selectedImageFiles } });
+}
+
+async function uploadProductImages(productId) {
+  console.log('🖼️ [PRODUCTS] uploadProductImages() - productId:', productId);
+  console.log('🖼️ [PRODUCTS] Selected image files:', selectedImageFiles);
+
+  if (!selectedImageFiles || selectedImageFiles.length === 0) {
+    console.log('⚠️ [PRODUCTS] No images to upload');
+    return;
+  }
+
+  try {
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    // Upload each image one by one
+    console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} images one by one...`);
+    for (let i = 0; i < selectedImageFiles.length; i++) {
+      const file = selectedImageFiles[i];
+      console.log(`📤 [PRODUCTS] Uploading image ${i + 1}/${selectedImageFiles.length}:`, file.name);
+
+      const formData = new FormData();
+
+      // Ek image ek baar mein
+      formData.append('images', file);
+      formData.append('altText', 'Product image');
+
+      try {
+        // PUT /api/products/:productId/images - har image ke liye alag call
+        const url = `${window.BASE_URL}/products/${productId}/images`;
+        console.log(`🌐 [PRODUCTS] Uploading to URL:`, url);
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${AUTH.getToken()}`
+            },
+            body: formData
+          }
+        );
+
+        const result = await response.json();
+        console.log(`📥 [PRODUCTS] Image ${i + 1} response:`, result);
+
+        if (result.success) {
+          uploadedCount++;
+          console.log(`✅ [PRODUCTS] Image ${i + 1} uploaded successfully`);
+        } else {
+          failedCount++;
+          console.error(`❌ [PRODUCTS] Failed to upload image ${i + 1}:`, result.message);
+        }
+      } catch (err) {
+        failedCount++;
+        console.error(`❌ [PRODUCTS] Error uploading image ${i + 1}:`, err);
+      }
+    }
+
+    console.log(`📊 [PRODUCTS] Upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`);
+
+    if (uploadedCount > 0) {
+      showNotification(`${uploadedCount} images uploaded successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, uploadedCount === selectedImageFiles.length ? 'success' : 'info');
+    } else {
+      showNotification('Failed to upload images', 'error');
+    }
+  } catch (err) {
+    console.error('❌ [PRODUCTS] Image upload error:', err);
+    showNotification('Failed to upload images: ' + err.message, 'error');
+  }
+}
+
+// Upload variant images after product creation
+async function uploadVariantImages(productId, variantImageFiles, createdVariants) {
+  console.log('🖼️ [PRODUCTS] uploadVariantImages() - productId:', productId);
+  console.log('🖼️ [PRODUCTS] Variant image files:', variantImageFiles);
+  console.log('🖼️ [PRODUCTS] Created variants:', createdVariants);
+
+  if (!variantImageFiles || variantImageFiles.length === 0) {
+    console.log('⚠️ [PRODUCTS] No variant images to upload');
+    return;
+  }
+
+  try {
+    let uploadedCount = 0;
+    let failedCount = 0;
+
+    // Upload each variant image one by one
+    console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`);
+    for (let i = 0; i < variantImageFiles.length; i++) {
+      const { variantIndex, file } = variantImageFiles[i];
+      console.log(`📤 [PRODUCTS] Uploading variant image ${i + 1}/${variantImageFiles.length} for variant index:`, variantIndex);
+
+      // Get the corresponding variant from created variants
+      const variant = createdVariants && createdVariants[variantIndex];
+      console.log(`🔍 [PRODUCTS] Found variant for index ${variantIndex}:`, variant);
+
+      if (!variant || !variant.variantId) {
+        console.error(`❌ [PRODUCTS] Variant ID not found for variant index ${variantIndex}`);
+        failedCount++;
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append('images', file);
+      formData.append('altText', 'Variant image');
+
+      try {
+        // PUT /api/products/:productId/variants/:variantId/images
+        const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
+        console.log(`🌐 [PRODUCTS] Uploading variant image to URL:`, url);
+
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${AUTH.getToken()}`
+            },
+            body: formData
+          }
+        );
+
+        const result = await response.json();
+        console.log(`📥 [PRODUCTS] Variant image ${i + 1} response:`, result);
+
+        if (result.success) {
+          uploadedCount++;
+          console.log(`✅ [PRODUCTS] Variant image ${i + 1} uploaded successfully`);
+        } else {
+          failedCount++;
+          console.error(`❌ [PRODUCTS] Failed to upload variant image ${i + 1}:`, result.message);
+        }
+      } catch (err) {
+        failedCount++;
+        console.error(`❌ [PRODUCTS] Error uploading variant image ${i + 1}:`, err);
+      }
+    }
+
+    console.log(`📊 [PRODUCTS] Variant images upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`);
+
+    if (uploadedCount > 0) {
+      showNotification(`${uploadedCount} variant images uploaded${failedCount > 0 ? `, ${failedCount} failed` : ''}`, 'info');
+    }
+  } catch (err) {
+    console.error('❌ [PRODUCTS] Variant image upload error:', err);
+  }
+}
+
+/* ---------- Payment Plan Functions ---------- */
+
+function addPlanField() {
+  planCount++;
+  const html = `
+    <div class="card mb-2" id="plan-${planCount}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <strong>Plan ${planCount}</strong>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div class="row mb-2">
+          <div class="col-md-6">
+            <label class="form-label">Plan Name *</label>
+            <input type="text" class="form-control form-control-sm" data-plan-name placeholder="e.g., Quick Plan" required />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Days *</label>
+            <input type="number" class="form-control form-control-sm" data-plan-days min="1" placeholder="e.g., 30" required />
+          </div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-md-6">
+            <label class="form-label">Per Day Amount (₹) *</label>
+            <input type="number" class="form-control form-control-sm" data-plan-amount min="0" step="0.01" placeholder="e.g., 1500" required />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Total Amount (₹)</label>
+            <input type="number" class="form-control form-control-sm" data-plan-total readonly placeholder="Auto-calculated" />
+          </div>
+        </div>
+        <div class="row mb-2">
+          <div class="col-md-12">
+            <label class="form-label">Description (Optional)</label>
+            <input type="text" class="form-control form-control-sm" data-plan-description placeholder="e.g., Pay in 30 days" />
+          </div>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" data-plan-recommended />
+          <label class="form-check-label">Recommended Plan</label>
+        </div>
+      </div>
+    </div>
+  `;
+  plansList.insertAdjacentHTML('beforeend', html);
+
+  // Add auto-calculation for total
+  const card = document.getElementById(`plan-${planCount}`);
+  const daysInput = card.querySelector('[data-plan-days]');
+  const amountInput = card.querySelector('[data-plan-amount]');
+  const totalInput = card.querySelector('[data-plan-total]');
+
+  const calculateTotal = () => {
+    const days = parseFloat(daysInput.value) || 0;
+    const amount = parseFloat(amountInput.value) || 0;
+    totalInput.value = (days * amount).toFixed(2);
+  };
+
+  daysInput.addEventListener('input', calculateTotal);
+  amountInput.addEventListener('input', calculateTotal);
+}
+
+function removePlanField(idx) {
+  document.getElementById(`plan-${idx}`)?.remove();
+}
+
+/* ---------- Modal Functions ---------- */
+
 function openAddProductModal() {
   currentProductId = null;
   variantCount = 0;
+  planCount = 0;
+  selectedImageFiles = [];
 
   if (productForm) productForm.reset();
 
@@ -569,6 +905,20 @@ function openAddProductModal() {
     variantsSection.style.display = "none";
   }
   if (variantsList) variantsList.innerHTML = "";
+  if (plansList) plansList.innerHTML = "";
+  if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
+  if (productImagesInput) productImagesInput.value = "";
+
+  // Reset product flags
+  const isFeaturedEl = document.getElementById("isFeatured");
+  const isPopularEl = document.getElementById("isPopular");
+  const isBestSellerEl = document.getElementById("isBestSeller");
+  const isTrendingEl = document.getElementById("isTrending");
+
+  if (isFeaturedEl) isFeaturedEl.checked = false;
+  if (isPopularEl) isPopularEl.checked = false;
+  if (isBestSellerEl) isBestSellerEl.checked = false;
+  if (isTrendingEl) isTrendingEl.checked = false;
 
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
@@ -620,6 +970,47 @@ async function editProduct(productId) {
     variantCount = 0;
   }
 
+  // Populate product flags
+  const isFeaturedEl = document.getElementById("isFeatured");
+  const isPopularEl = document.getElementById("isPopular");
+  const isBestSellerEl = document.getElementById("isBestSeller");
+  const isTrendingEl = document.getElementById("isTrending");
+
+  if (isFeaturedEl) isFeaturedEl.checked = product.isFeatured || false;
+  if (isPopularEl) isPopularEl.checked = product.isPopular || false;
+  if (isBestSellerEl) isBestSellerEl.checked = product.isBestSeller || false;
+  if (isTrendingEl) isTrendingEl.checked = product.isTrending || false;
+
+  // Populate warranty information
+  const warrantyDaysEl = document.getElementById("warrantyDays");
+  const warrantyTypeEl = document.getElementById("warrantyType");
+  if (warrantyDaysEl) warrantyDaysEl.value = product.warranty?.days || "";
+  if (warrantyTypeEl) warrantyTypeEl.value = product.warranty?.type || "";
+
+  // Populate origin and project
+  const productOriginEl = document.getElementById("productOrigin");
+  const productProjectEl = document.getElementById("productProject");
+  if (productOriginEl) productOriginEl.value = product.origin || "";
+  if (productProjectEl) productProjectEl.value = product.project || "";
+
+  // Populate dimensions
+  const dimensionLengthEl = document.getElementById("dimensionLength");
+  const dimensionWidthEl = document.getElementById("dimensionWidth");
+  const dimensionHeightEl = document.getElementById("dimensionHeight");
+  const productWeightEl = document.getElementById("productWeight");
+
+  if (dimensionLengthEl) dimensionLengthEl.value = product.dimensions?.length || "";
+  if (dimensionWidthEl) dimensionWidthEl.value = product.dimensions?.width || "";
+  if (dimensionHeightEl) dimensionHeightEl.value = product.dimensions?.height || "";
+  if (productWeightEl) productWeightEl.value = product.dimensions?.weight || "";
+
+  // Populate tags (convert array to comma-separated string)
+  const productTagsEl = document.getElementById("productTags");
+  if (productTagsEl) {
+    const tagsValue = Array.isArray(product.tags) ? product.tags.join(', ') : "";
+    productTagsEl.value = tagsValue;
+  }
+
   const statusRadio = document.querySelector(
     `input[name="status"][value="${product.status}"]`
   );
@@ -663,8 +1054,8 @@ function addVariantField() {
                     <input type="number" class="form-control form-control-sm" data-variant-stock min="0" value="0" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Image URL</label>
-                    <input type="url" class="form-control form-control-sm" data-variant-image placeholder="Optional" />
+                    <label class="form-label">Variant Image (Optional)</label>
+                    <input type="file" class="form-control form-control-sm" data-variant-image accept="image/jpeg,image/jpg,image/png,image/webp" />
                 </div>
             </div>
         </div>
@@ -675,7 +1066,8 @@ function addVariantField() {
 function renderVariantField(variant, idx) {
   const color = variant.attributes?.color || "";
   const storage = variant.attributes?.storage || "";
-  const imageUrl = variant.images?.[0]?.url || "";
+  const hasExistingImage = variant.images && variant.images.length > 0;
+  const existingImageUrl = hasExistingImage ? variant.images[0]?.url : "";
 
   return `
         <div class="variant-card" id="variant-${idx}">
@@ -719,10 +1111,9 @@ function renderVariantField(variant, idx) {
                     }" />
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Image URL</label>
-                    <input type="url" class="form-control form-control-sm" data-variant-image value="${escapeHtml(
-                      imageUrl
-                    )}" placeholder="Optional" />
+                    <label class="form-label">Variant Image (Optional)</label>
+                    <input type="file" class="form-control form-control-sm" data-variant-image accept="image/jpeg,image/jpg,image/png,image/webp" />
+                    ${hasExistingImage ? `<small class="text-muted">Current: ${escapeHtml(existingImageUrl.split('/').pop())}</small>` : ''}
                 </div>
             </div>
         </div>
@@ -734,6 +1125,7 @@ function removeVariantField(idx) {
 }
 
 async function saveProduct() {
+  console.log('💾 [PRODUCTS] saveProduct() - Starting save process');
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
   const description = document
@@ -741,6 +1133,8 @@ async function saveProduct() {
     .value.trim();
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
+
+  console.log('📝 [PRODUCTS] Form data:', { name, brand, categoryId, sku });
 
   const priceInput = document.getElementById("productPrice");
   const salePriceInput = document.getElementById("productSalePrice");
@@ -754,53 +1148,90 @@ async function saveProduct() {
       ? NaN
       : parseInt(stockRaw, 10);
 
+  console.log('💰 [PRODUCTS] Pricing data:', { price, salePrice, stock });
+
   const availabilityValue =
     document.getElementById("productAvailability").value;
   const status =
     document.querySelector('input[name="status"]:checked')?.value || "draft";
   const hasVariants = document.getElementById("hasVariants").checked;
 
+  console.log('📊 [PRODUCTS] Status data:', { availabilityValue, status, hasVariants });
+
+  // Validation
   if (!name) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Product name is required');
     alert("Product name is required");
     return;
   }
   if (!categoryId) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Category is required');
     alert("Category is required");
     return;
   }
   if (isNaN(price) || price <= 0) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Price must be greater than 0');
     alert("Price must be greater than 0");
     return;
   }
   if (!description) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Description is required');
     alert("Description is required");
     return;
   }
 
   // Stock required and MUST be > 0 (QA requirement)
   if (stockRaw === "") {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Stock is required');
     alert("Stock is required");
     return;
   }
   if (isNaN(stock) || stock <= 0) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Stock must be greater than 0');
     alert("Stock must be greater than 0");
     return;
   }
 
   // Sale price validation
   if (!isNaN(salePrice) && salePrice > 0 && salePrice > price) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Sale price cannot be greater than regular price');
     alert("Sale price cannot be greater than regular price");
     return;
   }
 
+  console.log('✅ [PRODUCTS] All validations passed');
+
   // Map UI availability to backend format
   const { stockStatus, isAvailable } =
     mapUIAvailabilityToBackend(availabilityValue);
+  console.log('🔄 [PRODUCTS] Mapped availability:', { stockStatus, isAvailable });
 
-  // Get category name from selected option
+  // Get category name and parent info from selected option
   const categorySelect = document.getElementById("productCategory");
-  const categoryName =
-    categorySelect.options[categorySelect.selectedIndex].text;
+  const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+  const categoryName = selectedOption.getAttribute('data-category-name') || selectedOption.text.trim();
+  const parentId = selectedOption.getAttribute('data-parent-id');
+  const parentName = selectedOption.getAttribute('data-parent-name');
+  console.log('📁 [PRODUCTS] Category info:', { categoryId, categoryName, parentId, parentName });
+
+  // Collect additional fields
+  const isFeatured = document.getElementById("isFeatured")?.checked || false;
+  const isPopular = document.getElementById("isPopular")?.checked || false;
+  const isBestSeller = document.getElementById("isBestSeller")?.checked || false;
+  const isTrending = document.getElementById("isTrending")?.checked || false;
+  console.log('🏷️ [PRODUCTS] Product flags:', { isFeatured, isPopular, isBestSeller, isTrending });
+
+  const warrantyDays = parseInt(document.getElementById("warrantyDays")?.value) || 0;
+  const warrantyType = document.getElementById("warrantyType")?.value.trim() || "";
+  const productOrigin = document.getElementById("productOrigin")?.value.trim() || "";
+  const productProject = document.getElementById("productProject")?.value.trim() || "";
+
+  const dimensionLength = parseFloat(document.getElementById("dimensionLength")?.value) || 0;
+  const dimensionWidth = parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
+  const dimensionHeight = parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
+  const productWeight = parseFloat(document.getElementById("productWeight")?.value) || 0;
+
+  const productTags = document.getElementById("productTags")?.value.trim() || "";
 
   const payload = {
     name,
@@ -810,10 +1241,10 @@ async function saveProduct() {
       long: description,
     },
     category: {
-      mainCategoryId: categoryId,
-      mainCategoryName: categoryName,
-      subCategoryId: null,
-      subCategoryName: null,
+      mainCategoryId: parentId || categoryId, // If it's a subcategory, use parent as main
+      mainCategoryName: parentName || categoryName, // If it's a subcategory, use parent name
+      subCategoryId: parentId ? categoryId : null, // If has parent, current is sub
+      subCategoryName: parentId ? categoryName : null, // If has parent, use current name as sub
     },
     sku,
     pricing: {
@@ -829,13 +1260,90 @@ async function saveProduct() {
     },
     status,
     hasVariants,
+    isFeatured,
+    isPopular,
+    isBestSeller,
+    isTrending,
   };
 
+  // Add warranty if provided
+  if (warrantyDays > 0 || warrantyType) {
+    payload.warranty = {
+      days: warrantyDays,
+      type: warrantyType || "Standard Warranty"
+    };
+  }
+
+  // Add origin if provided
+  if (productOrigin) {
+    payload.origin = productOrigin;
+  }
+
+  // Add project if provided
+  if (productProject) {
+    payload.project = productProject;
+  }
+
+  // Add dimensions if any provided
+  if (dimensionLength > 0 || dimensionWidth > 0 || dimensionHeight > 0 || productWeight > 0) {
+    payload.dimensions = {
+      length: dimensionLength,
+      width: dimensionWidth,
+      height: dimensionHeight,
+      weight: productWeight,
+      unit: "cm" // length, width, height in cm
+    };
+  }
+
+  // Add tags if provided (convert comma-separated string to array)
+  if (productTags) {
+    payload.tags = productTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+  }
+
+  // Collect payment plans
+  const planCards = document.querySelectorAll('[id^="plan-"]');
+  const plans = [];
+
+  planCards.forEach((card) => {
+    const nameInput = card.querySelector('[data-plan-name]');
+    const daysInput = card.querySelector('[data-plan-days]');
+    const amountInput = card.querySelector('[data-plan-amount]');
+    const descInput = card.querySelector('[data-plan-description]');
+    const recommendedInput = card.querySelector('[data-plan-recommended]');
+
+    const planName = nameInput?.value?.trim();
+    const days = parseInt(daysInput?.value) || 0;
+    const perDayAmount = parseFloat(amountInput?.value) || 0;
+
+    if (planName && days > 0 && perDayAmount > 0) {
+      const plan = {
+        name: planName,
+        days: days,
+        perDayAmount: perDayAmount,
+        totalAmount: days * perDayAmount,
+        isRecommended: recommendedInput?.checked || false,
+        description: descInput?.value?.trim() || ""
+      };
+      plans.push(plan);
+    }
+  });
+
+  if (plans.length > 0) {
+    payload.plans = plans;
+  }
+
+  console.log('📦 [PRODUCTS] Building payload...');
+
+  // Collect variant data and files
+  let variantImageFiles = []; // Store variant image files with variant index
+
   if (hasVariants) {
+    console.log('🔀 [PRODUCTS] Collecting variants...');
     const variantCards = document.querySelectorAll(".variant-card");
     const variants = [];
+    console.log('🔢 [PRODUCTS] Found variant cards:', variantCards.length);
 
-    variantCards.forEach((card) => {
+    variantCards.forEach((card, idx) => {
       const colorInput = card.querySelector("[data-variant-color]");
       const storageInput = card.querySelector("[data-variant-storage]");
       const variantPrice = card.querySelector("[data-variant-price]");
@@ -843,7 +1351,7 @@ async function saveProduct() {
         "[data-variant-sale-price]"
       );
       const variantStock = card.querySelector("[data-variant-stock]");
-      const variantImage = card.querySelector("[data-variant-image]");
+      const variantImageInput = card.querySelector("[data-variant-image]");
 
       const vPrice = parseFloat(variantPrice?.value) || 0;
       const vSalePrice = parseFloat(variantSalePrice?.value) || 0;
@@ -863,51 +1371,117 @@ async function saveProduct() {
         price: vPrice,
         salePrice: vSalePrice > 0 ? vSalePrice : vPrice,
         stock: parseInt(variantStock?.value) || 0,
-        images: variantImage?.value?.trim()
-          ? [{ url: variantImage.value.trim(), isPrimary: true }]
-          : [],
+        // Don't send images in payload - will upload separately
       };
+
+      // Collect variant image file if selected
+      if (variantImageInput && variantImageInput.files && variantImageInput.files.length > 0) {
+        variantImageFiles.push({
+          variantIndex: idx,
+          file: variantImageInput.files[0]
+        });
+      }
 
       variants.push(variant);
     });
 
     if (variants.length === 0) {
+      console.warn('⚠️ [PRODUCTS] No valid variants found');
       alert("Add at least one variant with valid price");
       return;
     }
 
+    console.log('✅ [PRODUCTS] Collected variants:', variants);
     payload.variants = variants;
   }
 
+  console.log('📦 [PRODUCTS] Final payload:', payload);
+
   try {
     showLoading(true);
+    console.log('⏳ [PRODUCTS] Loading overlay shown');
+
+    let savedProductId = currentProductId;
+    let createdVariants = null;
+
     if (currentProductId) {
-      // UPDATE: use productId in URL (business ID), as backend expects
-      await API.put(API_CONFIG.endpoints.products.update, payload, {
+      // UPDATE: PUT /api/products/:productId - use productId in URL
+      console.log('🔄 [PRODUCTS] UPDATE mode - productId:', currentProductId);
+      console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
+      const updateResponse = await API.put("/products/:productId", payload, {
         productId: currentProductId,
       });
-      alert("Product updated successfully");
+      console.log('✅ [PRODUCTS] Update response:', updateResponse);
+
+      // Get updated variants from response
+      if (updateResponse && updateResponse.data && updateResponse.data.variants) {
+        createdVariants = updateResponse.data.variants;
+        console.log('🔀 [PRODUCTS] Got updated variants from response:', createdVariants);
+      }
+
+      showNotification("Product updated successfully", "success");
     } else {
-      await API.post(API_CONFIG.endpoints.products.create, payload);
-      alert("Product created successfully");
+      // CREATE: POST /api/products
+      console.log('➕ [PRODUCTS] CREATE mode - new product');
+      console.log('🌐 [PRODUCTS] Calling API.post("/products")');
+      const response = await API.post("/products", payload);
+      console.log('✅ [PRODUCTS] Create response:', response);
+
+      // Get the created product ID and variants from response
+      if (response && response.data) {
+        if (response.data.productId) {
+          savedProductId = response.data.productId;
+          console.log('🆔 [PRODUCTS] Got product ID from response:', savedProductId);
+        }
+        if (response.data.variants) {
+          createdVariants = response.data.variants;
+          console.log('🔀 [PRODUCTS] Got created variants from response:', createdVariants);
+        }
+      }
+
+      showNotification("Product created successfully", "success");
     }
 
+    // Upload product images if any selected (one by one)
+    if (savedProductId && selectedImageFiles.length > 0) {
+      console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`);
+      await uploadProductImages(savedProductId);
+    }
+
+    // Upload variant images if any selected (one by one)
+    if (savedProductId && variantImageFiles.length > 0 && createdVariants) {
+      console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`);
+      await uploadVariantImages(savedProductId, variantImageFiles, createdVariants);
+    }
+
+    console.log('🚪 [PRODUCTS] Closing modal...');
     const modalEl = document.getElementById("productModal");
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
 
+    console.log('🧹 [PRODUCTS] Cleaning up form...');
     productForm.reset();
     currentProductId = null;
     variantCount = 0;
+    planCount = 0;
+    selectedImageFiles = [];
     if (variantsList) variantsList.innerHTML = "";
+    if (plansList) plansList.innerHTML = "";
+    if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
+    if (productImagesInput) productImagesInput.value = "";
+
+    console.log('🔄 [PRODUCTS] Reloading products...');
     await loadProducts();
+    console.log('✅ [PRODUCTS] saveProduct() completed successfully');
   } catch (err) {
-    console.error("Save product error:", err);
-    console.error("Current Product ID:", currentProductId);
-    alert("Error: " + (err.message || "Failed to save product"));
+    console.error("❌ [PRODUCTS] Save product error:", err);
+    console.error("❌ [PRODUCTS] Error details:", err.message, err.stack);
+    console.error("❌ [PRODUCTS] Current Product ID:", currentProductId);
+    showNotification("Error: " + (err.message || "Failed to save product"), "error");
   } finally {
+    console.log('⏳ [PRODUCTS] Hiding loading overlay');
     showLoading(false);
   }
 }
@@ -921,36 +1495,11 @@ async function toggleProductStatus(productId) {
     const newStatus = product.status === "published" ? "draft" : "published";
 
     const payload = {
-      name: product.name,
-      brand: product.brand,
-      description: {
-        short: product.description,
-        long: product.description,
-      },
-      category: {
-        mainCategoryId: product.category?.mainCategoryId,
-        mainCategoryName: product.category?.mainCategoryName,
-        subCategoryId: product.category?.subCategoryId || null,
-        subCategoryName: product.category?.subCategoryName || null,
-      },
-      sku: product.sku,
-      pricing: {
-        regularPrice: product.pricing?.regularPrice,
-        salePrice: product.pricing?.salePrice,
-        currency: product.pricing?.currency || "INR",
-      },
-      availability: {
-        isAvailable: product.availability?.isAvailable !== false,
-        stockQuantity: product.availability?.stockQuantity ?? 0,
-        lowStockLevel: product.availability?.lowStockLevel ?? 5,
-        stockStatus: product.availability?.stockStatus || "in_stock",
-      },
       status: newStatus,
-      hasVariants: product.hasVariants,
-      variants: product.variants || [],
     };
 
-    await API.put(API_CONFIG.endpoints.products.update, payload, { productId });
+    // UPDATE: PUT /api/products/:productId
+    await API.put("/products/:productId", payload, { productId });
     showNotification(`Product ${newStatus} successfully`, "success");
     await loadProducts();
   } catch (err) {
@@ -962,22 +1511,36 @@ async function toggleProductStatus(productId) {
 }
 
 async function deleteProduct(productId) {
+  console.log('🗑️ [PRODUCTS] deleteProduct() - productId:', productId);
   const product = products.find((p) => p.productId === productId);
+  console.log('🔍 [PRODUCTS] Found product:', product);
+
   if (!product) {
+    console.error('❌ [PRODUCTS] Product not found');
     showNotification("Product not found", "error");
     return;
   }
 
+  console.log('❓ [PRODUCTS] Showing confirmation dialog...');
   const confirmed = confirm(`Delete "${product.name}"?`);
-  if (!confirmed) return;
+  console.log('✅ [PRODUCTS] User confirmed:', confirmed);
+
+  if (!confirmed) {
+    console.log('❌ [PRODUCTS] User cancelled deletion');
+    return;
+  }
 
   try {
     showLoading(true);
-    await API.delete(API_CONFIG.endpoints.products.delete, { productId });
+    console.log('⏳ [PRODUCTS] Loading overlay shown');
+    // DELETE: DELETE /api/products/:productId
+    console.log('🌐 [PRODUCTS] Calling API.delete("/products/:productId")');
+    await API.delete("/products/:productId", { productId });
+    console.log('✅ [PRODUCTS] Product deleted successfully');
     showNotification("Product deleted successfully", "success");
     await loadProducts();
   } catch (err) {
-    console.error("Delete product error:", err);
+    console.error("❌ [PRODUCTS] Delete product error:", err);
     showNotification(err.message || "Failed to delete product", "error");
   } finally {
     showLoading(false);
@@ -1135,6 +1698,9 @@ window.toggleProductStatus = toggleProductStatus;
 window.viewProductDetails = viewProductDetails;
 window.addVariantField = addVariantField;
 window.removeVariantField = removeVariantField;
+window.addPlanField = addPlanField;
+window.removePlanField = removePlanField;
+window.removeImagePreview = removeImagePreview;
 window.saveProduct = saveProduct;
 window.resetFilters = function () {
   if (searchInput) searchInput.value = "";

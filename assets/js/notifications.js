@@ -1,593 +1,1179 @@
 /**
- * Notification Management System
- * Handles CRUD operations for notifications with localStorage and API integration
+ * ================================================
+ * ADMIN NOTIFICATION MANAGEMENT SYSTEM
+ * ================================================
+ * Complete API integration following project patterns
+ * Supports: Create, Edit, Delete, Publish, Schedule, Image Upload, Analytics
  */
 
-// State management
+/* ========== STATE MANAGEMENT ========== */
 let notifications = [];
+let products = [];
 let currentNotificationId = null;
 let deleteTargetId = null;
+let currentEditingId = null;
 
-// DOM elements
-const createNewBtn = document.getElementById('createNewBtn');
-const notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
-const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-const notificationForm = document.getElementById('notificationForm');
-const saveDraftBtn = document.getElementById('saveDraftBtn');
-const sendNowBtn = document.getElementById('sendNowBtn');
-const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-
-// API Configuration
-const API_CONFIG = {
-    baseURL: '/api',
-    endpoints: {
-        send: '/notifications/send'
-    }
+let pagination = {
+  page: 1,
+  limit: 20,
+  total: 0,
+  totalPages: 0
 };
 
-/**
- * Initialize the notification system
- */
-document.addEventListener('DOMContentLoaded', function() {
-    loadNotifications();
-    renderAllLists();
-    updateStats();
-    initializeEventListeners();
+let filters = {
+  search: '',
+  status: '',
+  type: ''
+};
+
+/* ========== BOOTSTRAP MODALS ========== */
+let notificationModal;
+let imageUploadModal;
+let publishModal;
+let deleteModal;
+
+/* ========== DOM INITIALIZATION ========== */
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('Initializing Notification Management System...');
+
+  // Initialize Bootstrap modals
+  initializeModals();
+
+  // Setup event listeners
+  setupEventListeners();
+
+  // Load initial data
+  await loadNotifications();
+
+  // Load products for PRODUCT_SHARE type
+  await loadProducts();
+
+  console.log('Notification system initialized successfully!');
 });
 
 /**
- * Initialize all event listeners
+ * Initialize Bootstrap modals
  */
-function initializeEventListeners() {
-    // Create new notification
-    createNewBtn.addEventListener('click', openCreateModal);
-
-    // Save as draft
-    saveDraftBtn.addEventListener('click', saveAsDraft);
-
-    // Send notification
-    sendNowBtn.addEventListener('click', sendNotification);
-
-    // Delete confirmation
-    confirmDeleteBtn.addEventListener('click', deleteNotification);
-
-    // Character count for message
-    document.getElementById('notificationMessage').addEventListener('input', updateCharCount);
-
-    // Form validation on type change
-    document.getElementById('notificationType').addEventListener('change', updateTypePreview);
+function initializeModals() {
+  notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
+  imageUploadModal = new bootstrap.Modal(document.getElementById('imageUploadModal'));
+  publishModal = new bootstrap.Modal(document.getElementById('publishModal'));
+  deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
 }
 
 /**
- * Load notifications from localStorage
+ * Setup all event listeners
  */
-function loadNotifications() {
-    const stored = window.utils.storage.get('notifications');
-    notifications = stored || [];
+function setupEventListeners() {
+  // Create new notification button
+  document.getElementById('createNewBtn')?.addEventListener('click', openCreateModal);
+
+  // Save draft button
+  document.getElementById('saveDraftBtn')?.addEventListener('click', saveNotification);
+
+  // Delete confirmation
+  document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
+
+  // Character count for body
+  document.getElementById('notificationBody')?.addEventListener('input', updateCharCount);
+
+  // Post type change - show/hide product selector
+  document.getElementById('postType')?.addEventListener('change', handlePostTypeChange);
+
+  // Delivery options mutual exclusion
+  document.getElementById('sendPushOnly')?.addEventListener('change', handlePushOnlyChange);
+  document.getElementById('sendInApp')?.addEventListener('change', handleSendInAppChange);
+
+  // Image upload
+  document.getElementById('imageFileInput')?.addEventListener('change', previewImage);
+  document.getElementById('uploadImageBtn')?.addEventListener('click', uploadImage);
+
+  // Publish modal
+  document.getElementById('publishImmediate')?.addEventListener('change', toggleSchedulePicker);
+  document.getElementById('publishScheduled')?.addEventListener('change', toggleSchedulePicker);
+  document.getElementById('confirmPublishBtn')?.addEventListener('click', handlePublish);
+
+  // Filters
+  document.getElementById('searchInput')?.addEventListener('input', debounce(applyFilters, 500));
+  document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
+  document.getElementById('typeFilter')?.addEventListener('change', applyFilters);
+  document.getElementById('resetFiltersBtn')?.addEventListener('click', resetFilters);
+
+  // Analytics
+  document.getElementById('loadAnalyticsBtn')?.addEventListener('click', loadAnalytics);
+  document.getElementById('analyticsTabBtn')?.addEventListener('click', function() {
+    // Auto-set date range to last 30 days
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+
+    document.getElementById('analyticsEndDate').value = endDate.toISOString().split('T')[0];
+    document.getElementById('analyticsStartDate').value = startDate.toISOString().split('T')[0];
+  });
 }
 
+/* ========== LOAD NOTIFICATIONS ========== */
 /**
- * Save notifications to localStorage
+ * Load notifications from API
  */
-function saveToStorage() {
-    window.utils.storage.set('notifications', notifications);
-}
+async function loadNotifications() {
+  try {
+    showLoading(true);
 
-/**
- * Render all notification lists
- */
-function renderAllLists() {
-    renderNotificationList('all', notifications);
-    renderNotificationList('sent', notifications.filter(n => n.status === 'sent'));
-    renderNotificationList('drafts', notifications.filter(n => n.status === 'draft'));
-}
+    const query = {
+      page: pagination.page,
+      limit: pagination.limit
+    };
 
-/**
- * Render notification list
- * @param {string} listType - Type of list (all, sent, drafts)
- * @param {Array} items - Notifications to render
- */
-function renderNotificationList(listType, items) {
-    const containerId = listType === 'all' ? 'allNotificationsList' :
-                       listType === 'sent' ? 'sentNotificationsList' :
-                       'draftNotificationsList';
+    if (filters.status) query.status = filters.status;
+    if (filters.type) query.type = filters.type;
+    if (filters.search) query.search = filters.search;
 
-    const container = document.getElementById(containerId);
+    const response = await API.get(API_CONFIG.endpoints.notifications.getAll, {}, query);
 
-    if (!container) return;
+    console.log('Notifications API response:', response);
 
-    if (items.length === 0) {
-        container.innerHTML = `
-            <div class="text-center text-muted py-5">
-                <i class="bi bi-inbox fs-1"></i>
-                <p class="mt-2">No notifications found</p>
-            </div>
-        `;
-        return;
+    // Handle response structure
+    let notificationsData = [];
+    let paginationData = null;
+
+    if (response && response.success !== false) {
+      if (response.data && response.data.notifications) {
+        notificationsData = response.data.notifications;
+        paginationData = response.data.pagination;
+      } else if (response.data && Array.isArray(response.data)) {
+        notificationsData = response.data;
+      } else if (Array.isArray(response)) {
+        notificationsData = response;
+      }
     }
 
-    // Sort by created date (newest first)
-    const sortedItems = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    notifications = notificationsData.map(n => ({
+      _id: n._id || n.id,
+      notificationId: n.notificationId,
+      type: n.type || 'ADMIN_POST',
+      postType: n.postType,
+      title: n.title,
+      body: n.body,
+      imageUrl: n.imageUrl,
+      status: n.status,
+      sendInApp: n.sendInApp,
+      sendPush: n.sendPush,
+      sendPushOnly: n.sendPushOnly,
+      commentsEnabled: n.commentsEnabled,
+      likesEnabled: n.likesEnabled,
+      productId: n.productId,
+      likeCount: n.likeCount || 0,
+      commentCount: n.commentCount || 0,
+      viewCount: n.viewCount || 0,
+      publishedAt: n.publishedAt,
+      scheduledAt: n.scheduledAt,
+      createdAt: n.createdAt,
+      createdBy: n.createdBy
+    }));
 
-    container.innerHTML = sortedItems.map(notification => `
-        <div class="notification-item border-bottom py-3" data-id="${notification.id}">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <div class="d-flex align-items-start">
-                        <div class="me-3">
-                            ${getTypeIcon(notification.type)}
-                        </div>
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1">${escapeHtml(notification.title)}</h6>
-                            <p class="text-muted mb-1 small">${truncateText(notification.message, 100)}</p>
-                            <div class="small text-muted">
-                                <i class="bi bi-people"></i> ${escapeHtml(notification.targetAudience)}
-                                <span class="mx-2">|</span>
-                                <i class="bi bi-clock"></i> ${formatDateTime(notification.createdAt)}
-                                ${notification.sentAt ? `<span class="mx-2">|</span><i class="bi bi-send"></i> Sent: ${formatDateTime(notification.sentAt)}` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 text-end">
-                    ${getStatusBadge(notification.status)}
-                    <div class="btn-group btn-group-sm mt-2" role="group">
-                        <button class="btn btn-outline-primary" onclick="viewNotification('${notification.id}')" title="View">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                        ${notification.status === 'draft' ? `
-                            <button class="btn btn-outline-success" onclick="editNotification('${notification.id}')" title="Edit">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                        ` : ''}
-                        <button class="btn btn-outline-danger" onclick="openDeleteModal('${notification.id}')" title="Delete">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
+    // Update pagination
+    if (paginationData) {
+      pagination.total = paginationData.total || 0;
+      pagination.totalPages = paginationData.totalPages || Math.ceil(pagination.total / pagination.limit);
+    }
+
+    updateStats();
+    renderNotifications();
+    renderPagination();
+
+  } catch (error) {
+    console.error('Error loading notifications:', error);
+    showNotification(error.message || 'Failed to load notifications', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ========== LOAD PRODUCTS ========== */
+/**
+ * Load products for PRODUCT_SHARE dropdown
+ */
+async function loadProducts() {
+  try {
+    const response = await API.get(API_CONFIG.endpoints.products.getAll);
+
+    let productsData = [];
+    if (response && response.success !== false) {
+      productsData = response.data && Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response) ? response : [];
+    }
+
+    products = productsData.map(p => ({
+      _id: p._id || p.id,
+      productId: p.productId,
+      name: p.name,
+      sku: p.sku
+    }));
+
+    populateProductDropdown();
+
+  } catch (error) {
+    console.error('Error loading products:', error);
+  }
+}
+
+/**
+ * Populate product dropdown
+ */
+function populateProductDropdown() {
+  const productSelect = document.getElementById('productId');
+  if (!productSelect) return;
+
+  productSelect.innerHTML = '<option value="">Select Product...</option>';
+
+  products.forEach(product => {
+    const option = document.createElement('option');
+    option.value = product.productId;
+    option.textContent = `${product.name} (${product.sku || product.productId})`;
+    productSelect.appendChild(option);
+  });
+}
+
+/* ========== RENDER FUNCTIONS ========== */
+/**
+ * Render notifications list
+ */
+function renderNotifications() {
+  const container = document.getElementById('notificationsList');
+  if (!container) return;
+
+  if (notifications.length === 0) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-inbox fs-1"></i>
+        <p class="mt-2">No notifications found</p>
+        ${filters.search || filters.status || filters.type ? '<button class="btn btn-sm btn-secondary" onclick="window.resetFilters()">Clear Filters</button>' : ''}
+      </div>
+    `;
+    return;
+  }
+
+  const html = notifications.map(notification => `
+    <div class="notification-item border-bottom py-3">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <div class="d-flex align-items-start">
+            ${notification.imageUrl ? `
+              <div class="me-3">
+                <img src="${notification.imageUrl}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" />
+              </div>
+            ` : ''}
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center mb-1">
+                <h6 class="mb-0">${escapeHtml(notification.title)}</h6>
+                <span class="ms-2">${getPostTypeBadge(notification.postType)}</span>
+                <span class="ms-2">${getStatusBadge(notification.status)}</span>
+              </div>
+              <p class="text-muted mb-2 small">${truncateText(notification.body, 150)}</p>
+              <div class="small text-muted">
+                <i class="bi bi-calendar"></i> ${formatDateTime(notification.createdAt)}
+                ${notification.publishedAt ? `<span class="mx-2">|</span><i class="bi bi-send"></i> Published: ${formatDateTime(notification.publishedAt)}` : ''}
+                ${notification.scheduledAt ? `<span class="mx-2">|</span><i class="bi bi-clock"></i> Scheduled: ${formatDateTime(notification.scheduledAt)}` : ''}
+                ${notification.status === 'PUBLISHED' ? `<span class="mx-2">|</span>👁️ ${notification.viewCount} 👍 ${notification.likeCount} 💬 ${notification.commentCount}` : ''}
+              </div>
+              <div class="small mt-1">
+                ${notification.sendInApp ? '<span class="badge bg-info me-1">In-App</span>' : ''}
+                ${notification.sendPush ? '<span class="badge bg-warning me-1">Push</span>' : ''}
+                ${notification.sendPushOnly ? '<span class="badge bg-danger me-1">Push Only</span>' : ''}
+                ${notification.commentsEnabled ? '<span class="badge bg-secondary me-1">Comments</span>' : ''}
+                ${notification.likesEnabled ? '<span class="badge bg-secondary me-1">Likes</span>' : ''}
+              </div>
             </div>
+          </div>
         </div>
-    `).join('');
+        <div class="col-md-4 text-end">
+          <div class="btn-group btn-group-sm" role="group">
+            ${notification.status === 'DRAFT' || notification.status === 'SCHEDULED' ? `
+              <button class="btn btn-outline-primary" onclick="window.editNotification('${notification._id}')" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              ${!notification.imageUrl ? `
+                <button class="btn btn-outline-info" onclick="window.openImageUpload('${notification._id}')" title="Add Image">
+                  <i class="bi bi-image"></i>
+                </button>
+              ` : ''}
+              <button class="btn btn-outline-success" onclick="window.openPublishModal('${notification._id}')" title="Publish">
+                <i class="bi bi-send"></i>
+              </button>
+            ` : ''}
+            <button class="btn btn-outline-danger" onclick="window.openDeleteModal('${notification._id}')" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  container.innerHTML = html;
 }
 
 /**
- * Get icon based on notification type
- * @param {string} type - Notification type
- * @returns {string} HTML for icon
+ * Render pagination
  */
-function getTypeIcon(type) {
-    const icons = {
-        info: '<i class="bi bi-info-circle-fill fs-4 text-info"></i>',
-        warning: '<i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>',
-        success: '<i class="bi bi-check-circle-fill fs-4 text-success"></i>',
-        error: '<i class="bi bi-x-circle-fill fs-4 text-danger"></i>'
-    };
-    return icons[type] || icons.info;
-}
+function renderPagination() {
+  const container = document.getElementById('paginationList');
+  if (!container) return;
 
-/**
- * Get status badge
- * @param {string} status - Notification status
- * @returns {string} HTML for badge
- */
-function getStatusBadge(status) {
-    const badges = {
-        sent: '<span class="badge bg-success">Sent</span>',
-        draft: '<span class="badge bg-warning">Draft</span>'
-    };
-    return badges[status] || '';
+  const showingFrom = (pagination.page - 1) * pagination.limit + 1;
+  const showingTo = Math.min(pagination.page * pagination.limit, pagination.total);
+
+  document.getElementById('showingFrom').textContent = pagination.total > 0 ? showingFrom : 0;
+  document.getElementById('showingTo').textContent = showingTo;
+  document.getElementById('totalItems').textContent = pagination.total;
+
+  if (pagination.totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+
+  // Previous button
+  html += `
+    <li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="window.changePage(${pagination.page - 1}); return false;">Previous</a>
+    </li>
+  `;
+
+  // Page numbers
+  for (let i = 1; i <= pagination.totalPages; i++) {
+    if (i === 1 || i === pagination.totalPages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+      html += `
+        <li class="page-item ${i === pagination.page ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="window.changePage(${i}); return false;">${i}</a>
+        </li>
+      `;
+    } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    }
+  }
+
+  // Next button
+  html += `
+    <li class="page-item ${pagination.page === pagination.totalPages ? 'disabled' : ''}">
+      <a class="page-link" href="#" onclick="window.changePage(${pagination.page + 1}); return false;">Next</a>
+    </li>
+  `;
+
+  container.innerHTML = html;
 }
 
 /**
  * Update statistics
  */
 function updateStats() {
-    const total = notifications.length;
-    const sent = notifications.filter(n => n.status === 'sent').length;
-    const draft = notifications.filter(n => n.status === 'draft').length;
+  const total = notifications.length;
+  const published = notifications.filter(n => n.status === 'PUBLISHED').length;
+  const draft = notifications.filter(n => n.status === 'DRAFT').length;
+  const scheduled = notifications.filter(n => n.status === 'SCHEDULED').length;
+  const deleted = notifications.filter(n => n.status === 'DELETED').length;
 
-    document.getElementById('totalCount').textContent = total;
-    document.getElementById('sentCount').textContent = sent;
-    document.getElementById('draftCount').textContent = draft;
+  document.getElementById('totalCount').textContent = pagination.total || total;
+  document.getElementById('publishedCount').textContent = published;
+  document.getElementById('draftCount').textContent = draft;
+  document.getElementById('scheduledCount').textContent = scheduled;
+  document.getElementById('deletedCount').textContent = deleted;
 }
 
+/* ========== CREATE/EDIT NOTIFICATION ========== */
 /**
  * Open create modal
  */
 function openCreateModal() {
-    currentNotificationId = null;
-    resetForm();
-    document.getElementById('modalTitle').textContent = 'Create New Notification';
-    document.getElementById('readOnlyAlert').style.display = 'none';
-    document.getElementById('actionButtons').style.display = 'block';
-    enableFormFields();
-    notificationModal.show();
+  currentNotificationId = null;
+  currentEditingId = null;
+  resetForm();
+  document.getElementById('modalTitle').textContent = 'Create New Notification';
+  document.getElementById('readOnlyAlert').style.display = 'none';
+  document.getElementById('actionButtons').style.display = 'block';
+  notificationModal.show();
 }
 
 /**
- * View notification (read-only)
- * @param {string} id - Notification ID
+ * Edit notification
  */
-function viewNotification(id) {
-    const notification = notifications.find(n => n.id === id);
-    if (!notification) return;
+async function editNotification(id) {
+  try {
+    showLoading(true);
 
-    currentNotificationId = id;
-    populateForm(notification);
-    document.getElementById('modalTitle').textContent = 'View Notification';
-
-    if (notification.status === 'sent') {
-        document.getElementById('readOnlyAlert').style.display = 'block';
-        document.getElementById('actionButtons').style.display = 'none';
-        disableFormFields();
-    } else {
-        document.getElementById('readOnlyAlert').style.display = 'none';
-        document.getElementById('actionButtons').style.display = 'block';
-        enableFormFields();
+    const notification = notifications.find(n => n._id === id);
+    if (!notification) {
+      showNotification('Notification not found', 'error');
+      return;
     }
 
-    notificationModal.show();
-}
+    if (notification.status === 'PUBLISHED') {
+      showNotification('Published notifications cannot be edited', 'warning');
+      return;
+    }
 
-/**
- * Edit notification (drafts only)
- * @param {string} id - Notification ID
- */
-function editNotification(id) {
-    const notification = notifications.find(n => n.id === id);
-    if (!notification || notification.status !== 'draft') return;
+    currentEditingId = id;
+    currentNotificationId = notification.notificationId;
 
-    currentNotificationId = id;
-    populateForm(notification);
+    // Populate form
+    document.getElementById('notificationId').value = notification._id;
+    document.getElementById('postType').value = notification.postType || '';
+    document.getElementById('notificationTitle').value = notification.title || '';
+    document.getElementById('notificationBody').value = notification.body || '';
+    document.getElementById('sendInApp').checked = notification.sendInApp !== false;
+    document.getElementById('sendPush').checked = notification.sendPush === true;
+    document.getElementById('sendPushOnly').checked = notification.sendPushOnly === true;
+    document.getElementById('commentsEnabled').checked = notification.commentsEnabled !== false;
+    document.getElementById('likesEnabled').checked = notification.likesEnabled !== false;
+    document.getElementById('currentImageUrl').value = notification.imageUrl || '';
+
+    if (notification.productId) {
+      document.getElementById('productId').value = notification.productId;
+      document.getElementById('productSelectorContainer').style.display = 'block';
+    }
+
+    updateCharCount();
+    handlePostTypeChange();
+
     document.getElementById('modalTitle').textContent = 'Edit Notification';
     document.getElementById('readOnlyAlert').style.display = 'none';
     document.getElementById('actionButtons').style.display = 'block';
-    enableFormFields();
+
     notificationModal.show();
+
+  } catch (error) {
+    console.error('Error loading notification:', error);
+    showNotification(error.message || 'Failed to load notification', 'error');
+  } finally {
+    showLoading(false);
+  }
 }
 
 /**
- * Populate form with notification data
- * @param {Object} notification - Notification object
+ * Save notification (create or update)
  */
-function populateForm(notification) {
-    document.getElementById('notificationId').value = notification.id;
-    document.getElementById('notificationTitle').value = notification.title;
-    document.getElementById('notificationMessage').value = notification.message;
-    document.getElementById('notificationType').value = notification.type;
-    document.getElementById('targetAudience').value = notification.targetAudience;
-    document.getElementById('notificationStatus').value = notification.status;
-    updateCharCount();
-}
+async function saveNotification() {
+  if (!validateForm()) return;
 
-/**
- * Reset form
- */
-function resetForm() {
-    notificationForm.reset();
-    document.getElementById('notificationId').value = '';
-    document.getElementById('notificationStatus').value = '';
-    updateCharCount();
-}
+  try {
+    showLoading(true);
 
-/**
- * Enable form fields
- */
-function enableFormFields() {
-    document.getElementById('notificationTitle').disabled = false;
-    document.getElementById('notificationMessage').disabled = false;
-    document.getElementById('notificationType').disabled = false;
-    document.getElementById('targetAudience').disabled = false;
-}
+    const payload = {
+      postType: document.getElementById('postType').value,
+      title: document.getElementById('notificationTitle').value.trim(),
+      body: document.getElementById('notificationBody').value.trim(),
+      sendInApp: document.getElementById('sendInApp').checked,
+      sendPush: document.getElementById('sendPush').checked,
+      sendPushOnly: document.getElementById('sendPushOnly').checked,
+      commentsEnabled: document.getElementById('commentsEnabled').checked,
+      likesEnabled: document.getElementById('likesEnabled').checked
+    };
 
-/**
- * Disable form fields
- */
-function disableFormFields() {
-    document.getElementById('notificationTitle').disabled = true;
-    document.getElementById('notificationMessage').disabled = true;
-    document.getElementById('notificationType').disabled = true;
-    document.getElementById('targetAudience').disabled = true;
-}
+    // Add productId if PRODUCT_SHARE type
+    if (payload.postType === 'PRODUCT_SHARE') {
+      payload.productId = document.getElementById('productId').value;
+      if (!payload.productId) {
+        showNotification('Please select a product', 'warning');
+        return;
+      }
+    }
 
-/**
- * Save notification as draft
- */
-function saveAsDraft() {
-    if (!validateForm()) return;
+    let response;
 
-    const formData = getFormData();
-    formData.status = 'draft';
-    formData.sentAt = null;
-
-    if (currentNotificationId) {
-        // Update existing draft
-        const index = notifications.findIndex(n => n.id === currentNotificationId);
-        if (index !== -1) {
-            notifications[index] = { ...notifications[index], ...formData };
-        }
+    if (currentEditingId) {
+      // Update existing notification
+      response = await API.patch(API_CONFIG.endpoints.notifications.update, payload, { id: currentEditingId });
+      showNotification('Notification updated successfully', 'success');
     } else {
-        // Create new draft
-        formData.id = generateId();
-        formData.createdAt = new Date().toISOString();
-        notifications.push(formData);
+      // Create new notification
+      response = await API.post(API_CONFIG.endpoints.notifications.create, payload);
+      showNotification('Notification created as draft', 'success');
+
+      // Store the new notification ID for image upload
+      if (response.data && response.data.notificationId) {
+        currentNotificationId = response.data.notificationId;
+        currentEditingId = response.data._id;
+      }
     }
 
-    saveToStorage();
-    renderAllLists();
-    updateStats();
     notificationModal.hide();
-    showNotification('Notification saved as draft successfully!', 'success');
+    await loadNotifications();
+
+  } catch (error) {
+    console.error('Error saving notification:', error);
+    showNotification(error.message || 'Failed to save notification', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ========== IMAGE UPLOAD ========== */
+/**
+ * Open image upload modal
+ */
+function openImageUpload(id) {
+  const notification = notifications.find(n => n._id === id);
+  if (!notification) return;
+
+  currentEditingId = id;
+  currentNotificationId = notification.notificationId;
+
+  document.getElementById('imageFileInput').value = '';
+  document.getElementById('imagePreviewContainer').style.display = 'none';
+
+  imageUploadModal.show();
 }
 
 /**
- * Send notification
+ * Preview selected image
  */
-async function sendNotification() {
-    if (!validateForm()) return;
+function previewImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-    const formData = getFormData();
+  // Validate file size (5MB max)
+  if (file.size > 5 * 1024 * 1024) {
+    showNotification('Image must be less than 5MB', 'warning');
+    event.target.value = '';
+    return;
+  }
 
-    // Show loading state
-    sendNowBtn.disabled = true;
-    sendNowBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    showNotification('Only JPEG, PNG, and WebP images are allowed', 'warning');
+    event.target.value = '';
+    return;
+  }
 
-    try {
-        // Call API to send notification
-        await sendNotificationAPI(formData);
-
-        formData.status = 'sent';
-        formData.sentAt = new Date().toISOString();
-
-        if (currentNotificationId) {
-            // Update existing notification
-            const index = notifications.findIndex(n => n.id === currentNotificationId);
-            if (index !== -1) {
-                notifications[index] = { ...notifications[index], ...formData };
-            }
-        } else {
-            // Create new notification
-            formData.id = generateId();
-            formData.createdAt = new Date().toISOString();
-            notifications.push(formData);
-        }
-
-        saveToStorage();
-        renderAllLists();
-        updateStats();
-        notificationModal.hide();
-        showNotification('Notification sent successfully!', 'success');
-
-    } catch (error) {
-        console.error('Error sending notification:', error);
-        showNotification('Failed to send notification. Please try again.', 'danger');
-    } finally {
-        // Reset button state
-        sendNowBtn.disabled = false;
-        sendNowBtn.innerHTML = '<i class="bi bi-send"></i> Send Now';
-    }
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const preview = document.getElementById('imagePreview');
+    preview.src = e.target.result;
+    document.getElementById('imagePreviewContainer').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
 }
 
 /**
- * Send notification via API
- * @param {Object} data - Notification data
- * @returns {Promise} API response
+ * Upload image to notification
  */
-async function sendNotificationAPI(data) {
-    // Mock API call using Axios
-    // In production, replace with actual API endpoint
+async function uploadImage() {
+  const fileInput = document.getElementById('imageFileInput');
+  const file = fileInput.files[0];
 
-    return new Promise((resolve, reject) => {
-        // Simulate API call
-        setTimeout(() => {
-            // Mock successful response
-            const mockResponse = {
-                data: {
-                    success: true,
-                    message: 'Notification sent successfully',
-                    notificationId: data.id || generateId()
-                }
-            };
+  if (!file) {
+    showNotification('Please select an image', 'warning');
+    return;
+  }
 
-            console.log('Mock API Call to:', API_CONFIG.baseURL + API_CONFIG.endpoints.send);
-            console.log('Request Data:', data);
-            console.log('Response:', mockResponse);
+  if (!currentEditingId) {
+    showNotification('No notification selected', 'error');
+    return;
+  }
 
-            // Simulate 90% success rate
-            if (Math.random() > 0.1) {
-                resolve(mockResponse);
-            } else {
-                reject(new Error('Network error'));
-            }
-        }, 1500); // Simulate network delay
+  try {
+    showLoading(true);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const url = API.buildURL(API_CONFIG.endpoints.notifications.uploadImage, { id: currentEditingId });
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: AUTH.getAuthHeaders(),
+      body: formData
     });
 
-    // Uncomment below for real API integration
-    /*
-    try {
-        const response = await axios.post(
-            API_CONFIG.baseURL + API_CONFIG.endpoints.send,
-            {
-                title: data.title,
-                message: data.message,
-                type: data.type,
-                targetAudience: data.targetAudience
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-        return response;
-    } catch (error) {
-        throw error;
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Upload failed');
     }
-    */
+
+    showNotification('Image uploaded successfully', 'success');
+    imageUploadModal.hide();
+    await loadNotifications();
+
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    showNotification(error.message || 'Failed to upload image', 'error');
+  } finally {
+    showLoading(false);
+  }
 }
 
+/* ========== PUBLISH/SCHEDULE ========== */
+/**
+ * Open publish modal
+ */
+function openPublishModal(id) {
+  const notification = notifications.find(n => n._id === id);
+  if (!notification) return;
+
+  currentEditingId = id;
+  currentNotificationId = notification.notificationId;
+
+  // Reset to immediate publish
+  document.getElementById('publishImmediate').checked = true;
+  document.getElementById('schedulePicker').style.display = 'none';
+
+  // Set min datetime to 5 minutes from now
+  const minDate = new Date();
+  minDate.setMinutes(minDate.getMinutes() + 5);
+  const minDateStr = minDate.toISOString().slice(0, 16);
+  document.getElementById('scheduledAt').min = minDateStr;
+  document.getElementById('scheduledAt').value = minDateStr;
+
+  publishModal.show();
+}
+
+/**
+ * Toggle schedule picker visibility
+ */
+function toggleSchedulePicker() {
+  const isScheduled = document.getElementById('publishScheduled').checked;
+  document.getElementById('schedulePicker').style.display = isScheduled ? 'block' : 'none';
+}
+
+/**
+ * Handle publish (immediate or scheduled)
+ */
+async function handlePublish() {
+  const isScheduled = document.getElementById('publishScheduled').checked;
+
+  if (isScheduled) {
+    await scheduleNotification();
+  } else {
+    await publishNotification();
+  }
+}
+
+/**
+ * Publish notification immediately
+ */
+async function publishNotification() {
+  if (!currentEditingId) return;
+
+  try {
+    showLoading(true);
+
+    const response = await API.post(API_CONFIG.endpoints.notifications.publish, {}, { id: currentEditingId });
+
+    const sent = response.data?.sent || 0;
+    const failed = response.data?.failed || 0;
+
+    showNotification(`Notification published! Sent: ${sent}, Failed: ${failed}`, 'success');
+    publishModal.hide();
+    await loadNotifications();
+
+  } catch (error) {
+    console.error('Error publishing notification:', error);
+    showNotification(error.message || 'Failed to publish notification', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+/**
+ * Schedule notification for later
+ */
+async function scheduleNotification() {
+  if (!currentEditingId) return;
+
+  const scheduledAt = document.getElementById('scheduledAt').value;
+
+  if (!scheduledAt) {
+    showNotification('Please select a date and time', 'warning');
+    return;
+  }
+
+  // Validate that scheduled time is at least 5 minutes in future
+  const scheduledDate = new Date(scheduledAt);
+  const minDate = new Date();
+  minDate.setMinutes(minDate.getMinutes() + 5);
+
+  if (scheduledDate < minDate) {
+    showNotification('Scheduled time must be at least 5 minutes in the future', 'warning');
+    return;
+  }
+
+  try {
+    showLoading(true);
+
+    const payload = {
+      scheduledAt: new Date(scheduledAt).toISOString()
+    };
+
+    const response = await API.post(API_CONFIG.endpoints.notifications.schedule, payload, { id: currentEditingId });
+
+    showNotification('Notification scheduled successfully', 'success');
+    publishModal.hide();
+    await loadNotifications();
+
+  } catch (error) {
+    console.error('Error scheduling notification:', error);
+    showNotification(error.message || 'Failed to schedule notification', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ========== DELETE ========== */
 /**
  * Open delete confirmation modal
- * @param {string} id - Notification ID
  */
 function openDeleteModal(id) {
-    deleteTargetId = id;
-    deleteModal.show();
+  deleteTargetId = id;
+  deleteModal.show();
 }
 
 /**
- * Delete notification
+ * Confirm and delete notification
  */
-function deleteNotification() {
-    if (!deleteTargetId) return;
+async function confirmDelete() {
+  if (!deleteTargetId) return;
 
-    const index = notifications.findIndex(n => n.id === deleteTargetId);
-    if (index !== -1) {
-        notifications.splice(index, 1);
-        saveToStorage();
-        renderAllLists();
-        updateStats();
-        deleteModal.hide();
-        showNotification('Notification deleted successfully!', 'success');
-    }
+  try {
+    showLoading(true);
 
+    await API.delete(API_CONFIG.endpoints.notifications.delete, { id: deleteTargetId });
+
+    showNotification('Notification deleted successfully', 'success');
+    deleteModal.hide();
     deleteTargetId = null;
+    await loadNotifications();
+
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    showNotification(error.message || 'Failed to delete notification', 'error');
+  } finally {
+    showLoading(false);
+  }
 }
 
+/* ========== ANALYTICS ========== */
 /**
- * Get form data
- * @returns {Object} Form data
+ * Load analytics data
  */
-function getFormData() {
-    return {
-        title: document.getElementById('notificationTitle').value.trim(),
-        message: document.getElementById('notificationMessage').value.trim(),
-        type: document.getElementById('notificationType').value,
-        targetAudience: document.getElementById('targetAudience').value.trim()
+async function loadAnalytics() {
+  const startDate = document.getElementById('analyticsStartDate').value;
+  const endDate = document.getElementById('analyticsEndDate').value;
+
+  if (!startDate || !endDate) {
+    showNotification('Please select both start and end dates', 'warning');
+    return;
+  }
+
+  try {
+    showLoading(true);
+
+    const query = {
+      startDate: new Date(startDate).toISOString(),
+      endDate: new Date(endDate).toISOString()
     };
+
+    const response = await API.get(API_CONFIG.endpoints.notifications.analytics, {}, query);
+
+    renderAnalytics(response.data || response);
+
+  } catch (error) {
+    console.error('Error loading analytics:', error);
+    showNotification(error.message || 'Failed to load analytics', 'error');
+  } finally {
+    showLoading(false);
+  }
 }
 
 /**
- * Validate form
- * @returns {boolean} Validation result
+ * Render analytics data
  */
-function validateForm() {
-    const title = document.getElementById('notificationTitle').value.trim();
-    const message = document.getElementById('notificationMessage').value.trim();
-    const type = document.getElementById('notificationType').value;
-    const targetAudience = document.getElementById('targetAudience').value.trim();
+function renderAnalytics(data) {
+  const container = document.getElementById('analyticsContent');
+  if (!container) return;
 
-    if (!title) {
-        showNotification('Please enter a title', 'warning');
-        return false;
-    }
+  const html = `
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h3 class="mb-0">${data.totalNotifications || 0}</h3>
+            <p class="text-muted mb-0">Total Posts</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h3 class="mb-0">${data.totalLikes || 0}</h3>
+            <p class="text-muted mb-0">Total Likes</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h3 class="mb-0">${data.totalComments || 0}</h3>
+            <p class="text-muted mb-0">Total Comments</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h3 class="mb-0">${data.totalViews || 0}</h3>
+            <p class="text-muted mb-0">Total Views</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    if (!message) {
-        showNotification('Please enter a message', 'warning');
-        return false;
-    }
+    <!-- Average Engagement -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body text-center">
+            <h4>Average Engagement Rate</h4>
+            <h2 class="text-primary">${(data.averageEngagement || 0).toFixed(2)}%</h2>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    if (!type) {
-        showNotification('Please select a notification type', 'warning');
-        return false;
-    }
+    <!-- Top Performing Post -->
+    ${data.topPerformingPost ? `
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="top-post-card">
+            <h5 class="mb-3">🏆 Top Performing Post</h5>
+            <h4 class="mb-2">${escapeHtml(data.topPerformingPost.title)}</h4>
+            <div class="d-flex gap-4">
+              <div>
+                <strong>👁️ Views:</strong> ${data.topPerformingPost.viewCount || 0}
+              </div>
+              <div>
+                <strong>👍 Likes:</strong> ${data.topPerformingPost.likeCount || 0}
+              </div>
+              <div>
+                <strong>💬 Comments:</strong> ${data.topPerformingPost.commentCount || 0}
+              </div>
+              <div>
+                <strong>📊 Engagement:</strong> ${(data.topPerformingPost.engagementRate || 0).toFixed(2)}%
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    ` : ''}
 
-    if (!targetAudience) {
-        showNotification('Please enter target audience', 'warning');
-        return false;
-    }
+    <!-- Posts by Type -->
+    ${data.postsByType ? `
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="mb-3">Posts by Type</h5>
+              <div class="row">
+                <div class="col-md-3 text-center">
+                  <h3>${data.postsByType.OFFER || 0}</h3>
+                  <p class="text-muted">📢 Offers</p>
+                </div>
+                <div class="col-md-3 text-center">
+                  <h3>${data.postsByType.POST || 0}</h3>
+                  <p class="text-muted">📝 Posts</p>
+                </div>
+                <div class="col-md-3 text-center">
+                  <h3>${data.postsByType.POST_WITH_IMAGE || 0}</h3>
+                  <p class="text-muted">🖼️ With Images</p>
+                </div>
+                <div class="col-md-3 text-center">
+                  <h3>${data.postsByType.PRODUCT_SHARE || 0}</h3>
+                  <p class="text-muted">🛍️ Product Shares</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    ` : ''}
+  `;
 
-    return true;
+  container.innerHTML = html;
+}
+
+/* ========== FILTERS & PAGINATION ========== */
+/**
+ * Apply filters
+ */
+function applyFilters() {
+  filters.search = document.getElementById('searchInput').value.trim();
+  filters.status = document.getElementById('statusFilter').value;
+  filters.type = document.getElementById('typeFilter').value;
+
+  pagination.page = 1; // Reset to first page
+  loadNotifications();
 }
 
 /**
- * Generate unique ID
- * @returns {string} Unique ID
+ * Reset filters
  */
-function generateId() {
-    return 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+function resetFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('typeFilter').value = '';
+
+  filters = { search: '', status: '', type: '' };
+  pagination.page = 1;
+
+  loadNotifications();
+}
+
+/**
+ * Change page
+ */
+function changePage(page) {
+  if (page < 1 || page > pagination.totalPages) return;
+  pagination.page = page;
+  loadNotifications();
+}
+
+/* ========== EVENT HANDLERS ========== */
+/**
+ * Handle post type change
+ */
+function handlePostTypeChange() {
+  const postType = document.getElementById('postType').value;
+  const productContainer = document.getElementById('productSelectorContainer');
+
+  if (postType === 'PRODUCT_SHARE') {
+    productContainer.style.display = 'block';
+  } else {
+    productContainer.style.display = 'none';
+  }
+}
+
+/**
+ * Handle sendPushOnly checkbox
+ */
+function handlePushOnlyChange(event) {
+  if (event.target.checked) {
+    document.getElementById('sendInApp').checked = false;
+    document.getElementById('sendPush').checked = true;
+    document.getElementById('sendInApp').disabled = true;
+  } else {
+    document.getElementById('sendInApp').disabled = false;
+  }
+}
+
+/**
+ * Handle sendInApp checkbox
+ */
+function handleSendInAppChange(event) {
+  if (event.target.checked && document.getElementById('sendPushOnly').checked) {
+    document.getElementById('sendPushOnly').checked = false;
+  }
 }
 
 /**
  * Update character count
  */
 function updateCharCount() {
-    const message = document.getElementById('notificationMessage').value;
-    document.getElementById('charCount').textContent = message.length;
+  const body = document.getElementById('notificationBody').value;
+  document.getElementById('charCount').textContent = body.length;
+}
+
+/* ========== VALIDATION ========== */
+/**
+ * Validate form
+ */
+function validateForm() {
+  const postType = document.getElementById('postType').value;
+  const title = document.getElementById('notificationTitle').value.trim();
+  const body = document.getElementById('notificationBody').value.trim();
+  const sendInApp = document.getElementById('sendInApp').checked;
+  const sendPush = document.getElementById('sendPush').checked;
+  const sendPushOnly = document.getElementById('sendPushOnly').checked;
+
+  if (!postType) {
+    showNotification('Please select a post type', 'warning');
+    return false;
+  }
+
+  if (!title) {
+    showNotification('Please enter a title', 'warning');
+    return false;
+  }
+
+  if (title.length > 200) {
+    showNotification('Title must be 200 characters or less', 'warning');
+    return false;
+  }
+
+  if (!body) {
+    showNotification('Please enter a message', 'warning');
+    return false;
+  }
+
+  if (body.length > 5000) {
+    showNotification('Message must be 5000 characters or less', 'warning');
+    return false;
+  }
+
+  if (!sendInApp && !sendPush && !sendPushOnly) {
+    showNotification('Please select at least one delivery option', 'warning');
+    return false;
+  }
+
+  return true;
 }
 
 /**
- * Update type preview (visual feedback)
+ * Reset form
  */
-function updateTypePreview() {
-    const type = document.getElementById('notificationType').value;
-    const select = document.getElementById('notificationType');
+function resetForm() {
+  document.getElementById('notificationForm').reset();
+  document.getElementById('notificationId').value = '';
+  document.getElementById('currentImageUrl').value = '';
+  document.getElementById('sendInApp').checked = true;
+  document.getElementById('sendPush').checked = false;
+  document.getElementById('sendPushOnly').checked = false;
+  document.getElementById('commentsEnabled').checked = true;
+  document.getElementById('likesEnabled').checked = true;
+  document.getElementById('productSelectorContainer').style.display = 'none';
+  updateCharCount();
+}
 
-    // Remove all type classes
-    select.classList.remove('border-info', 'border-warning', 'border-success', 'border-danger');
-
-    // Add class based on type
-    if (type) {
-        const classMap = {
-            info: 'border-info',
-            warning: 'border-warning',
-            success: 'border-success',
-            error: 'border-danger'
-        };
-        select.classList.add(classMap[type]);
-    }
+/* ========== UTILITY FUNCTIONS ========== */
+/**
+ * Get status badge HTML
+ */
+function getStatusBadge(status) {
+  const badges = {
+    DRAFT: '<span class="badge badge-draft">Draft</span>',
+    SCHEDULED: '<span class="badge badge-scheduled">Scheduled</span>',
+    PUBLISHED: '<span class="badge badge-published">Published</span>',
+    DELETED: '<span class="badge badge-deleted">Deleted</span>'
+  };
+  return badges[status] || '';
 }
 
 /**
- * Show notification message
- * @param {string} message - Message to show
- * @param {string} type - Message type
+ * Get post type badge HTML
  */
-function showNotification(message, type = 'info') {
-    if (window.adminPanel && window.adminPanel.showNotification) {
-        window.adminPanel.showNotification(message, type);
-    } else {
-        alert(message);
-    }
+function getPostTypeBadge(postType) {
+  const badges = {
+    OFFER: '<span class="badge bg-warning text-dark">Offer</span>',
+    POST: '<span class="badge bg-primary">Post</span>',
+    POST_WITH_IMAGE: '<span class="badge bg-info">Post+Image</span>',
+    PRODUCT_SHARE: '<span class="badge bg-success">Product</span>'
+  };
+  return badges[postType] || '';
 }
 
 /**
  * Format date and time
- * @param {string} dateString - ISO date string
- * @returns {string} Formatted date
  */
 function formatDateTime(dateString) {
-    if (window.utils && window.utils.formatDateTime) {
-        return window.utils.formatDateTime(dateString);
-    }
-    return new Date(dateString).toLocaleString();
+  if (!dateString) return 'N/A';
+  if (window.utils && window.utils.formatDateTime) {
+    return window.utils.formatDateTime(dateString);
+  }
+  return new Date(dateString).toLocaleString();
 }
 
 /**
  * Truncate text
- * @param {string} text - Text to truncate
- * @param {number} maxLength - Maximum length
- * @returns {string} Truncated text
  */
 function truncateText(text, maxLength) {
-    if (window.utils && window.utils.truncateText) {
-        return window.utils.truncateText(text, maxLength);
-    }
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  if (!text) return '';
+  if (window.utils && window.utils.truncateText) {
+    return window.utils.truncateText(text, maxLength);
+  }
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 }
 
 /**
- * Escape HTML to prevent XSS
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
+ * Escape HTML
  */
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
-// Make functions globally available for onclick handlers
-window.viewNotification = viewNotification;
+/**
+ * Show notification toast
+ */
+function showNotification(message, type = 'info') {
+  if (window.adminPanel && window.adminPanel.showNotification) {
+    window.adminPanel.showNotification(message, type);
+  } else {
+    alert(message);
+  }
+}
+
+/**
+ * Show/hide loading overlay
+ */
+function showLoading(show) {
+  let overlay = document.getElementById('loadingOverlay');
+
+  if (show) {
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'loadingOverlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      `;
+      overlay.innerHTML = '<div class="spinner-border text-light" role="status"><span class="visually-hidden">Loading...</span></div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+  } else {
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+  }
+}
+
+/**
+ * Debounce function
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/* ========== GLOBAL EXPORTS ========== */
+// Make functions available globally for onclick handlers
 window.editNotification = editNotification;
 window.openDeleteModal = openDeleteModal;
+window.openImageUpload = openImageUpload;
+window.openPublishModal = openPublishModal;
+window.changePage = changePage;
+window.resetFilters = resetFilters;
+
+console.log('Notification management system loaded successfully!');
