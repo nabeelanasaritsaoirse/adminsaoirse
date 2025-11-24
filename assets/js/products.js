@@ -196,26 +196,38 @@ function setupEventListeners() {
 /* ---------- Load Categories ---------- */
 
 async function loadCategories() {
+  console.log('📂 [PRODUCTS] loadCategories() - Loading categories for dropdown');
   try {
     // Use dropdown endpoint: GET /api/categories/dropdown/all
+    console.log('🌐 [PRODUCTS] Calling API.get("/categories/dropdown/all")');
     const response = await API.get(
       "/categories/dropdown/all",
       {},
       {}
     );
+    console.log('✅ [PRODUCTS] Categories response:', response);
+
     const categorySelect = document.getElementById("productCategory");
 
-    if (!categorySelect) return;
+    if (!categorySelect) {
+      console.warn('⚠️ [PRODUCTS] Category select element not found');
+      return;
+    }
 
     let categories = [];
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         categories = response.data;
+        console.log('✅ [PRODUCTS] Found categories in data array, length:', categories.length);
       } else if (Array.isArray(response)) {
         categories = response;
+        console.log('✅ [PRODUCTS] Response is direct array, length:', categories.length);
       }
+    } else {
+      console.warn('⚠️ [PRODUCTS] Response success is false or response is null');
     }
 
+    console.log('🔽 [PRODUCTS] Populating category dropdown...');
     categorySelect.innerHTML = '<option value="">Select Category</option>';
     categories.forEach((cat) => {
       const option = document.createElement("option");
@@ -226,6 +238,7 @@ async function loadCategories() {
 
       // Add subcategories if they exist
       if (cat.subCategories && Array.isArray(cat.subCategories)) {
+        console.log(`📁 [PRODUCTS] Adding ${cat.subCategories.length} subcategories for:`, cat.name);
         cat.subCategories.forEach((subCat) => {
           const subOption = document.createElement("option");
           subOption.value = subCat._id || subCat.id || subCat.categoryId;
@@ -237,16 +250,19 @@ async function loadCategories() {
         });
       }
     });
+    console.log('✅ [PRODUCTS] Category dropdown populated successfully');
   } catch (err) {
-    console.error("Load categories error:", err);
+    console.error("❌ [PRODUCTS] Load categories error:", err);
   }
 }
 
 /* ---------- Load Products ---------- */
 
 async function loadProducts() {
+  console.log('📦 [PRODUCTS] loadProducts() - Starting to load products');
   try {
     showLoading(true);
+    console.log('⏳ [PRODUCTS] Loading overlay shown');
 
     // Build query params for backend pagination and filters
     const queryParams = {
@@ -258,32 +274,42 @@ async function loadProducts() {
     // Add search filter if exists
     if (searchInput && searchInput.value.trim()) {
       queryParams.search = searchInput.value.trim();
+      console.log('🔍 [PRODUCTS] Search query:', queryParams.search);
     }
 
     // Add status filter if exists
     if (statusFilter && statusFilter.value) {
       queryParams.status = statusFilter.value;
+      console.log('📊 [PRODUCTS] Status filter:', queryParams.status);
     }
 
     // Add variants filter if exists
     if (variantsFilter && variantsFilter.value !== "") {
       queryParams.hasVariants = variantsFilter.value;
+      console.log('🔀 [PRODUCTS] Variants filter:', queryParams.hasVariants);
     }
 
+    console.log('📦 [PRODUCTS] Query params:', queryParams);
+
     // Use API endpoint: GET /api/products with query params
+    console.log('🌐 [PRODUCTS] Calling API.get("/products")');
     const response = await API.get(
       "/products",
       {},
       queryParams
     );
+    console.log('✅ [PRODUCTS] API Response received:', response);
 
     let productsData = [];
+    console.log('🔍 [PRODUCTS] Checking response structure...');
 
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         productsData = response.data;
+        console.log('✅ [PRODUCTS] Found data array, length:', productsData.length);
       } else if (Array.isArray(response)) {
         productsData = response;
+        console.log('✅ [PRODUCTS] Response is direct array, length:', productsData.length);
       }
 
       // Update pagination state from API response
@@ -291,9 +317,13 @@ async function loadProducts() {
         pagination.page = response.pagination.current || pagination.page;
         pagination.pages = response.pagination.pages || 1;
         pagination.total = response.pagination.total || 0;
+        console.log('📊 [PRODUCTS] Pagination updated:', pagination);
       }
+    } else {
+      console.warn('⚠️ [PRODUCTS] Response success is false or response is null');
     }
 
+    console.log('🔄 [PRODUCTS] Mapping products data...');
     products = productsData.map((p) => {
       // Normalize description - handle both string and object formats
       let descText = "";
@@ -345,16 +375,22 @@ async function loadProducts() {
         updatedAt: p.updatedAt || new Date().toISOString(),
       };
     });
+    console.log('✅ [PRODUCTS] Products mapped successfully. Total count:', products.length);
 
+    console.log('📊 [PRODUCTS] Calling updateStats()...');
     updateStats(pagination.total);
+    console.log('🎨 [PRODUCTS] Calling renderProducts()...');
     renderProducts();
+    console.log('✅ [PRODUCTS] loadProducts() completed successfully');
   } catch (error) {
-    console.error("Error loading products:", error);
+    console.error("❌ [PRODUCTS] Error loading products:", error);
+    console.error("❌ [PRODUCTS] Error details:", error.message, error.stack);
     showNotification(
       "Failed to load products: " + (error.message || error),
       "error"
     );
   } finally {
+    console.log('⏳ [PRODUCTS] Hiding loading overlay');
     showLoading(false);
   }
 }
@@ -640,7 +676,11 @@ function removeImagePreview(index) {
 }
 
 async function uploadProductImages(productId) {
+  console.log('🖼️ [PRODUCTS] uploadProductImages() - productId:', productId);
+  console.log('🖼️ [PRODUCTS] Selected image files:', selectedImageFiles);
+
   if (!selectedImageFiles || selectedImageFiles.length === 0) {
+    console.log('⚠️ [PRODUCTS] No images to upload');
     return;
   }
 
@@ -649,8 +689,11 @@ async function uploadProductImages(productId) {
     let failedCount = 0;
 
     // Upload each image one by one
+    console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} images one by one...`);
     for (let i = 0; i < selectedImageFiles.length; i++) {
       const file = selectedImageFiles[i];
+      console.log(`📤 [PRODUCTS] Uploading image ${i + 1}/${selectedImageFiles.length}:`, file.name);
+
       const formData = new FormData();
 
       // Ek image ek baar mein
@@ -659,9 +702,10 @@ async function uploadProductImages(productId) {
 
       try {
         // PUT /api/products/:productId/images - har image ke liye alag call
-        const response = await fetch(
-          `${window.BASE_URL}/products/${productId}/images`,
-          {
+        const url = `${window.BASE_URL}/products/${productId}/images`;
+        console.log(`🌐 [PRODUCTS] Uploading to URL:`, url);
+
+        const response = await fetch(url, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${AUTH.getToken()}`
@@ -671,18 +715,22 @@ async function uploadProductImages(productId) {
         );
 
         const result = await response.json();
+        console.log(`📥 [PRODUCTS] Image ${i + 1} response:`, result);
 
         if (result.success) {
           uploadedCount++;
+          console.log(`✅ [PRODUCTS] Image ${i + 1} uploaded successfully`);
         } else {
           failedCount++;
-          console.error(`Failed to upload image ${i + 1}:`, result.message);
+          console.error(`❌ [PRODUCTS] Failed to upload image ${i + 1}:`, result.message);
         }
       } catch (err) {
         failedCount++;
-        console.error(`Error uploading image ${i + 1}:`, err);
+        console.error(`❌ [PRODUCTS] Error uploading image ${i + 1}:`, err);
       }
     }
+
+    console.log(`📊 [PRODUCTS] Upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`);
 
     if (uploadedCount > 0) {
       showNotification(`${uploadedCount} images uploaded successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, uploadedCount === selectedImageFiles.length ? 'success' : 'info');
@@ -690,14 +738,19 @@ async function uploadProductImages(productId) {
       showNotification('Failed to upload images', 'error');
     }
   } catch (err) {
-    console.error('Image upload error:', err);
+    console.error('❌ [PRODUCTS] Image upload error:', err);
     showNotification('Failed to upload images: ' + err.message, 'error');
   }
 }
 
 // Upload variant images after product creation
 async function uploadVariantImages(productId, variantImageFiles, createdVariants) {
+  console.log('🖼️ [PRODUCTS] uploadVariantImages() - productId:', productId);
+  console.log('🖼️ [PRODUCTS] Variant image files:', variantImageFiles);
+  console.log('🖼️ [PRODUCTS] Created variants:', createdVariants);
+
   if (!variantImageFiles || variantImageFiles.length === 0) {
+    console.log('⚠️ [PRODUCTS] No variant images to upload');
     return;
   }
 
@@ -706,13 +759,17 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
     let failedCount = 0;
 
     // Upload each variant image one by one
+    console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`);
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
+      console.log(`📤 [PRODUCTS] Uploading variant image ${i + 1}/${variantImageFiles.length} for variant index:`, variantIndex);
 
       // Get the corresponding variant from created variants
       const variant = createdVariants && createdVariants[variantIndex];
+      console.log(`🔍 [PRODUCTS] Found variant for index ${variantIndex}:`, variant);
+
       if (!variant || !variant.variantId) {
-        console.error(`Variant ID not found for variant index ${variantIndex}`);
+        console.error(`❌ [PRODUCTS] Variant ID not found for variant index ${variantIndex}`);
         failedCount++;
         continue;
       }
@@ -723,9 +780,10 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
 
       try {
         // PUT /api/products/:productId/variants/:variantId/images
-        const response = await fetch(
-          `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`,
-          {
+        const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
+        console.log(`🌐 [PRODUCTS] Uploading variant image to URL:`, url);
+
+        const response = await fetch(url, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${AUTH.getToken()}`
@@ -735,24 +793,28 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
         );
 
         const result = await response.json();
+        console.log(`📥 [PRODUCTS] Variant image ${i + 1} response:`, result);
 
         if (result.success) {
           uploadedCount++;
+          console.log(`✅ [PRODUCTS] Variant image ${i + 1} uploaded successfully`);
         } else {
           failedCount++;
-          console.error(`Failed to upload variant image ${i + 1}:`, result.message);
+          console.error(`❌ [PRODUCTS] Failed to upload variant image ${i + 1}:`, result.message);
         }
       } catch (err) {
         failedCount++;
-        console.error(`Error uploading variant image ${i + 1}:`, err);
+        console.error(`❌ [PRODUCTS] Error uploading variant image ${i + 1}:`, err);
       }
     }
+
+    console.log(`📊 [PRODUCTS] Variant images upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`);
 
     if (uploadedCount > 0) {
       showNotification(`${uploadedCount} variant images uploaded${failedCount > 0 ? `, ${failedCount} failed` : ''}`, 'info');
     }
   } catch (err) {
-    console.error('Variant image upload error:', err);
+    console.error('❌ [PRODUCTS] Variant image upload error:', err);
   }
 }
 
@@ -1063,6 +1125,7 @@ function removeVariantField(idx) {
 }
 
 async function saveProduct() {
+  console.log('💾 [PRODUCTS] saveProduct() - Starting save process');
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
   const description = document
@@ -1070,6 +1133,8 @@ async function saveProduct() {
     .value.trim();
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
+
+  console.log('📝 [PRODUCTS] Form data:', { name, brand, categoryId, sku });
 
   const priceInput = document.getElementById("productPrice");
   const salePriceInput = document.getElementById("productSalePrice");
@@ -1083,48 +1148,63 @@ async function saveProduct() {
       ? NaN
       : parseInt(stockRaw, 10);
 
+  console.log('💰 [PRODUCTS] Pricing data:', { price, salePrice, stock });
+
   const availabilityValue =
     document.getElementById("productAvailability").value;
   const status =
     document.querySelector('input[name="status"]:checked')?.value || "draft";
   const hasVariants = document.getElementById("hasVariants").checked;
 
+  console.log('📊 [PRODUCTS] Status data:', { availabilityValue, status, hasVariants });
+
+  // Validation
   if (!name) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Product name is required');
     alert("Product name is required");
     return;
   }
   if (!categoryId) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Category is required');
     alert("Category is required");
     return;
   }
   if (isNaN(price) || price <= 0) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Price must be greater than 0');
     alert("Price must be greater than 0");
     return;
   }
   if (!description) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Description is required');
     alert("Description is required");
     return;
   }
 
   // Stock required and MUST be > 0 (QA requirement)
   if (stockRaw === "") {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Stock is required');
     alert("Stock is required");
     return;
   }
   if (isNaN(stock) || stock <= 0) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Stock must be greater than 0');
     alert("Stock must be greater than 0");
     return;
   }
 
   // Sale price validation
   if (!isNaN(salePrice) && salePrice > 0 && salePrice > price) {
+    console.warn('⚠️ [PRODUCTS] Validation failed: Sale price cannot be greater than regular price');
     alert("Sale price cannot be greater than regular price");
     return;
   }
 
+  console.log('✅ [PRODUCTS] All validations passed');
+
   // Map UI availability to backend format
   const { stockStatus, isAvailable } =
     mapUIAvailabilityToBackend(availabilityValue);
+  console.log('🔄 [PRODUCTS] Mapped availability:', { stockStatus, isAvailable });
 
   // Get category name and parent info from selected option
   const categorySelect = document.getElementById("productCategory");
@@ -1132,12 +1212,14 @@ async function saveProduct() {
   const categoryName = selectedOption.getAttribute('data-category-name') || selectedOption.text.trim();
   const parentId = selectedOption.getAttribute('data-parent-id');
   const parentName = selectedOption.getAttribute('data-parent-name');
+  console.log('📁 [PRODUCTS] Category info:', { categoryId, categoryName, parentId, parentName });
 
   // Collect additional fields
   const isFeatured = document.getElementById("isFeatured")?.checked || false;
   const isPopular = document.getElementById("isPopular")?.checked || false;
   const isBestSeller = document.getElementById("isBestSeller")?.checked || false;
   const isTrending = document.getElementById("isTrending")?.checked || false;
+  console.log('🏷️ [PRODUCTS] Product flags:', { isFeatured, isPopular, isBestSeller, isTrending });
 
   const warrantyDays = parseInt(document.getElementById("warrantyDays")?.value) || 0;
   const warrantyType = document.getElementById("warrantyType")?.value.trim() || "";
@@ -1250,12 +1332,16 @@ async function saveProduct() {
     payload.plans = plans;
   }
 
+  console.log('📦 [PRODUCTS] Building payload...');
+
   // Collect variant data and files
   let variantImageFiles = []; // Store variant image files with variant index
 
   if (hasVariants) {
+    console.log('🔀 [PRODUCTS] Collecting variants...');
     const variantCards = document.querySelectorAll(".variant-card");
     const variants = [];
+    console.log('🔢 [PRODUCTS] Found variant cards:', variantCards.length);
 
     variantCards.forEach((card, idx) => {
       const colorInput = card.querySelector("[data-variant-color]");
@@ -1300,41 +1386,56 @@ async function saveProduct() {
     });
 
     if (variants.length === 0) {
+      console.warn('⚠️ [PRODUCTS] No valid variants found');
       alert("Add at least one variant with valid price");
       return;
     }
 
+    console.log('✅ [PRODUCTS] Collected variants:', variants);
     payload.variants = variants;
   }
 
+  console.log('📦 [PRODUCTS] Final payload:', payload);
+
   try {
     showLoading(true);
+    console.log('⏳ [PRODUCTS] Loading overlay shown');
+
     let savedProductId = currentProductId;
     let createdVariants = null;
 
     if (currentProductId) {
       // UPDATE: PUT /api/products/:productId - use productId in URL
+      console.log('🔄 [PRODUCTS] UPDATE mode - productId:', currentProductId);
+      console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
       const updateResponse = await API.put("/products/:productId", payload, {
         productId: currentProductId,
       });
+      console.log('✅ [PRODUCTS] Update response:', updateResponse);
 
       // Get updated variants from response
       if (updateResponse && updateResponse.data && updateResponse.data.variants) {
         createdVariants = updateResponse.data.variants;
+        console.log('🔀 [PRODUCTS] Got updated variants from response:', createdVariants);
       }
 
       showNotification("Product updated successfully", "success");
     } else {
       // CREATE: POST /api/products
+      console.log('➕ [PRODUCTS] CREATE mode - new product');
+      console.log('🌐 [PRODUCTS] Calling API.post("/products")');
       const response = await API.post("/products", payload);
+      console.log('✅ [PRODUCTS] Create response:', response);
 
       // Get the created product ID and variants from response
       if (response && response.data) {
         if (response.data.productId) {
           savedProductId = response.data.productId;
+          console.log('🆔 [PRODUCTS] Got product ID from response:', savedProductId);
         }
         if (response.data.variants) {
           createdVariants = response.data.variants;
+          console.log('🔀 [PRODUCTS] Got created variants from response:', createdVariants);
         }
       }
 
@@ -1343,20 +1444,24 @@ async function saveProduct() {
 
     // Upload product images if any selected (one by one)
     if (savedProductId && selectedImageFiles.length > 0) {
+      console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`);
       await uploadProductImages(savedProductId);
     }
 
     // Upload variant images if any selected (one by one)
     if (savedProductId && variantImageFiles.length > 0 && createdVariants) {
+      console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`);
       await uploadVariantImages(savedProductId, variantImageFiles, createdVariants);
     }
 
+    console.log('🚪 [PRODUCTS] Closing modal...');
     const modalEl = document.getElementById("productModal");
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
 
+    console.log('🧹 [PRODUCTS] Cleaning up form...');
     productForm.reset();
     currentProductId = null;
     variantCount = 0;
@@ -1366,12 +1471,17 @@ async function saveProduct() {
     if (plansList) plansList.innerHTML = "";
     if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
     if (productImagesInput) productImagesInput.value = "";
+
+    console.log('🔄 [PRODUCTS] Reloading products...');
     await loadProducts();
+    console.log('✅ [PRODUCTS] saveProduct() completed successfully');
   } catch (err) {
-    console.error("Save product error:", err);
-    console.error("Current Product ID:", currentProductId);
+    console.error("❌ [PRODUCTS] Save product error:", err);
+    console.error("❌ [PRODUCTS] Error details:", err.message, err.stack);
+    console.error("❌ [PRODUCTS] Current Product ID:", currentProductId);
     showNotification("Error: " + (err.message || "Failed to save product"), "error");
   } finally {
+    console.log('⏳ [PRODUCTS] Hiding loading overlay');
     showLoading(false);
   }
 }
@@ -1401,23 +1511,36 @@ async function toggleProductStatus(productId) {
 }
 
 async function deleteProduct(productId) {
+  console.log('🗑️ [PRODUCTS] deleteProduct() - productId:', productId);
   const product = products.find((p) => p.productId === productId);
+  console.log('🔍 [PRODUCTS] Found product:', product);
+
   if (!product) {
+    console.error('❌ [PRODUCTS] Product not found');
     showNotification("Product not found", "error");
     return;
   }
 
+  console.log('❓ [PRODUCTS] Showing confirmation dialog...');
   const confirmed = confirm(`Delete "${product.name}"?`);
-  if (!confirmed) return;
+  console.log('✅ [PRODUCTS] User confirmed:', confirmed);
+
+  if (!confirmed) {
+    console.log('❌ [PRODUCTS] User cancelled deletion');
+    return;
+  }
 
   try {
     showLoading(true);
+    console.log('⏳ [PRODUCTS] Loading overlay shown');
     // DELETE: DELETE /api/products/:productId
+    console.log('🌐 [PRODUCTS] Calling API.delete("/products/:productId")');
     await API.delete("/products/:productId", { productId });
+    console.log('✅ [PRODUCTS] Product deleted successfully');
     showNotification("Product deleted successfully", "success");
     await loadProducts();
   } catch (err) {
-    console.error("Delete product error:", err);
+    console.error("❌ [PRODUCTS] Delete product error:", err);
     showNotification(err.message || "Failed to delete product", "error");
   } finally {
     showLoading(false);

@@ -86,6 +86,16 @@ const API_CONFIG = {
       settings: "/admin/notifications/:id/settings",
       analytics: "/admin/notifications/analytics",
       deleteComment: "/admin/notifications/:notificationId/comments/:commentId"
+    },
+
+    chat: {
+      conversations: "/admin/chat/conversations",
+      messages: "/admin/chat/conversations/:conversationId/messages",
+      reports: "/admin/chat/reports",
+      reportAction: "/admin/chat/reports/:reportId/action",
+      deleteMessage: "/admin/chat/messages/:messageId",
+      broadcast: "/admin/chat/broadcast",
+      analytics: "/admin/chat/analytics"
     }
   }
 };
