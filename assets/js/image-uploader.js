@@ -57,29 +57,47 @@ function initImageUploader() {
    ----------------------------- */
 
 async function loadBanners() {
+  console.log('📥 [LOAD BANNERS] Step 1: Starting to load banners...');
+
   const tbody = document.getElementById('bannersTableBody');
   const bannerCount = document.getElementById('bannerCount');
   if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Loading...</td></tr>`;
   if (bannerCount) bannerCount.textContent = '(loading...)';
 
+  console.log('📥 [LOAD BANNERS] Step 2: Table elements retrieved and loading state set');
+
   try {
-    const res = await API.get('/banners/admin/all', {}, { page: 1, limit: 200 });
+    const url = '/banners/admin/all';
+    const params = { page: 1, limit: 200 };
+    console.log('📥 [LOAD BANNERS] Step 3: Making GET request to:', url, 'with params:', params);
+
+    const res = await API.get(url, {}, params);
+    console.log('📥 [LOAD BANNERS] Step 4: Response received:', res);
+
     // some APIs return { success, data } while others return array; handle both
     const banners = res.data || res || [];
+    console.log('📥 [LOAD BANNERS] Step 5: Extracted banners array, count:', banners.length);
 
     if (bannerCount) bannerCount.textContent = `(${res.pagination?.total ?? banners.length})`;
 
     if (!banners || banners.length === 0) {
+      console.log('⚠️ [LOAD BANNERS] No banners found in response');
       if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">No banners found</td></tr>`;
       return;
     }
 
+    console.log('📥 [LOAD BANNERS] Step 6: Rendering', banners.length, 'banners to table');
     if (tbody) {
       tbody.innerHTML = '';
-      banners.forEach((b, i) => tbody.insertAdjacentHTML('beforeend', renderBannerRow(b, i + 1)));
+      banners.forEach((b, i) => {
+        console.log('📥 [LOAD BANNERS] Rendering banner', i + 1, ':', b.title);
+        tbody.insertAdjacentHTML('beforeend', renderBannerRow(b, i + 1));
+      });
     }
+    console.log('✅ [LOAD BANNERS] Step 7: Banners loaded successfully!');
   } catch (err) {
-    console.error('Error loading banners:', err);
+    console.error('❌ [LOAD BANNERS] Error occurred:', err);
+    console.error('❌ [LOAD BANNERS] Error stack:', err.stack);
     notify('Failed to load banners: ' + (err.message || ''), 'error');
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Failed to load</td></tr>`;
     if (bannerCount) bannerCount.textContent = '(error)';
@@ -117,6 +135,8 @@ function renderBannerRow(b, idx) {
 }
 
 async function uploadBanner(e) {
+  console.log('🔵 [BANNER UPLOAD] Step 1: Starting banner upload process...');
+
   // form fields
   const titleEl = document.getElementById('bannerTitle');
   const descEl = document.getElementById('bannerDescription');
@@ -125,22 +145,40 @@ async function uploadBanner(e) {
   const linkEl = document.getElementById('bannerLink');
   const fileInput = document.getElementById('bannerImage');
 
+  console.log('🔵 [BANNER UPLOAD] Step 2: Retrieved form elements');
+
   const title = titleEl?.value?.trim() || '';
   const description = descEl?.value?.trim() || '';
   const platform = platformEl?.value || 'both';
   const displayOrder = orderEl?.value || 0;
   const linkUrl = linkEl?.value?.trim() || '';
 
+  console.log('🔵 [BANNER UPLOAD] Step 3: Form data collected:', {
+    title,
+    description: description.substring(0, 50) + '...',
+    platform,
+    displayOrder,
+    linkUrl
+  });
+
   if (!title) {
+    console.warn('⚠️ [BANNER UPLOAD] Validation failed: Title is empty');
     notify('Enter banner title', 'warning');
     return;
   }
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    console.warn('⚠️ [BANNER UPLOAD] Validation failed: No image selected');
     notify('Select an image file', 'warning');
     return;
   }
 
   const file = fileInput.files[0];
+  console.log('🔵 [BANNER UPLOAD] Step 4: File selected:', {
+    name: file.name,
+    size: file.size + ' bytes',
+    type: file.type
+  });
+
   const formData = new FormData();
   formData.append('title', title);
   formData.append('description', description);
@@ -149,22 +187,42 @@ async function uploadBanner(e) {
   formData.append('linkUrl', linkUrl);
   formData.append('image', file);
 
+  console.log('🔵 [BANNER UPLOAD] Step 5: FormData created with all fields');
+
   try {
     const headers = AUTH.getAuthHeaders(); // do NOT set Content-Type
-    const resp = await fetch(`${API_CONFIG.baseURL}/banners`, {
+    console.log('🔵 [BANNER UPLOAD] Step 6: Auth headers retrieved:', headers);
+
+    const url = `${API_CONFIG.baseURL}/banners`;
+    console.log('🔵 [BANNER UPLOAD] Step 7: Making POST request to:', url);
+
+    const resp = await fetch(url, {
       method: 'POST',
       headers,
       body: formData
     });
 
-    const data = await safeJson(resp);
-    if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
+    console.log('🔵 [BANNER UPLOAD] Step 8: Response received:', {
+      status: resp.status,
+      statusText: resp.statusText,
+      ok: resp.ok
+    });
 
+    const data = await safeJson(resp);
+    console.log('🔵 [BANNER UPLOAD] Step 9: Response data:', data);
+
+    if (!resp.ok) {
+      console.error('❌ [BANNER UPLOAD] Request failed with status:', resp.status);
+      throw new Error(data?.message || `HTTP ${resp.status}`);
+    }
+
+    console.log('✅ [BANNER UPLOAD] Step 10: Banner uploaded successfully!');
     notify('Banner uploaded', 'success');
     clearBannerForm();
     await loadBanners();
   } catch (err) {
-    console.error('Error uploading banner:', err);
+    console.error('❌ [BANNER UPLOAD] Error occurred:', err);
+    console.error('❌ [BANNER UPLOAD] Error stack:', err.stack);
     notify('Banner upload failed: ' + (err.message || ''), 'error');
   }
 }
@@ -284,30 +342,62 @@ function openReplaceBannerImageModal(bannerId) {
   modal.show();
 
   document.getElementById('confirmReplaceBanner').addEventListener('click', async () => {
+    console.log('🟢 [BANNER IMAGE REPLACE] Step 1: Starting image replacement for banner:', bannerId);
+
     const fileInput = document.getElementById('replaceBannerFile');
+    console.log('🟢 [BANNER IMAGE REPLACE] Step 2: Retrieved file input element');
+
     if (!fileInput.files || fileInput.files.length === 0) {
+      console.warn('⚠️ [BANNER IMAGE REPLACE] Validation failed: No image selected');
       notify('Select an image', 'warning');
       return;
     }
+
     const file = fileInput.files[0];
+    console.log('🟢 [BANNER IMAGE REPLACE] Step 3: File selected:', {
+      name: file.name,
+      size: file.size + ' bytes',
+      type: file.type
+    });
+
     const formData = new FormData();
     formData.append('image', file);
+    console.log('🟢 [BANNER IMAGE REPLACE] Step 4: FormData created with image');
 
     try {
       const headers = AUTH.getAuthHeaders();
-      const resp = await fetch(`${API_CONFIG.baseURL}/banners/${bannerId}/image`, {
+      console.log('🟢 [BANNER IMAGE REPLACE] Step 5: Auth headers retrieved:', headers);
+
+      const url = `${API_CONFIG.baseURL}/banners/${bannerId}/image`;
+      console.log('🟢 [BANNER IMAGE REPLACE] Step 6: Making PUT request to:', url);
+
+      const resp = await fetch(url, {
         method: 'PUT',
         headers,
         body: formData
       });
-      const data = await safeJson(resp);
-      if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
+      console.log('🟢 [BANNER IMAGE REPLACE] Step 7: Response received:', {
+        status: resp.status,
+        statusText: resp.statusText,
+        ok: resp.ok
+      });
+
+      const data = await safeJson(resp);
+      console.log('🟢 [BANNER IMAGE REPLACE] Step 8: Response data:', data);
+
+      if (!resp.ok) {
+        console.error('❌ [BANNER IMAGE REPLACE] Request failed with status:', resp.status);
+        throw new Error(data?.message || `HTTP ${resp.status}`);
+      }
+
+      console.log('✅ [BANNER IMAGE REPLACE] Step 9: Banner image replaced successfully!');
       notify('Banner image replaced', 'success');
       modal.hide();
       await loadBanners();
     } catch (err) {
-      console.error('Error replacing image:', err);
+      console.error('❌ [BANNER IMAGE REPLACE] Error occurred:', err);
+      console.error('❌ [BANNER IMAGE REPLACE] Error stack:', err.stack);
       notify('Failed to replace image: ' + (err.message || ''), 'error');
     }
   });
@@ -357,27 +447,46 @@ async function permanentlyDeleteBanner(id) {
    ----------------------------- */
 
 async function loadStories() {
+  console.log('📥 [LOAD STORIES] Step 1: Starting to load success stories...');
+
   const tbody = document.getElementById('storiesTableBody');
   const storyCount = document.getElementById('storyCount');
   if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Loading...</td></tr>`;
   if (storyCount) storyCount.textContent = '(loading...)';
 
+  console.log('📥 [LOAD STORIES] Step 2: Table elements retrieved and loading state set');
+
   try {
-    const res = await API.get('/success-stories/admin/all', {}, { page: 1, limit: 200 });
+    const url = '/success-stories/admin/all';
+    const params = { page: 1, limit: 200 };
+    console.log('📥 [LOAD STORIES] Step 3: Making GET request to:', url, 'with params:', params);
+
+    const res = await API.get(url, {}, params);
+    console.log('📥 [LOAD STORIES] Step 4: Response received:', res);
+
     const stories = res.data || res || [];
+    console.log('📥 [LOAD STORIES] Step 5: Extracted stories array, count:', stories.length);
+
     if (storyCount) storyCount.textContent = `(${res.pagination?.total ?? stories.length})`;
 
     if (!stories || stories.length === 0) {
+      console.log('⚠️ [LOAD STORIES] No success stories found in response');
       if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">No success stories found</td></tr>`;
       return;
     }
 
+    console.log('📥 [LOAD STORIES] Step 6: Rendering', stories.length, 'stories to table');
     if (tbody) {
       tbody.innerHTML = '';
-      stories.forEach((s, i) => tbody.insertAdjacentHTML('beforeend', renderStoryRow(s, i + 1)));
+      stories.forEach((s, i) => {
+        console.log('📥 [LOAD STORIES] Rendering story', i + 1, ':', s.title);
+        tbody.insertAdjacentHTML('beforeend', renderStoryRow(s, i + 1));
+      });
     }
+    console.log('✅ [LOAD STORIES] Step 7: Success stories loaded successfully!');
   } catch (err) {
-    console.error('Error loading stories:', err);
+    console.error('❌ [LOAD STORIES] Error occurred:', err);
+    console.error('❌ [LOAD STORIES] Error stack:', err.stack);
     notify('Failed to load success stories', 'error');
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center">Failed to load</td></tr>`;
     if (storyCount) storyCount.textContent = '(error)';
@@ -412,27 +521,46 @@ function renderStoryRow(s, idx) {
 }
 
 async function uploadStory() {
+  console.log('🟡 [STORY UPLOAD] Step 1: Starting success story upload process...');
+
   const titleEl = document.getElementById('storyTitle');
   const descEl = document.getElementById('storyDescription');
   const platformEl = document.getElementById('storyPlatform');
   const orderEl = document.getElementById('storyOrder');
   const fileInput = document.getElementById('storyImage');
 
+  console.log('🟡 [STORY UPLOAD] Step 2: Retrieved form elements');
+
   const title = titleEl?.value?.trim() || '';
   const description = descEl?.value?.trim() || '';
   const platform = platformEl?.value || 'both';
   const displayOrder = orderEl?.value || 0;
 
+  console.log('🟡 [STORY UPLOAD] Step 3: Form data collected:', {
+    title,
+    description: description.substring(0, 50) + '...',
+    platform,
+    displayOrder
+  });
+
   if (!title) {
+    console.warn('⚠️ [STORY UPLOAD] Validation failed: Title is empty');
     notify('Enter story title', 'warning');
     return;
   }
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    console.warn('⚠️ [STORY UPLOAD] Validation failed: No image selected');
     notify('Select an image file', 'warning');
     return;
   }
 
   const file = fileInput.files[0];
+  console.log('🟡 [STORY UPLOAD] Step 4: File selected:', {
+    name: file.name,
+    size: file.size + ' bytes',
+    type: file.type
+  });
+
   const formData = new FormData();
   formData.append('title', title);
   formData.append('description', description);
@@ -440,21 +568,42 @@ async function uploadStory() {
   formData.append('displayOrder', displayOrder);
   formData.append('image', file);
 
+  console.log('🟡 [STORY UPLOAD] Step 5: FormData created with all fields');
+
   try {
     const headers = AUTH.getAuthHeaders();
-    const resp = await fetch(`${API_CONFIG.baseURL}/success-stories`, {
+    console.log('🟡 [STORY UPLOAD] Step 6: Auth headers retrieved:', headers);
+
+    const url = `${API_CONFIG.baseURL}/success-stories`;
+    console.log('🟡 [STORY UPLOAD] Step 7: Making POST request to:', url);
+
+    const resp = await fetch(url, {
       method: 'POST',
       headers,
       body: formData
     });
-    const data = await safeJson(resp);
-    if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
+    console.log('🟡 [STORY UPLOAD] Step 8: Response received:', {
+      status: resp.status,
+      statusText: resp.statusText,
+      ok: resp.ok
+    });
+
+    const data = await safeJson(resp);
+    console.log('🟡 [STORY UPLOAD] Step 9: Response data:', data);
+
+    if (!resp.ok) {
+      console.error('❌ [STORY UPLOAD] Request failed with status:', resp.status);
+      throw new Error(data?.message || `HTTP ${resp.status}`);
+    }
+
+    console.log('✅ [STORY UPLOAD] Step 10: Success story uploaded successfully!');
     notify('Success story uploaded', 'success');
     clearStoryForm();
     await loadStories();
   } catch (err) {
-    console.error('Error uploading story:', err);
+    console.error('❌ [STORY UPLOAD] Error occurred:', err);
+    console.error('❌ [STORY UPLOAD] Error stack:', err.stack);
     notify('Story upload failed: ' + (err.message || ''), 'error');
   }
 }
@@ -549,30 +698,62 @@ function openReplaceStoryImageModal(storyId) {
   modal.show();
 
   document.getElementById('confirmReplaceStory').addEventListener('click', async () => {
+    console.log('🟠 [STORY IMAGE REPLACE] Step 1: Starting image replacement for story:', storyId);
+
     const fileInput = document.getElementById('replaceStoryFile');
+    console.log('🟠 [STORY IMAGE REPLACE] Step 2: Retrieved file input element');
+
     if (!fileInput.files || fileInput.files.length === 0) {
+      console.warn('⚠️ [STORY IMAGE REPLACE] Validation failed: No image selected');
       notify('Select an image', 'warning');
       return;
     }
+
     const file = fileInput.files[0];
+    console.log('🟠 [STORY IMAGE REPLACE] Step 3: File selected:', {
+      name: file.name,
+      size: file.size + ' bytes',
+      type: file.type
+    });
+
     const formData = new FormData();
     formData.append('image', file);
+    console.log('🟠 [STORY IMAGE REPLACE] Step 4: FormData created with image');
 
     try {
       const headers = AUTH.getAuthHeaders();
-      const resp = await fetch(`${API_CONFIG.baseURL}/success-stories/${storyId}/image`, {
+      console.log('🟠 [STORY IMAGE REPLACE] Step 5: Auth headers retrieved:', headers);
+
+      const url = `${API_CONFIG.baseURL}/success-stories/${storyId}/image`;
+      console.log('🟠 [STORY IMAGE REPLACE] Step 6: Making PUT request to:', url);
+
+      const resp = await fetch(url, {
         method: 'PUT',
         headers,
         body: formData
       });
-      const data = await safeJson(resp);
-      if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
 
+      console.log('🟠 [STORY IMAGE REPLACE] Step 7: Response received:', {
+        status: resp.status,
+        statusText: resp.statusText,
+        ok: resp.ok
+      });
+
+      const data = await safeJson(resp);
+      console.log('🟠 [STORY IMAGE REPLACE] Step 8: Response data:', data);
+
+      if (!resp.ok) {
+        console.error('❌ [STORY IMAGE REPLACE] Request failed with status:', resp.status);
+        throw new Error(data?.message || `HTTP ${resp.status}`);
+      }
+
+      console.log('✅ [STORY IMAGE REPLACE] Step 9: Story image replaced successfully!');
       notify('Story image replaced', 'success');
       modal.hide();
       await loadStories();
     } catch (err) {
-      console.error('Error replacing story image:', err);
+      console.error('❌ [STORY IMAGE REPLACE] Error occurred:', err);
+      console.error('❌ [STORY IMAGE REPLACE] Error stack:', err.stack);
       notify('Failed to replace image', 'error');
     }
   });
