@@ -96,6 +96,33 @@ const API_CONFIG = {
       deleteMessage: "/admin/chat/messages/:messageId",
       broadcast: "/admin/chat/broadcast",
       analytics: "/admin/chat/analytics"
+    },
+
+    banners: {
+      getAll: "/banners/admin/all",
+      getById: "/banners/:id",
+      create: "/banners",
+      update: "/banners/:id",
+      uploadImage: "/banners/:id/image",
+      toggle: "/banners/:id/toggle",
+      delete: "/banners/:id",
+      permanentDelete: "/banners/:id/permanent",
+      getActive: "/banners/public/active",
+      trackClick: "/banners/:id/click",
+      stats: "/banners/admin/stats"
+    },
+
+    successStories: {
+      getAll: "/success-stories/admin/all",
+      getById: "/success-stories/:id",
+      create: "/success-stories",
+      update: "/success-stories/:id",
+      uploadImage: "/success-stories/:id/image",
+      toggle: "/success-stories/:id/toggle",
+      delete: "/success-stories/:id",
+      permanentDelete: "/success-stories/:id/permanent",
+      getActive: "/success-stories/public/active",
+      stats: "/success-stories/admin/stats"
     }
   }
 };
