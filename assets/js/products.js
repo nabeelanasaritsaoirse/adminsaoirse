@@ -371,6 +371,10 @@ async function loadProducts() {
         project: p.project || "",
         dimensions: p.dimensions || null,
         tags: Array.isArray(p.tags) ? p.tags : [],
+        // New fields we now support in admin
+        seo: p.seo || null,
+        referralBonus: p.referralBonus || null,
+        paymentPlan: p.paymentPlan || null,
         createdAt: p.createdAt || new Date().toISOString(),
         updatedAt: p.updatedAt || new Date().toISOString(),
       };
@@ -450,7 +454,9 @@ function renderPagination() {
   pagesHtml += `
     <li class="page-item ${prevDisabled ? "disabled" : ""}">
       <button class="page-link" ${
-        prevDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${currentPage - 1})"`
+        prevDisabled
+          ? 'tabindex="-1" aria-disabled="true"'
+          : `onclick="changeProductPage(${currentPage - 1})"`
       }>&laquo; Previous</button>
     </li>
   `;
@@ -491,7 +497,9 @@ function renderPagination() {
   pagesHtml += `
     <li class="page-item ${nextDisabled ? "disabled" : ""}">
       <button class="page-link" ${
-        nextDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${currentPage + 1})"`
+        nextDisabled
+          ? 'tabindex="-1" aria-disabled="true"'
+          : `onclick="changeProductPage(${currentPage + 1})"`
       }>Next &raquo;</button>
     </li>
   `;
@@ -696,12 +704,10 @@ async function uploadProductImages(productId) {
 
       const formData = new FormData();
 
-      // Ek image ek baar mein
       formData.append('images', file);
       formData.append('altText', 'Product image');
 
       try {
-        // PUT /api/products/:productId/images - har image ke liye alag call
         const url = `${window.BASE_URL}/products/${productId}/images`;
         console.log(`🌐 [PRODUCTS] Uploading to URL:`, url);
 
@@ -758,13 +764,11 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
     let uploadedCount = 0;
     let failedCount = 0;
 
-    // Upload each variant image one by one
     console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`);
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
       console.log(`📤 [PRODUCTS] Uploading variant image ${i + 1}/${variantImageFiles.length} for variant index:`, variantIndex);
 
-      // Get the corresponding variant from created variants
       const variant = createdVariants && createdVariants[variantIndex];
       console.log(`🔍 [PRODUCTS] Found variant for index ${variantIndex}:`, variant);
 
@@ -779,7 +783,6 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
       formData.append('altText', 'Variant image');
 
       try {
-        // PUT /api/products/:productId/variants/:variantId/images
         const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
         console.log(`🌐 [PRODUCTS] Uploading variant image to URL:`, url);
 
@@ -818,7 +821,7 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
   }
 }
 
-/* ---------- Payment Plan Functions ---------- */
+/* ---------- Payment Plan Functions (per-day plans list) ---------- */
 
 function addPlanField() {
   planCount++;
@@ -920,6 +923,34 @@ function openAddProductModal() {
   if (isBestSellerEl) isBestSellerEl.checked = false;
   if (isTrendingEl) isTrendingEl.checked = false;
 
+  // Reset SEO
+  const metaTitleEl = document.getElementById("productMetaTitle");
+  const metaDescEl = document.getElementById("productMetaDescription");
+  const metaKeywordsEl = document.getElementById("productMetaKeywords");
+  if (metaTitleEl) metaTitleEl.value = "";
+  if (metaDescEl) metaDescEl.value = "";
+  if (metaKeywordsEl) metaKeywordsEl.value = "";
+
+  // Reset referral
+  const referralEnabledEl = document.getElementById("referralEnabled");
+  const referralTypeEl = document.getElementById("referralType");
+  const referralValueEl = document.getElementById("referralValue");
+  const referralMinPurchaseEl = document.getElementById("referralMinPurchase");
+  if (referralEnabledEl) referralEnabledEl.checked = false;
+  if (referralTypeEl) referralTypeEl.value = "percentage";
+  if (referralValueEl) referralValueEl.value = "";
+  if (referralMinPurchaseEl) referralMinPurchaseEl.value = "";
+
+  // Reset payment plan config
+  const ppEnabledEl = document.getElementById("paymentPlanEnabled");
+  const ppMinEl = document.getElementById("paymentPlanMinDown");
+  const ppMaxEl = document.getElementById("paymentPlanMaxDown");
+  const ppInterestEl = document.getElementById("paymentPlanInterest");
+  if (ppEnabledEl) ppEnabledEl.checked = false;
+  if (ppMinEl) ppMinEl.value = "";
+  if (ppMaxEl) ppMaxEl.value = "";
+  if (ppInterestEl) ppInterestEl.value = "";
+
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
 }
@@ -970,7 +1001,7 @@ async function editProduct(productId) {
     variantCount = 0;
   }
 
-  // Populate product flags
+  // Product flags
   const isFeaturedEl = document.getElementById("isFeatured");
   const isPopularEl = document.getElementById("isPopular");
   const isBestSellerEl = document.getElementById("isBestSeller");
@@ -981,35 +1012,86 @@ async function editProduct(productId) {
   if (isBestSellerEl) isBestSellerEl.checked = product.isBestSeller || false;
   if (isTrendingEl) isTrendingEl.checked = product.isTrending || false;
 
-  // Populate warranty information
-  const warrantyDaysEl = document.getElementById("warrantyDays");
-  const warrantyTypeEl = document.getElementById("warrantyType");
-  if (warrantyDaysEl) warrantyDaysEl.value = product.warranty?.days || "";
-  if (warrantyTypeEl) warrantyTypeEl.value = product.warranty?.type || "";
+  // Warranty (Option A: period + returnPolicy)
+  const warrantyPeriodEl = document.getElementById("warrantyPeriod");
+  const warrantyReturnPolicyEl = document.getElementById("warrantyReturnPolicy");
+  if (warrantyPeriodEl)
+    warrantyPeriodEl.value = product.warranty?.period || "";
+  if (warrantyReturnPolicyEl)
+    warrantyReturnPolicyEl.value = product.warranty?.returnPolicy || "";
 
-  // Populate origin and project
+  // Origin and project
   const productOriginEl = document.getElementById("productOrigin");
   const productProjectEl = document.getElementById("productProject");
   if (productOriginEl) productOriginEl.value = product.origin || "";
   if (productProjectEl) productProjectEl.value = product.project || "";
 
-  // Populate dimensions
+  // Dimensions
   const dimensionLengthEl = document.getElementById("dimensionLength");
   const dimensionWidthEl = document.getElementById("dimensionWidth");
   const dimensionHeightEl = document.getElementById("dimensionHeight");
   const productWeightEl = document.getElementById("productWeight");
 
-  if (dimensionLengthEl) dimensionLengthEl.value = product.dimensions?.length || "";
-  if (dimensionWidthEl) dimensionWidthEl.value = product.dimensions?.width || "";
-  if (dimensionHeightEl) dimensionHeightEl.value = product.dimensions?.height || "";
-  if (productWeightEl) productWeightEl.value = product.dimensions?.weight || "";
+  if (dimensionLengthEl)
+    dimensionLengthEl.value = product.dimensions?.length || "";
+  if (dimensionWidthEl)
+    dimensionWidthEl.value = product.dimensions?.width || "";
+  if (dimensionHeightEl)
+    dimensionHeightEl.value = product.dimensions?.height || "";
+  if (productWeightEl)
+    productWeightEl.value = product.dimensions?.weight || "";
 
-  // Populate tags (convert array to comma-separated string)
+  // Tags
   const productTagsEl = document.getElementById("productTags");
   if (productTagsEl) {
-    const tagsValue = Array.isArray(product.tags) ? product.tags.join(', ') : "";
+    const tagsValue = Array.isArray(product.tags)
+      ? product.tags.join(", ")
+      : "";
     productTagsEl.value = tagsValue;
   }
+
+  // SEO
+  const metaTitleEl = document.getElementById("productMetaTitle");
+  const metaDescEl = document.getElementById("productMetaDescription");
+  const metaKeywordsEl = document.getElementById("productMetaKeywords");
+  if (metaTitleEl)
+    metaTitleEl.value = product.seo?.metaTitle || "";
+  if (metaDescEl)
+    metaDescEl.value = product.seo?.metaDescription || "";
+  if (metaKeywordsEl)
+    metaKeywordsEl.value = Array.isArray(product.seo?.keywords)
+      ? product.seo.keywords.join(", ")
+      : "";
+
+  // Referral Bonus
+  const referralEnabledEl = document.getElementById("referralEnabled");
+  const referralTypeEl = document.getElementById("referralType");
+  const referralValueEl = document.getElementById("referralValue");
+  const referralMinPurchaseEl = document.getElementById("referralMinPurchase");
+
+  if (referralEnabledEl)
+    referralEnabledEl.checked = product.referralBonus?.enabled || false;
+  if (referralTypeEl)
+    referralTypeEl.value = product.referralBonus?.type || "percentage";
+  if (referralValueEl)
+    referralValueEl.value = product.referralBonus?.value ?? "";
+  if (referralMinPurchaseEl)
+    referralMinPurchaseEl.value = product.referralBonus?.minPurchase ?? "";
+
+  // Global Payment Plan Config
+  const ppEnabledEl = document.getElementById("paymentPlanEnabled");
+  const ppMinEl = document.getElementById("paymentPlanMinDown");
+  const ppMaxEl = document.getElementById("paymentPlanMaxDown");
+  const ppInterestEl = document.getElementById("paymentPlanInterest");
+
+  if (ppEnabledEl)
+    ppEnabledEl.checked = product.paymentPlan?.enabled || false;
+  if (ppMinEl)
+    ppMinEl.value = product.paymentPlan?.minDownPayment ?? "";
+  if (ppMaxEl)
+    ppMaxEl.value = product.paymentPlan?.maxDownPayment ?? "";
+  if (ppInterestEl)
+    ppInterestEl.value = product.paymentPlan?.interestRate ?? "";
 
   const statusRadio = document.querySelector(
     `input[name="status"][value="${product.status}"]`
@@ -1113,7 +1195,13 @@ function renderVariantField(variant, idx) {
                 <div class="col-md-3">
                     <label class="form-label">Variant Image (Optional)</label>
                     <input type="file" class="form-control form-control-sm" data-variant-image accept="image/jpeg,image/jpg,image/png,image/webp" />
-                    ${hasExistingImage ? `<small class="text-muted">Current: ${escapeHtml(existingImageUrl.split('/').pop())}</small>` : ''}
+                    ${
+                      hasExistingImage
+                        ? `<small class="text-muted">Current: ${escapeHtml(
+                            existingImageUrl.split("/").pop()
+                          )}</small>`
+                        : ""
+                    }
                 </div>
             </div>
         </div>
@@ -1180,7 +1268,7 @@ async function saveProduct() {
     return;
   }
 
-  // Stock required and MUST be > 0 (QA requirement)
+  // Stock required and MUST be > 0
   if (stockRaw === "") {
     console.warn('⚠️ [PRODUCTS] Validation failed: Stock is required');
     alert("Stock is required");
@@ -1209,29 +1297,39 @@ async function saveProduct() {
   // Get category name and parent info from selected option
   const categorySelect = document.getElementById("productCategory");
   const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-  const categoryName = selectedOption.getAttribute('data-category-name') || selectedOption.text.trim();
+  const categoryName =
+    selectedOption.getAttribute('data-category-name') ||
+    selectedOption.text.trim();
   const parentId = selectedOption.getAttribute('data-parent-id');
   const parentName = selectedOption.getAttribute('data-parent-name');
   console.log('📁 [PRODUCTS] Category info:', { categoryId, categoryName, parentId, parentName });
 
-  // Collect additional fields
+  // Product flags
   const isFeatured = document.getElementById("isFeatured")?.checked || false;
   const isPopular = document.getElementById("isPopular")?.checked || false;
   const isBestSeller = document.getElementById("isBestSeller")?.checked || false;
   const isTrending = document.getElementById("isTrending")?.checked || false;
   console.log('🏷️ [PRODUCTS] Product flags:', { isFeatured, isPopular, isBestSeller, isTrending });
 
-  const warrantyDays = parseInt(document.getElementById("warrantyDays")?.value) || 0;
-  const warrantyType = document.getElementById("warrantyType")?.value.trim() || "";
+  // Warranty (Option A)
+  const warrantyPeriod =
+    parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
+  const warrantyReturnPolicy =
+    parseInt(document.getElementById("warrantyReturnPolicy")?.value) || 0;
   const productOrigin = document.getElementById("productOrigin")?.value.trim() || "";
   const productProject = document.getElementById("productProject")?.value.trim() || "";
 
-  const dimensionLength = parseFloat(document.getElementById("dimensionLength")?.value) || 0;
-  const dimensionWidth = parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
-  const dimensionHeight = parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
-  const productWeight = parseFloat(document.getElementById("productWeight")?.value) || 0;
+  const dimensionLength =
+    parseFloat(document.getElementById("dimensionLength")?.value) || 0;
+  const dimensionWidth =
+    parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
+  const dimensionHeight =
+    parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
+  const productWeight =
+    parseFloat(document.getElementById("productWeight")?.value) || 0;
 
-  const productTags = document.getElementById("productTags")?.value.trim() || "";
+  const productTags =
+    document.getElementById("productTags")?.value.trim() || "";
 
   const payload = {
     name,
@@ -1241,10 +1339,10 @@ async function saveProduct() {
       long: description,
     },
     category: {
-      mainCategoryId: parentId || categoryId, // If it's a subcategory, use parent as main
-      mainCategoryName: parentName || categoryName, // If it's a subcategory, use parent name
-      subCategoryId: parentId ? categoryId : null, // If has parent, current is sub
-      subCategoryName: parentId ? categoryName : null, // If has parent, use current name as sub
+      mainCategoryId: parentId || categoryId,
+      mainCategoryName: parentName || categoryName,
+      subCategoryId: parentId ? categoryId : null,
+      subCategoryName: parentId ? categoryName : null,
     },
     sku,
     pricing: {
@@ -1266,41 +1364,134 @@ async function saveProduct() {
     isTrending,
   };
 
-  // Add warranty if provided
-  if (warrantyDays > 0 || warrantyType) {
+  // Warranty only if something provided
+  if (warrantyPeriod > 0 || warrantyReturnPolicy > 0) {
     payload.warranty = {
-      days: warrantyDays,
-      type: warrantyType || "Standard Warranty"
+      period: warrantyPeriod > 0 ? warrantyPeriod : undefined,
+      returnPolicy: warrantyReturnPolicy > 0 ? warrantyReturnPolicy : undefined,
     };
   }
 
-  // Add origin if provided
   if (productOrigin) {
     payload.origin = productOrigin;
   }
 
-  // Add project if provided
   if (productProject) {
     payload.project = productProject;
   }
 
-  // Add dimensions if any provided
-  if (dimensionLength > 0 || dimensionWidth > 0 || dimensionHeight > 0 || productWeight > 0) {
+  // Dimensions
+  if (
+    dimensionLength > 0 ||
+    dimensionWidth > 0 ||
+    dimensionHeight > 0 ||
+    productWeight > 0
+  ) {
     payload.dimensions = {
-      length: dimensionLength,
-      width: dimensionWidth,
-      height: dimensionHeight,
-      weight: productWeight,
-      unit: "cm" // length, width, height in cm
+      length: dimensionLength || 0,
+      width: dimensionWidth || 0,
+      height: dimensionHeight || 0,
+      weight: productWeight || 0,
+      unit: "cm",
     };
   }
 
-  // Add tags if provided (convert comma-separated string to array)
+  // Tags
   if (productTags) {
-    payload.tags = productTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    payload.tags = productTags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
   }
 
-  // Collect payment plans
+  // SEO
+  const metaTitle =
+    document.getElementById("productMetaTitle")?.value.trim() || "";
+  const metaDescription =
+    document.getElementById("productMetaDescription")?.value.trim() || "";
+  const metaKeywordsRaw =
+    document.getElementById("productMetaKeywords")?.value.trim() || "";
+
+  if (metaTitle || metaDescription || metaKeywordsRaw) {
+    const keywords = metaKeywordsRaw
+      ? metaKeywordsRaw
+          .split(",")
+          .map((k) => k.trim())
+          .filter((k) => k.length > 0)
+      : [];
+    payload.seo = {
+      metaTitle: metaTitle || undefined,
+      metaDescription: metaDescription || undefined,
+      keywords,
+    };
+  }
+
+  // Referral Bonus
+  const referralEnabled =
+    document.getElementById("referralEnabled")?.checked || false;
+  const referralType =
+    document.getElementById("referralType")?.value || "percentage";
+  const referralValue =
+    parseFloat(document.getElementById("referralValue")?.value) || 0;
+  const referralMinPurchase =
+    parseFloat(
+      document.getElementById("referralMinPurchase")?.value
+    ) || 0;
+
+  if (referralEnabled && referralValue > 0) {
+    payload.referralBonus = {
+      enabled: true,
+      type: referralType,
+      value: referralValue,
+      minPurchase: referralMinPurchase || 0,
+    };
+  } else {
+    // If editing existing, explicitly send disabled
+    if (currentProductId) {
+      payload.referralBonus = {
+        enabled: false,
+        type: referralType,
+        value: referralValue || 0,
+        minPurchase: referralMinPurchase || 0,
+      };
+    }
+  }
+
+  // Global Payment Plan Config
+  const ppEnabled =
+    document.getElementById("paymentPlanEnabled")?.checked || false;
+  const ppMinDown =
+    parseFloat(
+      document.getElementById("paymentPlanMinDown")?.value
+    ) || 0;
+  const ppMaxDown =
+    parseFloat(
+      document.getElementById("paymentPlanMaxDown")?.value
+    ) || 0;
+  const ppInterest =
+    parseFloat(
+      document.getElementById("paymentPlanInterest")?.value
+    ) || 0;
+
+  if (ppEnabled && (ppMinDown > 0 || ppMaxDown > 0 || ppInterest > 0)) {
+    payload.paymentPlan = {
+      enabled: true,
+      minDownPayment: ppMinDown || 0,
+      maxDownPayment: ppMaxDown || 0,
+      interestRate: ppInterest || 0,
+    };
+  } else {
+    if (currentProductId) {
+      payload.paymentPlan = {
+        enabled: false,
+        minDownPayment: ppMinDown || 0,
+        maxDownPayment: ppMaxDown || 0,
+        interestRate: ppInterest || 0,
+      };
+    }
+  }
+
+  // Collect payment plans list
   const planCards = document.querySelectorAll('[id^="plan-"]');
   const plans = [];
 
@@ -1322,7 +1513,7 @@ async function saveProduct() {
         perDayAmount: perDayAmount,
         totalAmount: days * perDayAmount,
         isRecommended: recommendedInput?.checked || false,
-        description: descInput?.value?.trim() || ""
+        description: descInput?.value?.trim() || "",
       };
       plans.push(plan);
     }
@@ -1332,10 +1523,10 @@ async function saveProduct() {
     payload.plans = plans;
   }
 
-  console.log('📦 [PRODUCTS] Building payload...');
+  console.log('📦 [PRODUCTS] Building payload...', payload);
 
   // Collect variant data and files
-  let variantImageFiles = []; // Store variant image files with variant index
+  let variantImageFiles = [];
 
   if (hasVariants) {
     console.log('🔀 [PRODUCTS] Collecting variants...');
@@ -1356,10 +1547,9 @@ async function saveProduct() {
       const vPrice = parseFloat(variantPrice?.value) || 0;
       const vSalePrice = parseFloat(variantSalePrice?.value) || 0;
 
-      if (vPrice <= 0) return; // skip invalid variant
+      if (vPrice <= 0) return;
 
       if (vSalePrice > 0 && vSalePrice > vPrice) {
-        // prevent nonsense variant pricing too
         return;
       }
 
@@ -1371,14 +1561,16 @@ async function saveProduct() {
         price: vPrice,
         salePrice: vSalePrice > 0 ? vSalePrice : vPrice,
         stock: parseInt(variantStock?.value) || 0,
-        // Don't send images in payload - will upload separately
       };
 
-      // Collect variant image file if selected
-      if (variantImageInput && variantImageInput.files && variantImageInput.files.length > 0) {
+      if (
+        variantImageInput &&
+        variantImageInput.files &&
+        variantImageInput.files.length > 0
+      ) {
         variantImageFiles.push({
           variantIndex: idx,
-          file: variantImageInput.files[0]
+          file: variantImageInput.files[0],
         });
       }
 
@@ -1405,7 +1597,6 @@ async function saveProduct() {
     let createdVariants = null;
 
     if (currentProductId) {
-      // UPDATE: PUT /api/products/:productId - use productId in URL
       console.log('🔄 [PRODUCTS] UPDATE mode - productId:', currentProductId);
       console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
       const updateResponse = await API.put("/products/:productId", payload, {
@@ -1413,7 +1604,6 @@ async function saveProduct() {
       });
       console.log('✅ [PRODUCTS] Update response:', updateResponse);
 
-      // Get updated variants from response
       if (updateResponse && updateResponse.data && updateResponse.data.variants) {
         createdVariants = updateResponse.data.variants;
         console.log('🔀 [PRODUCTS] Got updated variants from response:', createdVariants);
@@ -1421,13 +1611,11 @@ async function saveProduct() {
 
       showNotification("Product updated successfully", "success");
     } else {
-      // CREATE: POST /api/products
       console.log('➕ [PRODUCTS] CREATE mode - new product');
       console.log('🌐 [PRODUCTS] Calling API.post("/products")');
       const response = await API.post("/products", payload);
       console.log('✅ [PRODUCTS] Create response:', response);
 
-      // Get the created product ID and variants from response
       if (response && response.data) {
         if (response.data.productId) {
           savedProductId = response.data.productId;
@@ -1442,13 +1630,11 @@ async function saveProduct() {
       showNotification("Product created successfully", "success");
     }
 
-    // Upload product images if any selected (one by one)
     if (savedProductId && selectedImageFiles.length > 0) {
       console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`);
       await uploadProductImages(savedProductId);
     }
 
-    // Upload variant images if any selected (one by one)
     if (savedProductId && variantImageFiles.length > 0 && createdVariants) {
       console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`);
       await uploadVariantImages(savedProductId, variantImageFiles, createdVariants);
@@ -1498,7 +1684,6 @@ async function toggleProductStatus(productId) {
       status: newStatus,
     };
 
-    // UPDATE: PUT /api/products/:productId
     await API.put("/products/:productId", payload, { productId });
     showNotification(`Product ${newStatus} successfully`, "success");
     await loadProducts();
@@ -1533,8 +1718,6 @@ async function deleteProduct(productId) {
   try {
     showLoading(true);
     console.log('⏳ [PRODUCTS] Loading overlay shown');
-    // DELETE: DELETE /api/products/:productId
-    console.log('🌐 [PRODUCTS] Calling API.delete("/products/:productId")');
     await API.delete("/products/:productId", { productId });
     console.log('✅ [PRODUCTS] Product deleted successfully');
     showNotification("Product deleted successfully", "success");
@@ -1630,7 +1813,7 @@ async function viewProductDetails(productId) {
   details += `</div>`;
   details += `</div>`;
 
-  // Variants (if applicable)
+  // Variants
   if (product.hasVariants && product.variants.length > 0) {
     details += `<div class="mb-3">`;
     details += `<strong class="d-block mb-2">Variants (${product.variants.length})</strong>`;
@@ -1665,27 +1848,13 @@ async function viewProductDetails(productId) {
 /* ---------- Loading Overlay ---------- */
 
 function showLoading(show) {
-  let overlay = document.getElementById("loadingOverlay");
+  const overlay = document.getElementById("loadingOverlay");
+  if (!overlay) return;
+
   if (show) {
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.id = "loadingOverlay";
-      overlay.style.position = "fixed";
-      overlay.style.left = "0";
-      overlay.style.top = "0";
-      overlay.style.width = "100%";
-      overlay.style.height = "100%";
-      overlay.style.background = "rgba(255,255,255,0.6)";
-      overlay.style.zIndex = "9999";
-      overlay.style.display = "flex";
-      overlay.style.alignItems = "center";
-      overlay.style.justifyContent = "center";
-      overlay.innerHTML =
-        '<div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>';
-      document.body.appendChild(overlay);
-    }
-  } else if (overlay) {
-    overlay.remove();
+    overlay.classList.add("show");
+  } else {
+    overlay.classList.remove("show");
   }
 }
 
