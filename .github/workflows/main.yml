@@ -1,54 +1,68 @@
-name:  Host Static Site to AWS S3
+name: Host Static Site to AWS S3
 run-name: "🚀 Deployment triggered by ${{ github.actor }} on branch ${{ github.ref_name }}"
 
 on:
   push:
     branches:
       - main
+      - dev
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     env:
       AWS_REGION: ap-south-1
-      S3_BUCKET: admin-dashboard-site-prod
-      CUSTOM_DOMAIN: admin.epielio.com
-      
+
+      # 🎯 Auto-select bucket using GitHub Secrets
+      S3_BUCKET: ${{ github.ref_name == 'main' && secrets.AWS_S3_PROD_BUCKET || secrets.AWS_S3_DEV_BUCKET }}
+
+      # 🎯 Optional: auto-select custom domain for summary
+      CUSTOM_DOMAIN: ${{ github.ref_name == 'main' && 'admin.epielio.com' || 'dev-admin.epielio.com' }}
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS creds
+      - name: Configure AWS IAM credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Sync to S3 (exclude junk)
+      - name: 🔄 Sync files to S3
         run: |
-          aws s3 sync . s3://${S3_BUCKET} --delete \
+          echo "Deploying to bucket: $S3_BUCKET"
+          aws s3 sync . s3://$S3_BUCKET --delete \
             --exclude ".git/*" \
             --exclude ".github/*" \
             --exclude "*.md" \
             --exclude ".gitignore"
 
-      - name: Print S3 website URL
+      - name: 🌐 Print Website URL
         run: |
-          echo "Website deployed successfully!"
           echo "-----------------------------------"
-          echo "Your site is live at:"
-          echo "http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com"
+          echo "Deployment completed successfully!"
+          echo "Environment: ${{ github.ref_name }}"
+          echo "S3 Bucket: $S3_BUCKET"
+          echo "URL: http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com"
+          echo "-----------------------------------"
 
-      - name: 🧾 Add summary with clickable links
+      - name: 🧾 Add deployment summary
         if: success()
         run: |
           echo "## ✅ Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** $([[ '${{ github.ref_name }}' == 'main' ]] && echo 'Production' || echo 'Development')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
           echo "**S3 Static Website URL:**" >> $GITHUB_STEP_SUMMARY
-          echo "[http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com](http://${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com)" >> $GITHUB_STEP_SUMMARY
+          echo "[http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com](http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Custom Domain (GoDaddy):**" >> $GITHUB_STEP_SUMMARY
+
+          echo "**Custom Domain:**" >> $GITHUB_STEP_SUMMARY
           echo "[http://${CUSTOM_DOMAIN}](http://${CUSTOM_DOMAIN})" >> $GITHUB_STEP_SUMMARY
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Deployment successful!" >> $GITHUB_STEP_SUMMARY
