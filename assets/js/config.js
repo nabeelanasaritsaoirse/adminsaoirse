@@ -1,7 +1,16 @@
 /*******************************
- * BASE URL (FORCE PRODUCTION)
+ * BASE URL (AUTO SWITCH)
  *******************************/
-const BASE_URL = "https://api.epielio.com/api";
+let BASE_URL;
+
+// DEV ADMIN PANEL → Use DEV BACKEND
+if (window.location.hostname === "dev-admin.epielio.com") {
+  BASE_URL = "http://13.127.15.87:8080/api";
+
+// PRODUCTION ADMIN PANEL → Use PROD BACKEND
+} else {
+  BASE_URL = "https://api.epielio.com/api";
+}
 
 /*******************************
  * APP CONFIG 
@@ -184,7 +193,6 @@ const API = {
 
       const res = await fetch(url, config);
 
-      // Handle non-JSON responses
       if (res.status === 204) {
         return { success: true };
       }
