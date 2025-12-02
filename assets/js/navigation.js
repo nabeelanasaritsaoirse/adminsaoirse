@@ -4,6 +4,7 @@
  */
 
 // Navigation configuration
+// Navigation configuration
 const NAV_CONFIG = {
   items: [
     {
@@ -28,6 +29,15 @@ const NAV_CONFIG = {
       hrefFromRoot: "pages/admin_wallet.html",
     },
 
+    /* ⭐ ADDED — KYC VERIFICATION */
+    {
+      id: "kyc",
+      label: "KYC Verification",
+      icon: "bi-shield-check",
+      href: "kyc.html",
+      hrefFromRoot: "pages/kyc.html",
+    },
+
     {
       id: "categories",
       label: "Categories",
@@ -43,7 +53,6 @@ const NAV_CONFIG = {
       hrefFromRoot: "pages/products.html",
     },
 
-    /* ⭐ ADDED — Image Uploader */
     {
       id: "uploader",
       label: "Image Uploader",
@@ -52,7 +61,6 @@ const NAV_CONFIG = {
       hrefFromRoot: "pages/uploader.html",
     },
 
-    /* ⭐ ADDED — Coupons (matches pages/coupons.html) */
     {
       id: "coupons",
       label: "Coupons",

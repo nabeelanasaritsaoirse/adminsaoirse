@@ -1,27 +1,32 @@
 /*******************************
- * BASE URL (AUTO SWITCH)
+ * BASE URL (AUTO ENV DETECTION)
  *******************************/
 let BASE_URL;
 
-// DEV ADMIN PANEL → Use DEV BACKEND
-if (window.location.hostname === "dev-admin.epielio.com") {
-  BASE_URL = "http://13.127.15.87:8080/api";
+// DEV ENVIRONMENTS
+const DEV_HOSTS = [
+  "dev-admin.epielio.com",
+  "admin-dashboard-site-dev.s3-website.ap-south-1.amazonaws.com",
+  "localhost",
+  "127.0.0.1",
+];
 
-// PRODUCTION ADMIN PANEL → Use PROD BACKEND
+if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
+  BASE_URL = "http://13.127.15.87:8080/api"; // DEV BACKEND
 } else {
-  BASE_URL = "https://api.epielio.com/api";
+  BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
 }
 
 /*******************************
- * APP CONFIG 
+ * APP CONFIG
  *******************************/
 const APP_CONFIG = {
   version: "1.0.0",
   dateFormat: "YYYY-MM-DD",
   maxFileSize: 5 * 1024 * 1024,
   categories: {
-    maxLevels: 5
-  }
+    maxLevels: 5,
+  },
 };
 
 /*******************************
@@ -60,7 +65,7 @@ const API_CONFIG = {
       withSubcategories: "/categories/:categoryId/with-subcategories",
       dropdown: "/categories/dropdown/all",
       getFeatured: "/categories/featured/all",
-      reorder: "/categories/bulk/reorder"
+      reorder: "/categories/bulk/reorder",
     },
 
     products: {
@@ -72,7 +77,7 @@ const API_CONFIG = {
       toggleStatus: "/products/:productId/toggle-status",
       search: "/products/search",
       uploadImage: "/products/:productId/upload-image",
-      deleteImage: "/products/:productId/image/:imageId"
+      deleteImage: "/products/:productId/image/:imageId",
     },
 
     about: {
@@ -80,7 +85,7 @@ const API_CONFIG = {
       getById: "/about/:aboutId",
       create: "/about",
       update: "/about/:aboutId",
-      delete: "/about/:aboutId"
+      delete: "/about/:aboutId",
     },
 
     notifications: {
@@ -94,7 +99,7 @@ const API_CONFIG = {
       uploadImage: "/admin/notifications/:id/upload-image",
       settings: "/admin/notifications/:id/settings",
       analytics: "/admin/notifications/analytics",
-      deleteComment: "/admin/notifications/:notificationId/comments/:commentId"
+      deleteComment: "/admin/notifications/:notificationId/comments/:commentId",
     },
 
     chat: {
@@ -104,7 +109,7 @@ const API_CONFIG = {
       reportAction: "/admin/chat/reports/:reportId/action",
       deleteMessage: "/admin/chat/messages/:messageId",
       broadcast: "/admin/chat/broadcast",
-      analytics: "/admin/chat/analytics"
+      analytics: "/admin/chat/analytics",
     },
 
     banners: {
@@ -118,7 +123,7 @@ const API_CONFIG = {
       permanentDelete: "/banners/:id/permanent",
       getActive: "/banners/public/active",
       trackClick: "/banners/:id/click",
-      stats: "/banners/admin/stats"
+      stats: "/banners/admin/stats",
     },
 
     successStories: {
@@ -131,9 +136,9 @@ const API_CONFIG = {
       delete: "/success-stories/:id",
       permanentDelete: "/success-stories/:id/permanent",
       getActive: "/success-stories/public/active",
-      stats: "/success-stories/admin/stats"
-    }
-  }
+      stats: "/success-stories/admin/stats",
+    },
+  },
 };
 
 /*******************************
@@ -201,11 +206,12 @@ const API = {
       const json = text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        throw new Error(json.message || `HTTP ${res.status}: ${res.statusText}`);
+        throw new Error(
+          json.message || `HTTP ${res.status}: ${res.statusText}`
+        );
       }
 
       return json;
-
     } catch (err) {
       console.error("API Request Error:", err);
       throw err;
