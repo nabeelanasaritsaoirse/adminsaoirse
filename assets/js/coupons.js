@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
             discountValue,
             minOrderValue,
             expiryDate,
-            couponType, // ⭐ REQUIRED
+            couponType,
         };
 
         if (couponType === "MILESTONE_REWARD") {
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            const res = await fetch('http://localhost:5000/api/admin/coupon/create', {
+            const res = await fetch(`${BASEURL}/coupons/admin/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
         tableBody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
 
         try {
-            const res = await fetch('http://localhost:5000/api/admin/coupon/all');
+            const res = await fetch(`${BASEURL}/coupons/admin/all`);
             const data = await res.json();
 
             const coupons = data.coupons || [];
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!confirm('Delete this coupon?')) return;
 
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/coupon/delete/${id}`, {
+            const res = await fetch(`${BASEURL}/coupons/admin/delete/${id}`, {
                 method: 'DELETE'
             });
 
@@ -147,5 +147,4 @@ document.addEventListener('DOMContentLoaded', function () {
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>`;
     }
-
 });
