@@ -12,10 +12,11 @@ const DEV_HOSTS = [
 ];
 
 if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
-  BASE_URL = "http://13.127.15.87:8080/api"; // DEV BACKEND
-} else {
-  BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
-}
+  BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
+ } 
+// else {
+//   BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
+// }
 
 /*******************************
  * APP CONFIG
