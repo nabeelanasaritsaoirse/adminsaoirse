@@ -263,7 +263,7 @@ const API = {
 /*******************************
  * EXPORT GLOBAL
  *******************************/
-window.BASE_URL = BASE_URL;
+// window.BASE_URL already set at line 22 (no duplication needed)
 window.API_CONFIG = API_CONFIG;
 window.APP_CONFIG = APP_CONFIG;
 window.AUTH = AUTH;
