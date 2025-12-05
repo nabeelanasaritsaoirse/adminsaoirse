@@ -94,7 +94,15 @@
             const password = document.getElementById("password").value.trim();
 
             try {
-                const loginURL = BASE_URL + API_CONFIG.endpoints.auth.adminLogin;
+                // ⭐ FIX 1: Always use window.BASE_URL instead of local BASE_URL
+                if (!window.BASE_URL) {
+                    console.error("BASE_URL not initialized. Config.js may not have loaded.");
+                    alert("Configuration error. Please reload the page.");
+                    return;
+                }
+
+                const loginURL = window.BASE_URL + API_CONFIG.endpoints.auth.adminLogin;
+                console.log("Login request URL:", loginURL); // Debug log
 
                 const response = await fetch(loginURL, {
                     method: "POST",
@@ -114,6 +122,7 @@
 
                 window.location.href = "../index.html";
             } catch (err) {
+                console.error("Login error:", err);
                 alert("Unable to connect to server.");
             }
         });

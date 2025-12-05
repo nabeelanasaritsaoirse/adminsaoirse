@@ -13,10 +13,13 @@ const DEV_HOSTS = [
 
 if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
   BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
- } 
-else {
+} else {
   BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
 }
+
+// ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY
+// This ensures login.html and all other scripts can access it
+window.BASE_URL = BASE_URL;
 
 /*******************************
  * APP CONFIG
