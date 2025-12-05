@@ -14,9 +14,9 @@ const DEV_HOSTS = [
 if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
   BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
  } 
-// else {
-//   BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
-// }
+else {
+  BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
+}
 
 /*******************************
  * APP CONFIG
