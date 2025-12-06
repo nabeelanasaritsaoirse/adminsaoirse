@@ -963,7 +963,7 @@ async function editProduct(productId) {
     return;
   }
 
-  currentProductId = product.productId;
+  currentProductId = product._id;  // ⭐ Store MongoDB _id, not productId
 
   const labelEl = document.getElementById("productModalLabel");
   if (labelEl) labelEl.textContent = "Edit Product";
@@ -1599,8 +1599,8 @@ async function saveProduct() {
     if (currentProductId) {
       console.log('🔄 [PRODUCTS] UPDATE mode - productId:', currentProductId);
       console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
-      const updateResponse = await API.put("/products/:productId", payload, {
-        productId: currentProductId,
+      const updateResponse = await API.put("/products/:id", payload, {
+        id: currentProductId,  // ⭐ Pass MongoDB _id via 'id' param
       });
       console.log('✅ [PRODUCTS] Update response:', updateResponse);
 

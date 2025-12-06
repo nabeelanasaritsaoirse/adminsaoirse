@@ -11,11 +11,12 @@ const DEV_HOSTS = [
   "127.0.0.1",
 ];
 
-if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
-  BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
-} else {
-  BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
-}
+BASE_URL = "https://api.epielio.com/api";
+// if 
+// (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
+//   BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
+// }
+
 
 // ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
 // This MUST happen before any script tries to use it
