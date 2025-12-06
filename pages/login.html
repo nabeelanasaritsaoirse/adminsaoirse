@@ -83,49 +83,117 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- CONFIG MUST LOAD FIRST -->
+    <!-- ⭐ CONFIG MUST LOAD FIRST - CRITICAL DEPENDENCY -->
     <script src="../assets/js/config.js"></script>
 
+    <!-- ⭐ Wait for config to load, then initialize login handler -->
     <script>
-        document.getElementById("loginForm").addEventListener("submit", async function (e) {
+        // Safety guard: Ensure config is ready before running login logic
+        function initializeLoginHandler() {
+            // Check 1: Verify BASE_URL is available
+            if (!window.BASE_URL) {
+                console.error("❌ CRITICAL: BASE_URL not initialized after config.js loaded");
+                console.error("   Current window.BASE_URL:", window.BASE_URL);
+                document.getElementById("loginForm").style.display = "none";
+                alert("⚠️ Configuration Error\n\nBase URL is not initialized. This is a server configuration issue.\n\nPlease:\n1. Refresh the page (Ctrl+F5)\n2. Clear browser cache\n3. Contact support if problem persists");
+                return false;
+            }
+
+            // Check 2: Verify API_CONFIG is available
+            if (!window.API_CONFIG || !window.API_CONFIG.endpoints) {
+                console.error("❌ CRITICAL: API_CONFIG not available");
+                alert("Configuration missing. Please refresh the page.");
+                return false;
+            }
+
+            console.log("✅ Configuration loaded successfully");
+            console.log("   BASE_URL:", window.BASE_URL);
+            console.log("   API Endpoint:", window.API_CONFIG.endpoints.auth.adminLogin);
+
+            // Setup login form handler
+            document.getElementById("loginForm").addEventListener("submit", handleLoginSubmit);
+            return true;
+        }
+
+        // Main login handler
+        async function handleLoginSubmit(e) {
             e.preventDefault();
 
             const email = document.getElementById("email").value.trim();
             const password = document.getElementById("password").value.trim();
 
+            // Validate inputs
+            if (!email || !password) {
+                alert("Please enter both email and password");
+                return;
+            }
+
             try {
-                // ⭐ FIX 1: Always use window.BASE_URL instead of local BASE_URL
+                // ⭐ Safety Check: Verify window.BASE_URL exists before making request
                 if (!window.BASE_URL) {
-                    console.error("BASE_URL not initialized. Config.js may not have loaded.");
+                    console.error("❌ BASE_URL lost during form submission");
                     alert("Configuration error. Please reload the page.");
                     return;
                 }
 
-                const loginURL = window.BASE_URL + API_CONFIG.endpoints.auth.adminLogin;
-                console.log("Login request URL:", loginURL); // Debug log
+                // Build login URL using window.BASE_URL (global, safe)
+                const loginURL = window.BASE_URL + window.API_CONFIG.endpoints.auth.adminLogin;
+                
+                console.log("📡 Sending login request to:", loginURL);
 
                 const response = await fetch(loginURL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
                     body: JSON.stringify({ email, password }),
                 });
 
+                console.log("📥 Response status:", response.status);
+
                 const result = await response.json();
 
-                if (!response.ok || !result.success) {
-                    alert(result.message || "Invalid login credentials");
+                if (!response.ok) {
+                    console.error("❌ Login failed:", result);
+                    alert(result.message || `Login failed (${response.status}). Please check your credentials.`);
                     return;
                 }
 
+                if (!result.success || !result.data || !result.data.accessToken) {
+                    console.error("❌ Invalid response format:", result);
+                    alert(result.message || "Login failed. Please try again.");
+                    return;
+                }
+
+                // ✅ Login successful - Store token and user data
+                console.log("✅ Login successful");
                 localStorage.setItem("epi_admin_token", result.data.accessToken);
+                localStorage.setItem("authToken", result.data.accessToken);
                 localStorage.setItem("epi_admin_user", JSON.stringify(result.data));
 
+                // Redirect to dashboard
                 window.location.href = "../index.html";
+
             } catch (err) {
-                console.error("Login error:", err);
-                alert("Unable to connect to server.");
+                console.error("❌ Login request error:", err);
+                
+                if (err instanceof TypeError && err.message.includes("Failed to fetch")) {
+                    alert("Unable to connect to server.\n\nPlease check:\n• Your internet connection\n• The server is running\n• Your firewall settings");
+                } else {
+                    alert(`Error: ${err.message || "Unknown error during login"}`);
+                }
             }
-        });
+        }
+
+        // ⭐ Initialize login handler when DOM is ready
+        // This ensures config.js has already executed
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initializeLoginHandler);
+        } else {
+            // DOM already loaded (script executed late)
+            initializeLoginHandler();
+        }
     </script>
 </body>
 </html>

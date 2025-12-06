@@ -17,9 +17,11 @@ if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
   BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
 }
 
-// ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY
-// This ensures login.html and all other scripts can access it
-window.BASE_URL = BASE_URL;
+// ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
+// This MUST happen before any script tries to use it
+if (!window.BASE_URL) {
+  window.BASE_URL = BASE_URL;
+}
 
 /*******************************
  * APP CONFIG
