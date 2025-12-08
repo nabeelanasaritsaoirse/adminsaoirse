@@ -11,9 +11,10 @@ const NAV_CONFIG = {
       id: "dashboard",
       label: "Dashboard",
       icon: "bi-speedometer2",
-      href: "../index.html",
-      hrefFromRoot: "index.html",
+      href: "dashboard.html",
+      hrefFromRoot: "pages/dashboard.html",
     },
+
     {
       id: "users",
       label: "Users",

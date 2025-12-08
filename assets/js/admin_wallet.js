@@ -28,22 +28,48 @@
       SEARCH WALLET
   ----------------------------------------*/
   async function searchWallet() {
-    const q = searchInput.value.trim();
-    if (!q) return alert('Enter phone or email to search');
+    const q = (searchInput.value || "").trim();
+    if (!q) return alert('Enter phone, email, name, userId or referral code to search');
 
     resetUI();
 
+    // Determine query parameter by input type:
+    // 1) contains "@" => email
+    // 2) 24 hex chars => userId (Mongo ObjectId)
+    // 3) starts with "REF" (case-insensitive) => referral
+    // 4) all digits (10-12 digits) => phone
+    // 5) otherwise => name
     let query = {};
-    if (q.includes('@')) query.email = q;
-    else query.phone = q;
+
+    // Email check
+    if (/@/.test(q)) {
+      query.email = q;
+    }
+    // Mongo ObjectId (24 hex characters)
+    else if (/^[a-fA-F0-9]{24}$/.test(q)) {
+      query.userId = q;
+    }
+    // Referral code starting with REF (case-insensitive) or common patterns
+    else if (/^REF/i.test(q)) {
+      query.referral = q;
+    }
+    // Phone: exactly 10-12 digits
+    else if (/^\d{10,12}$/.test(q)) {
+      query.phone = q;
+    }
+    // Fallback to name search
+    else {
+      query.name = q;
+    }
 
     // 🔥 LOGS ADDED
-    console.log("🔍 SEARCH QUERY:", query);
-
-    const finalURL = API.buildURL(API_ENDPOINT, {}) + "?" + new URLSearchParams(query).toString();
-    console.log("🌐 FINAL REQUEST URL:", finalURL);
+    console.log("🔍 SEARCH INPUT:", q);
+    console.log("🔍 DETECTED QUERY PARAM:", query);
 
     try {
+      const finalURL = API.buildURL(API_ENDPOINT, {}) + "?" + new URLSearchParams(query).toString();
+      console.log("🌐 FINAL REQUEST URL:", finalURL);
+
       const data = await API.get(API_ENDPOINT, {}, query);
 
       // 🔥 LOG RESPONSE
