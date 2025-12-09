@@ -128,10 +128,83 @@
 
         </div>
 
+        <!-- 🔵 TODAY'S SUMMARY SECTION -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold text-primary">Today's Summary</h6>
+                    </div>
+                    <div class="card-body row text-center">
+                        <div class="col-md-4">
+                            <h4 id="ordersToday">0</h4>
+                            <p class="text-muted mb-0">Orders Today</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h4 id="revenueToday">₹0</h4>
+                            <p class="text-muted mb-0">Revenue Today</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h4 id="kycToday">0</h4>
+                            <p class="text-muted mb-0">New KYC Submitted Today</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔵 RECENT USERS SECTION -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h6 class="m-0 fw-bold text-primary">Recent Users</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Date Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentUsersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔵 TOP SELLING PRODUCTS SECTION -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h6 class="m-0 fw-bold text-primary">Top Selling Products</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Orders</th>
+                                <th>Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topProductsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔵 TIME FILTER (Today / Week / Month) -->
+        <div class="mb-3 d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="applyTimeFilter('today')">Today</button>
+            <button class="btn btn-outline-primary" onclick="applyTimeFilter('week')">This Week</button>
+            <button class="btn btn-outline-primary" onclick="applyTimeFilter('month')">This Month</button>
+        </div>
+
         <!-- 🔍 SEARCH + FILTER + SORT BAR -->
         <div class="row mb-3">
 
-            <!-- Search -->
             <div class="col-md-4">
                 <input 
                     id="searchOrders" 
@@ -142,7 +215,6 @@
                 >
             </div>
 
-            <!-- Status Filter -->
             <div class="col-md-3">
                 <select class="form-select" id="orderStatusFilter" onchange="handleStatusFilter()">
                     <option value="">Filter by Status</option>
@@ -154,7 +226,6 @@
                 </select>
             </div>
 
-            <!-- Sort -->
             <div class="col-md-3">
                 <select class="form-select" id="orderSort" onchange="handleSort()">
                     <option value="newest">Sort: Newest First</option>
@@ -181,8 +252,140 @@
             </table>
         </div>
 
-        <!-- PAGINATION (VISIBLE NOW) -->
+        <!-- PAGINATION -->
         <div id="recentPagination" class="mt-3 d-flex justify-content-center"></div>
+
+        <!-- WALLET TABS -->
+        <div class="card shadow-sm">
+          <div class="card-body">
+
+            <ul class="nav nav-tabs" id="walletTabs">
+              <li class="nav-item">
+                <button class="nav-link active" id="walletTabBtn" data-bs-toggle="tab" data-bs-target="#walletTab">
+                  Wallet Details
+                </button>
+              </li>
+
+              <li class="nav-item">
+                <button class="nav-link" id="withdrawTabBtn" data-bs-toggle="tab" data-bs-target="#withdrawTab">
+                  Withdrawal Requests
+                </button>
+              </li>
+            </ul>
+
+            <div class="tab-content pt-3">
+
+              <!-- TAB 1: WALLET DETAILS -->
+              <div class="tab-pane fade show active" id="walletTab">
+                <div class="d-none" id="walletCard">
+                  <div class="card-body">
+
+                    <h5 class="mb-3">Wallet Details</h5>
+
+                    <div class="row">
+                      <div class="col-md-6">
+                        <ul class="list-group">
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Wallet Balance</span>
+                            <strong id="walletBalance">₹0</strong>
+                          </li>
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Hold Balance</span>
+                            <strong id="holdBalance">₹0</strong>
+                          </li>
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Referral Bonus</span>
+                            <strong id="referralBonus">₹0</strong>
+                          </li>
+                          <li class="list-group-item d-flex justify-content-between">
+                            <span>Invested Amount</span>
+                            <strong id="investedAmount">₹0</strong>
+                          </li>
+                        </ul>
+                      </div>
+
+                      <div class="col-md-6">
+                        <h6>Adjust Wallet</h6>
+                        <div class="input-group mb-3">
+                          <input type="number" class="form-control" id="adjustAmount" placeholder="Enter amount">
+                          <button class="btn btn-success" id="addMoneyBtn">Add</button>
+                          <button class="btn btn-danger" id="deductMoneyBtn">Deduct</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <hr>
+
+                    <h5>Transactions</h5>
+                    <div class="table-responsive">
+                      <table class="table table-striped">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody id="txnTable"></tbody>
+                      </table>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 2: WITHDRAWAL REQUESTS -->
+              <div class="tab-pane fade" id="withdrawTab">
+
+                <h4 class="mb-3">Withdrawal Requests</h4>
+
+                <div class="table-responsive">
+                  <table class="table table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>User</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="withdrawTable"></tbody>
+                  </table>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- WITHDRAWAL DETAILS MODAL -->
+        <div class="modal fade" id="withdrawModal" tabindex="-1">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+              <div class="modal-header">
+                <h5 class="modal-title">Withdrawal Details</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+
+              <div class="modal-body" id="withdrawModalContent">
+                Loading...
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn btn-success" id="modalApproveBtn">Approve</button>
+                <button class="btn btn-danger" id="modalRejectBtn">Reject</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+              </div>
+
+            </div>
+          </div>
+        </div>
 
         <!-- FOOTER -->
         <footer class="footer bg-light py-3">
@@ -206,3 +409,6 @@
 
     </div>
 </div>
+
+</body>
+</html>

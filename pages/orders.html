@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel - Orders</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
+
+  <body>
+    <!-- ====================== -->
+    <!-- ADMIN AUTH VALIDATION -->
+    <!-- ====================== -->
+    <script>
+      (function () {
+        const token = localStorage.getItem("epi_admin_token");
+        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+
+        if (!token) {
+          window.location.href = "login.html";
+          return;
+        }
+
+        if (user.role !== "admin") {
+          localStorage.removeItem("epi_admin_token");
+          localStorage.removeItem("epi_admin_user");
+          window.location.href = "login.html";
+          return;
+        }
+      })();
+    </script>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
+
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li><a class="dropdown-item" href="settings.html">Settings</a></li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" id="logoutBtn">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <div
+          class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Orders Management</h1>
+        </div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" id="ordersTabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#completedOrders">
+              Completed Orders
+            </button>
+          </li>
+
+          <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#completingSoon">
+              Completing in 3 Days
+            </button>
+          </li>
+        </ul>
+
+        <!-- TAB CONTENT -->
+        <div class="tab-content">
+
+          <!-- =========================== -->
+          <!-- TAB 1: COMPLETED ORDERS -->
+          <!-- =========================== -->
+          <div class="tab-pane fade show active" id="completedOrders">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="mb-3">Completed Orders</h5>
+
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>OrderID</th>
+                        <th>User</th>
+                        <th>Product</th>
+                        <th>Total Paid</th>
+                        <th>Completed At</th>
+                        <th>Shipping Label</th>
+                      </tr>
+                    </thead>
+                    <tbody id="completedOrdersBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- =========================== -->
+          <!-- TAB 2: COMPLETING SOON -->
+          <!-- =========================== -->
+          <div class="tab-pane fade" id="completingSoon">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="mb-3">Orders Completing Within 3 Days</h5>
+
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>OrderID</th>
+                        <th>User</th>
+                        <th>Product</th>
+                        <th>Remaining Installments</th>
+                        <th>Last Due Date</th>
+                        <th>Remaining Amount</th>
+                        <th>Prepare Shipping</th>
+                      </tr>
+                    </thead>
+                    <tbody id="completingSoonBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- JS FILES -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/main.js"></script>
+
+    <!-- ORDERS LOGIC -->
+    <script src="../assets/js/orders.js"></script>
+
+    <!-- LOGOUT -->
+    <script>
+      document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "login.html";
+      });
+    </script>
+  </body>
+</html>
