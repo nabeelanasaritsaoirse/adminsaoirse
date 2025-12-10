@@ -1,24 +1,27 @@
 /**
  * Common Navigation Component
- * Manages sidebar navigation across all pages
+ * Manages sidebar navigation across all pages with RBAC
  */
 
-// Navigation configuration
+// Navigation configuration with permission-based access control
 const NAV_CONFIG = {
   items: [
     {
       id: "dashboard",
       label: "Dashboard",
       icon: "bi-speedometer2",
-      href: "../index.html",
-      hrefFromRoot: "index.html",
+      href: "dashboard.html",
+      hrefFromRoot: "pages/dashboard.html",
+      permission: "dashboard", // Required permission
     },
+
     {
       id: "users",
       label: "Users",
       icon: "bi-people",
       href: "users.html",
       hrefFromRoot: "pages/users.html",
+      permission: "users",
     },
     {
       id: "wallet",
@@ -26,6 +29,17 @@ const NAV_CONFIG = {
       icon: "bi-wallet2",
       href: "admin_wallet.html",
       hrefFromRoot: "pages/admin_wallet.html",
+      permission: "wallet",
+    },
+
+    /* ⭐ ADDED — KYC VERIFICATION */
+    {
+      id: "kyc",
+      label: "KYC Verification",
+      icon: "bi-shield-check",
+      href: "kyc.html",
+      hrefFromRoot: "pages/kyc.html",
+      permission: "kyc",
     },
 
     {
@@ -34,6 +48,7 @@ const NAV_CONFIG = {
       icon: "bi-folder-fill",
       href: "categories.html",
       hrefFromRoot: "pages/categories.html",
+      permission: "categories",
     },
     {
       id: "products",
@@ -41,24 +56,25 @@ const NAV_CONFIG = {
       icon: "bi-box-seam",
       href: "products.html",
       hrefFromRoot: "pages/products.html",
+      permission: "products",
     },
 
-    /* ⭐ ADDED — Image Uploader */
     {
       id: "uploader",
       label: "Image Uploader",
       icon: "bi-image",
       href: "uploader.html",
       hrefFromRoot: "pages/uploader.html",
+      permission: "uploader",
     },
 
-    /* ⭐ ADDED — Coupons (matches pages/coupons.html) */
     {
       id: "coupons",
       label: "Coupons",
       icon: "bi-ticket-perforated",
       href: "coupons.html",
       hrefFromRoot: "pages/coupons.html",
+      permission: "coupons",
     },
 
     {
@@ -67,6 +83,7 @@ const NAV_CONFIG = {
       icon: "bi-cart3",
       href: "#orders",
       hrefFromRoot: "#orders",
+      permission: "orders",
     },
     {
       id: "analytics",
@@ -74,6 +91,7 @@ const NAV_CONFIG = {
       icon: "bi-graph-up",
       href: "#analytics",
       hrefFromRoot: "#analytics",
+      permission: "analytics",
     },
     {
       id: "notifications",
@@ -81,6 +99,7 @@ const NAV_CONFIG = {
       icon: "bi-bell",
       href: "notifications.html",
       hrefFromRoot: "pages/notifications.html",
+      permission: "notifications",
     },
     {
       id: "chat",
@@ -88,6 +107,7 @@ const NAV_CONFIG = {
       icon: "bi-chat-dots",
       href: "chat.html",
       hrefFromRoot: "pages/chat.html",
+      permission: "chat",
     },
     {
       id: "chat-reports",
@@ -95,6 +115,7 @@ const NAV_CONFIG = {
       icon: "bi-flag",
       href: "chat-reports.html",
       hrefFromRoot: "pages/chat-reports.html",
+      permission: "chat-reports",
     },
     {
       id: "chat-analytics",
@@ -102,6 +123,7 @@ const NAV_CONFIG = {
       icon: "bi-bar-chart",
       href: "chat-analytics.html",
       hrefFromRoot: "pages/chat-analytics.html",
+      permission: "chat-analytics",
     },
     {
       id: "settings",
@@ -109,6 +131,18 @@ const NAV_CONFIG = {
       icon: "bi-gear",
       href: "settings.html",
       hrefFromRoot: "pages/settings.html",
+      permission: "settings",
+    },
+
+    /* ⭐ ADMIN MANAGEMENT - Super Admin Only */
+    {
+      id: "admin_management",
+      label: "Admin Management",
+      icon: "bi-person-gear",
+      href: "admin-management.html",
+      hrefFromRoot: "pages/admin-management.html",
+      permission: "admin_management",
+      superAdminOnly: true, // Only visible to super admins
     },
   ],
 };
@@ -174,7 +208,7 @@ function getActiveNavItem() {
 }
 
 /**
- * Render navigation sidebar
+ * Render navigation sidebar with permission-based filtering
  */
 function renderNavigation(containerId = "sidebar") {
   const container = document.getElementById(containerId);
@@ -183,19 +217,41 @@ function renderNavigation(containerId = "sidebar") {
     return;
   }
 
+  // Filter items based on user's permissions
+  const visibleItems = NAV_CONFIG.items.filter((item) => {
+    // Check if AUTH is available
+    if (!window.AUTH) {
+      console.warn("AUTH not available, showing all items");
+      return true;
+    }
+
+    // Super admin only items
+    if (item.superAdminOnly) {
+      return window.AUTH.isSuperAdmin();
+    }
+
+    // Check if user has permission for this module
+    if (item.permission) {
+      return window.AUTH.hasModule(item.permission);
+    }
+
+    // If no permission specified, show it (backward compatibility)
+    return true;
+  });
+
   const activeId = getActiveNavItem();
 
   const navHTML = `
         <div class="position-sticky pt-3">
             <ul class="nav flex-column">
-                ${NAV_CONFIG.items
+                ${visibleItems
                   .map((item) => {
                     const href = getNavHref(item);
                     const isActive = item.id === activeId;
 
                     return `
                         <li class="nav-item">
-                            <a class="nav-link ${isActive ? "active" : ""}" 
+                            <a class="nav-link ${isActive ? "active" : ""}"
                                data-nav-id="${item.id}"
                                href="${href}">
                                 <i class="bi ${item.icon} me-2"></i>${

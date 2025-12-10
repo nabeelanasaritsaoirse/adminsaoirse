@@ -52,20 +52,24 @@
     </style>
 </head>
 <body>
+    <!-- Load config for AUTH helper -->
+    <script src="../assets/js/config.js"></script>
     <script>
+        // Permission Guard - Check if user has access to products module
         (function () {
-            const token = localStorage.getItem("epi_admin_token");
-            const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+            const REQUIRED_PERMISSION = 'products';
 
-            if (!token) {
+            // Check authentication
+            if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
+                alert('Please login first');
                 window.location.href = "login.html";
                 return;
             }
 
-            if (user.role !== "admin") {
-                localStorage.removeItem("epi_admin_token");
-                localStorage.removeItem("epi_admin_user");
-                window.location.href = "login.html";
+            // Check if user has permission to access products
+            if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+                alert('Access Denied! You do not have permission to access Products module.');
+                window.location.href = "dashboard.html";
                 return;
             }
         })();
@@ -273,7 +277,7 @@
               </div>
               <div id="imagePreviewContainer" class="row g-2 mb-3"></div>
 
-              <!-- Payment Plans -->
+              <!-- Payment Plans (per-day style) -->
               <h6 class="text-primary mb-3 mt-4"><i class="bi bi-credit-card"></i> Payment Plans (Optional)</h6>
               <div id="plansSection">
                 <div id="plansList"></div>
@@ -330,12 +334,12 @@
               <h6 class="text-primary mb-3 mt-4"><i class="bi bi-box"></i> Product Details</h6>
               <div class="row mb-3">
                 <div class="col-md-6">
-                  <label class="form-label">Warranty (Days)</label>
-                  <input type="number" class="form-control" id="warrantyDays" min="0" placeholder="e.g., 365" />
+                  <label class="form-label">Warranty Period (days)</label>
+                  <input type="number" class="form-control" id="warrantyPeriod" min="0" placeholder="e.g., 365" />
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">Warranty Type</label>
-                  <input type="text" class="form-control" id="warrantyType" placeholder="e.g., Manufacturer Warranty" />
+                  <label class="form-label">Return Policy (days)</label>
+                  <input type="number" class="form-control" id="warrantyReturnPolicy" min="0" placeholder="e.g., 7" />
                 </div>
               </div>
               <div class="row mb-3">
@@ -376,6 +380,109 @@
                 <label class="form-label">Product Tags (comma-separated)</label>
                 <input type="text" class="form-control" id="productTags" placeholder="e.g., smartphone, 5G, android, premium" />
                 <small class="text-muted">Separate tags with commas for better search and filtering</small>
+              </div>
+
+              <!-- SEO Section -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-globe"></i> SEO</h6>
+              <div class="mb-3">
+                <label class="form-label">Meta Title</label>
+                <input type="text" class="form-control" id="productMetaTitle" placeholder="SEO title for product page" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Meta Description</label>
+                <textarea class="form-control" id="productMetaDescription" rows="2" placeholder="Short SEO description"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Meta Keywords (comma-separated)</label>
+                <input type="text" class="form-control" id="productMetaKeywords" placeholder="e.g., ac, cooler, inverter, 1.5 ton" />
+              </div>
+
+              <!-- REGIONAL AVAILABILITY AND PRICING SECTION -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-globe2"></i> Regional Availability and Pricing</h6>
+
+              <!-- Global Toggle -->
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="isGlobalProduct" checked>
+                <label class="form-check-label" for="isGlobalProduct">
+                  <strong>Available in All Countries (Global Product)</strong>
+                </label>
+                <div class="form-text">
+                  Most products are global. Uncheck this only if you want to restrict this product to specific countries with custom pricing/stock.
+                </div>
+              </div>
+
+              <!-- Regional Settings Table (Hidden by default) -->
+              <div id="regionalSettingsSection" class="d-none">
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle"></i>
+                  Select countries where this product should be available and set region-specific pricing and stock levels.
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                      <tr>
+                        <th class="col-4">Country/Region</th>
+                        <th class="col-2">Available</th>
+                        <th class="col-2">Stock Quantity</th>
+                        <th class="col-2">Regular Price</th>
+                        <th class="col-2">Sale Price</th>
+                      </tr>
+                    </thead>
+                    <tbody id="regionalSettingsTableBody">
+                      <!-- Will be populated by JavaScript -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Referral Bonus Section -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-gift"></i> Referral Bonus</h6>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="referralEnabled" />
+                <label class="form-check-label" for="referralEnabled">
+                  Enable referral bonus for this product
+                </label>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Bonus Type</label>
+                  <select class="form-select" id="referralType">
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="flat">Flat (₹)</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Bonus Value</label>
+                  <input type="number" class="form-control" id="referralValue" min="0" step="0.01" placeholder="e.g., 5 or 500" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Min Purchase Amount (₹)</label>
+                  <input type="number" class="form-control" id="referralMinPurchase" min="0" step="0.01" placeholder="e.g., 10000" />
+                </div>
+              </div>
+
+              <!-- Global Payment Plan Config -->
+              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-wallet2"></i> Global Payment Plan Config</h6>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="paymentPlanEnabled" />
+                <label class="form-check-label" for="paymentPlanEnabled">
+                  Enable EMI-style payment plan for this product
+                </label>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Min Down Payment (₹)</label>
+                  <input type="number" class="form-control" id="paymentPlanMinDown" min="0" step="0.01" placeholder="e.g., 5000" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Max Down Payment (₹)</label>
+                  <input type="number" class="form-control" id="paymentPlanMaxDown" min="0" step="0.01" placeholder="e.g., 25000" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Interest Rate (%)</label>
+                  <input type="number" class="form-control" id="paymentPlanInterest" min="0" step="0.01" placeholder="e.g., 12" />
+                </div>
               </div>
 
               <!-- Status -->
@@ -424,6 +531,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../assets/js/utils.js"></script>
     <script src="../assets/js/config.js"></script>
+    <script src="../assets/js/regions-config.js"></script>
     <script src="../assets/js/products.js"></script>
     <script src="../assets/js/navigation.js"></script>
   </body>

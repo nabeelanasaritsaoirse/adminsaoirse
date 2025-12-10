@@ -69,6 +69,10 @@ let variantCount = 0;
 let planCount = 0;
 let selectedImageFiles = [];
 
+// Regional state
+let regionalSettings = []; // Array of { region, isAvailable, stockQuantity, currency, regularPrice, salePrice }
+let isGlobalProduct = true; // Default: products are global
+
 // Pagination state (backend pagination)
 let pagination = {
   page: 1,
@@ -84,6 +88,9 @@ let productForm;
 let hasVariantsCheckbox, variantsSection, variantsList;
 let productImagesInput, imagePreviewContainer;
 let plansList;
+
+// Regional DOM elements
+let isGlobalProductCheckbox, regionalSettingsSection, regionalSettingsTableBody;
 
 /* Stats elements */
 let totalProductsCount, publishedCount, variantsCount, totalStockCount;
@@ -119,6 +126,28 @@ function initializeDOMElements() {
   productImagesInput = document.getElementById("productImages");
   imagePreviewContainer = document.getElementById("imagePreviewContainer");
   plansList = document.getElementById("plansList");
+
+  // Regional elements
+  isGlobalProductCheckbox = document.getElementById("isGlobalProduct");
+  regionalSettingsSection = document.getElementById("regionalSettingsSection");
+  regionalSettingsTableBody = document.getElementById("regionalSettingsTableBody");
+
+  // Regional toggle listener
+  if (isGlobalProductCheckbox) {
+    isGlobalProductCheckbox.addEventListener("change", function () {
+      isGlobalProduct = this.checked;
+
+      if (isGlobalProduct) {
+        // Hide regional settings
+        regionalSettingsSection.classList.add("d-none");
+        regionalSettings = [];
+      } else {
+        // Show regional settings and initialize table
+        regionalSettingsSection.classList.remove("d-none");
+        initializeRegionalTable();
+      }
+    });
+  }
 
   if (hasVariantsCheckbox) {
     hasVariantsCheckbox.addEventListener("change", function () {
@@ -191,6 +220,199 @@ function setupEventListeners() {
       window.location.href = "login.html";
     });
   }
+}
+
+/* ---------- Regional Settings Functions ---------- */
+
+/**
+ * Initialize regional settings table with all supported regions
+ */
+function initializeRegionalTable() {
+  if (!regionalSettingsTableBody) return;
+
+  // Get current global price for smart defaults
+  const globalPrice = parseFloat(document.getElementById("productPrice")?.value || 0);
+  const globalSalePrice = parseFloat(document.getElementById("productSalePrice")?.value || 0);
+
+  regionalSettingsTableBody.innerHTML = '';
+
+  window.SUPPORTED_REGIONS.forEach(region => {
+    const row = document.createElement('tr');
+    row.id = `region-row-${region.code}`;
+
+    // Find if this region is already in settings
+    const existingSettings = regionalSettings.find(r => r.region === region.code);
+    const isEnabled = !!existingSettings;
+
+    row.innerHTML = `
+      <td>
+        <div class="form-check">
+          <input
+            class="form-check-input region-checkbox"
+            type="checkbox"
+            id="region-${region.code}"
+            ${isEnabled ? 'checked' : ''}
+            data-region="${region.code}"
+          >
+          <label class="form-check-label" for="region-${region.code}">
+            <span style="font-size: 1.2em;">${region.flag}</span>
+            <strong>${region.name}</strong>
+          </label>
+        </div>
+      </td>
+      <td>
+        <div class="form-check form-switch">
+          <input
+            class="form-check-input regional-available-toggle"
+            type="checkbox"
+            id="available-${region.code}"
+            ${isEnabled && (existingSettings?.isAvailable !== false) ? 'checked' : ''}
+            ${!isEnabled ? 'disabled' : ''}
+            data-region="${region.code}"
+          >
+        </div>
+      </td>
+      <td>
+        <input
+          type="number"
+          class="form-control form-control-sm regional-stock"
+          id="stock-${region.code}"
+          min="0"
+          value="${existingSettings?.stockQuantity || 0}"
+          ${!isEnabled ? 'disabled' : ''}
+          data-region="${region.code}"
+          placeholder="0"
+        >
+      </td>
+      <td>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">${region.symbol}</span>
+          <input
+            type="number"
+            class="form-control regional-price"
+            id="price-${region.code}"
+            min="0"
+            step="0.01"
+            value="${existingSettings?.regularPrice || (globalPrice ? RegionUtils.approximateConversion(globalPrice, 'USD', region.currency) : 0)}"
+            ${!isEnabled ? 'disabled' : ''}
+            data-region="${region.code}"
+            placeholder="0.00"
+          >
+        </div>
+      </td>
+      <td>
+        <div class="input-group input-group-sm">
+          <span class="input-group-text">${region.symbol}</span>
+          <input
+            type="number"
+            class="form-control regional-sale-price"
+            id="sale-price-${region.code}"
+            min="0"
+            step="0.01"
+            value="${existingSettings?.salePrice || (globalSalePrice ? RegionUtils.approximateConversion(globalSalePrice, 'USD', region.currency) : 0)}"
+            ${!isEnabled ? 'disabled' : ''}
+            data-region="${region.code}"
+            placeholder="0.00"
+          >
+        </div>
+      </td>
+    `;
+
+    regionalSettingsTableBody.appendChild(row);
+  });
+
+  // Attach event listeners to checkboxes
+  attachRegionalEventListeners();
+}
+
+/**
+ * Attach event listeners to regional table inputs
+ */
+function attachRegionalEventListeners() {
+  // Region checkbox toggle
+  document.querySelectorAll('.region-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const regionCode = this.dataset.region;
+      handleRegionToggle(regionCode, this.checked);
+    });
+  });
+
+  // Input change listeners
+  document.querySelectorAll('.regional-available-toggle, .regional-stock, .regional-price, .regional-sale-price').forEach(input => {
+    input.addEventListener('change', function() {
+      const regionCode = this.dataset.region;
+      updateRegionalSettings(regionCode);
+    });
+  });
+}
+
+/**
+ * Handle region checkbox toggle
+ */
+function handleRegionToggle(regionCode, isEnabled) {
+  const region = RegionUtils.getRegionByCode(regionCode);
+
+  if (isEnabled) {
+    // Enable region - add to settings with defaults
+    const globalPrice = parseFloat(document.getElementById("productPrice")?.value || 0);
+    const globalSalePrice = parseFloat(document.getElementById("productSalePrice")?.value || 0);
+
+    const newRegion = {
+      region: regionCode,
+      isAvailable: true,
+      stockQuantity: 0,
+      currency: region.currency,
+      regularPrice: globalPrice ? RegionUtils.approximateConversion(globalPrice, 'USD', region.currency) : 0,
+      salePrice: globalSalePrice ? RegionUtils.approximateConversion(globalSalePrice, 'USD', region.currency) : 0,
+    };
+
+    regionalSettings.push(newRegion);
+
+    // Enable inputs
+    document.getElementById(`available-${regionCode}`).disabled = false;
+    document.getElementById(`stock-${regionCode}`).disabled = false;
+    document.getElementById(`price-${regionCode}`).disabled = false;
+    document.getElementById(`sale-price-${regionCode}`).disabled = false;
+
+    console.log(`✅ [REGIONAL] Enabled region: ${regionCode}`, newRegion);
+  } else {
+    // Disable region - remove from settings
+    regionalSettings = regionalSettings.filter(r => r.region !== regionCode);
+
+    // Disable inputs
+    document.getElementById(`available-${regionCode}`).disabled = true;
+    document.getElementById(`available-${regionCode}`).checked = false;
+    document.getElementById(`stock-${regionCode}`).disabled = true;
+    document.getElementById(`stock-${regionCode}`).value = 0;
+    document.getElementById(`price-${regionCode}`).disabled = true;
+    document.getElementById(`price-${regionCode}`).value = 0;
+    document.getElementById(`sale-price-${regionCode}`).disabled = true;
+    document.getElementById(`sale-price-${regionCode}`).value = 0;
+
+    console.log(`❌ [REGIONAL] Disabled region: ${regionCode}`);
+  }
+}
+
+/**
+ * Update regional settings when inputs change
+ */
+function updateRegionalSettings(regionCode) {
+  const index = regionalSettings.findIndex(r => r.region === regionCode);
+
+  if (index === -1) return; // Region not enabled
+
+  const region = RegionUtils.getRegionByCode(regionCode);
+
+  regionalSettings[index] = {
+    region: regionCode,
+    isAvailable: document.getElementById(`available-${regionCode}`).checked,
+    stockQuantity: parseInt(document.getElementById(`stock-${regionCode}`).value || 0),
+    currency: region.currency,
+    regularPrice: parseFloat(document.getElementById(`price-${regionCode}`).value || 0),
+    salePrice: parseFloat(document.getElementById(`sale-price-${regionCode}`).value || 0),
+  };
+
+  console.log(`🔄 [REGIONAL] Updated settings for ${regionCode}:`, regionalSettings[index]);
 }
 
 /* ---------- Load Categories ---------- */
@@ -371,6 +593,10 @@ async function loadProducts() {
         project: p.project || "",
         dimensions: p.dimensions || null,
         tags: Array.isArray(p.tags) ? p.tags : [],
+        // New fields we now support in admin
+        seo: p.seo || null,
+        referralBonus: p.referralBonus || null,
+        paymentPlan: p.paymentPlan || null,
         createdAt: p.createdAt || new Date().toISOString(),
         updatedAt: p.updatedAt || new Date().toISOString(),
       };
@@ -450,7 +676,9 @@ function renderPagination() {
   pagesHtml += `
     <li class="page-item ${prevDisabled ? "disabled" : ""}">
       <button class="page-link" ${
-        prevDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${currentPage - 1})"`
+        prevDisabled
+          ? 'tabindex="-1" aria-disabled="true"'
+          : `onclick="changeProductPage(${currentPage - 1})"`
       }>&laquo; Previous</button>
     </li>
   `;
@@ -491,7 +719,9 @@ function renderPagination() {
   pagesHtml += `
     <li class="page-item ${nextDisabled ? "disabled" : ""}">
       <button class="page-link" ${
-        nextDisabled ? 'tabindex="-1" aria-disabled="true"' : `onclick="changeProductPage(${currentPage + 1})"`
+        nextDisabled
+          ? 'tabindex="-1" aria-disabled="true"'
+          : `onclick="changeProductPage(${currentPage + 1})"`
       }>Next &raquo;</button>
     </li>
   `;
@@ -696,12 +926,10 @@ async function uploadProductImages(productId) {
 
       const formData = new FormData();
 
-      // Ek image ek baar mein
       formData.append('images', file);
       formData.append('altText', 'Product image');
 
       try {
-        // PUT /api/products/:productId/images - har image ke liye alag call
         const url = `${window.BASE_URL}/products/${productId}/images`;
         console.log(`🌐 [PRODUCTS] Uploading to URL:`, url);
 
@@ -758,13 +986,11 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
     let uploadedCount = 0;
     let failedCount = 0;
 
-    // Upload each variant image one by one
     console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`);
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
       console.log(`📤 [PRODUCTS] Uploading variant image ${i + 1}/${variantImageFiles.length} for variant index:`, variantIndex);
 
-      // Get the corresponding variant from created variants
       const variant = createdVariants && createdVariants[variantIndex];
       console.log(`🔍 [PRODUCTS] Found variant for index ${variantIndex}:`, variant);
 
@@ -779,7 +1005,6 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
       formData.append('altText', 'Variant image');
 
       try {
-        // PUT /api/products/:productId/variants/:variantId/images
         const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
         console.log(`🌐 [PRODUCTS] Uploading variant image to URL:`, url);
 
@@ -818,7 +1043,7 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
   }
 }
 
-/* ---------- Payment Plan Functions ---------- */
+/* ---------- Payment Plan Functions (per-day plans list) ---------- */
 
 function addPlanField() {
   planCount++;
@@ -894,6 +1119,13 @@ function openAddProductModal() {
   planCount = 0;
   selectedImageFiles = [];
 
+  // Reset regional state
+  isGlobalProduct = true;
+  regionalSettings = [];
+  if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = true;
+  if (regionalSettingsSection) regionalSettingsSection.classList.add("d-none");
+  if (regionalSettingsTableBody) regionalSettingsTableBody.innerHTML = '';
+
   if (productForm) productForm.reset();
 
   const titleEl = document.getElementById("productModalLabel");
@@ -920,6 +1152,34 @@ function openAddProductModal() {
   if (isBestSellerEl) isBestSellerEl.checked = false;
   if (isTrendingEl) isTrendingEl.checked = false;
 
+  // Reset SEO
+  const metaTitleEl = document.getElementById("productMetaTitle");
+  const metaDescEl = document.getElementById("productMetaDescription");
+  const metaKeywordsEl = document.getElementById("productMetaKeywords");
+  if (metaTitleEl) metaTitleEl.value = "";
+  if (metaDescEl) metaDescEl.value = "";
+  if (metaKeywordsEl) metaKeywordsEl.value = "";
+
+  // Reset referral
+  const referralEnabledEl = document.getElementById("referralEnabled");
+  const referralTypeEl = document.getElementById("referralType");
+  const referralValueEl = document.getElementById("referralValue");
+  const referralMinPurchaseEl = document.getElementById("referralMinPurchase");
+  if (referralEnabledEl) referralEnabledEl.checked = false;
+  if (referralTypeEl) referralTypeEl.value = "percentage";
+  if (referralValueEl) referralValueEl.value = "";
+  if (referralMinPurchaseEl) referralMinPurchaseEl.value = "";
+
+  // Reset payment plan config
+  const ppEnabledEl = document.getElementById("paymentPlanEnabled");
+  const ppMinEl = document.getElementById("paymentPlanMinDown");
+  const ppMaxEl = document.getElementById("paymentPlanMaxDown");
+  const ppInterestEl = document.getElementById("paymentPlanInterest");
+  if (ppEnabledEl) ppEnabledEl.checked = false;
+  if (ppMinEl) ppMinEl.value = "";
+  if (ppMaxEl) ppMaxEl.value = "";
+  if (ppInterestEl) ppInterestEl.value = "";
+
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
 }
@@ -932,7 +1192,7 @@ async function editProduct(productId) {
     return;
   }
 
-  currentProductId = product.productId;
+  currentProductId = product._id;  // ⭐ Store MongoDB _id, not productId
 
   const labelEl = document.getElementById("productModalLabel");
   if (labelEl) labelEl.textContent = "Edit Product";
@@ -970,7 +1230,7 @@ async function editProduct(productId) {
     variantCount = 0;
   }
 
-  // Populate product flags
+  // Product flags
   const isFeaturedEl = document.getElementById("isFeatured");
   const isPopularEl = document.getElementById("isPopular");
   const isBestSellerEl = document.getElementById("isBestSeller");
@@ -981,34 +1241,130 @@ async function editProduct(productId) {
   if (isBestSellerEl) isBestSellerEl.checked = product.isBestSeller || false;
   if (isTrendingEl) isTrendingEl.checked = product.isTrending || false;
 
-  // Populate warranty information
-  const warrantyDaysEl = document.getElementById("warrantyDays");
-  const warrantyTypeEl = document.getElementById("warrantyType");
-  if (warrantyDaysEl) warrantyDaysEl.value = product.warranty?.days || "";
-  if (warrantyTypeEl) warrantyTypeEl.value = product.warranty?.type || "";
+  // Warranty (Option A: period + returnPolicy)
+  const warrantyPeriodEl = document.getElementById("warrantyPeriod");
+  const warrantyReturnPolicyEl = document.getElementById("warrantyReturnPolicy");
+  if (warrantyPeriodEl)
+    warrantyPeriodEl.value = product.warranty?.period || "";
+  if (warrantyReturnPolicyEl)
+    warrantyReturnPolicyEl.value = product.warranty?.returnPolicy || "";
 
-  // Populate origin and project
+  // Origin and project
   const productOriginEl = document.getElementById("productOrigin");
   const productProjectEl = document.getElementById("productProject");
   if (productOriginEl) productOriginEl.value = product.origin || "";
   if (productProjectEl) productProjectEl.value = product.project || "";
 
-  // Populate dimensions
+  // Dimensions
   const dimensionLengthEl = document.getElementById("dimensionLength");
   const dimensionWidthEl = document.getElementById("dimensionWidth");
   const dimensionHeightEl = document.getElementById("dimensionHeight");
   const productWeightEl = document.getElementById("productWeight");
 
-  if (dimensionLengthEl) dimensionLengthEl.value = product.dimensions?.length || "";
-  if (dimensionWidthEl) dimensionWidthEl.value = product.dimensions?.width || "";
-  if (dimensionHeightEl) dimensionHeightEl.value = product.dimensions?.height || "";
-  if (productWeightEl) productWeightEl.value = product.dimensions?.weight || "";
+  if (dimensionLengthEl)
+    dimensionLengthEl.value = product.dimensions?.length || "";
+  if (dimensionWidthEl)
+    dimensionWidthEl.value = product.dimensions?.width || "";
+  if (dimensionHeightEl)
+    dimensionHeightEl.value = product.dimensions?.height || "";
+  if (productWeightEl)
+    productWeightEl.value = product.dimensions?.weight || "";
 
-  // Populate tags (convert array to comma-separated string)
+  // Tags
   const productTagsEl = document.getElementById("productTags");
   if (productTagsEl) {
-    const tagsValue = Array.isArray(product.tags) ? product.tags.join(', ') : "";
+    const tagsValue = Array.isArray(product.tags)
+      ? product.tags.join(", ")
+      : "";
     productTagsEl.value = tagsValue;
+  }
+
+  // SEO
+  const metaTitleEl = document.getElementById("productMetaTitle");
+  const metaDescEl = document.getElementById("productMetaDescription");
+  const metaKeywordsEl = document.getElementById("productMetaKeywords");
+  if (metaTitleEl)
+    metaTitleEl.value = product.seo?.metaTitle || "";
+  if (metaDescEl)
+    metaDescEl.value = product.seo?.metaDescription || "";
+  if (metaKeywordsEl)
+    metaKeywordsEl.value = Array.isArray(product.seo?.keywords)
+      ? product.seo.keywords.join(", ")
+      : "";
+
+  // Referral Bonus
+  const referralEnabledEl = document.getElementById("referralEnabled");
+  const referralTypeEl = document.getElementById("referralType");
+  const referralValueEl = document.getElementById("referralValue");
+  const referralMinPurchaseEl = document.getElementById("referralMinPurchase");
+
+  if (referralEnabledEl)
+    referralEnabledEl.checked = product.referralBonus?.enabled || false;
+  if (referralTypeEl)
+    referralTypeEl.value = product.referralBonus?.type || "percentage";
+  if (referralValueEl)
+    referralValueEl.value = product.referralBonus?.value ?? "";
+  if (referralMinPurchaseEl)
+    referralMinPurchaseEl.value = product.referralBonus?.minPurchase ?? "";
+
+  // Global Payment Plan Config
+  const ppEnabledEl = document.getElementById("paymentPlanEnabled");
+  const ppMinEl = document.getElementById("paymentPlanMinDown");
+  const ppMaxEl = document.getElementById("paymentPlanMaxDown");
+  const ppInterestEl = document.getElementById("paymentPlanInterest");
+
+  if (ppEnabledEl)
+    ppEnabledEl.checked = product.paymentPlan?.enabled || false;
+  if (ppMinEl)
+    ppMinEl.value = product.paymentPlan?.minDownPayment ?? "";
+  if (ppMaxEl)
+    ppMaxEl.value = product.paymentPlan?.maxDownPayment ?? "";
+  if (ppInterestEl)
+    ppInterestEl.value = product.paymentPlan?.interestRate ?? "";
+
+  // Load regional data
+  console.log('🌍 [PRODUCTS] Loading regional data for edit...');
+
+  // Check if product has regional data
+  const hasRegionalData =
+    product.regionalAvailability &&
+    product.regionalAvailability.length > 0;
+
+  if (hasRegionalData) {
+    // Product has regional restrictions
+    isGlobalProduct = false;
+    if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = false;
+
+    // Build regional settings from product data
+    regionalSettings = product.regionalAvailability.map(avail => {
+      // Find matching pricing data
+      const pricing = product.regionalPricing?.find(p => p.region === avail.region) || {};
+
+      return {
+        region: avail.region,
+        isAvailable: avail.isAvailable,
+        stockQuantity: avail.stockQuantity || 0,
+        currency: pricing.currency || 'USD',
+        regularPrice: pricing.regularPrice || 0,
+        salePrice: pricing.salePrice || 0,
+      };
+    });
+
+    // Show regional section and populate table
+    if (regionalSettingsSection) {
+      regionalSettingsSection.classList.remove("d-none");
+    }
+    initializeRegionalTable();
+
+    console.log('✅ [PRODUCTS] Loaded regional settings:', regionalSettings);
+  } else {
+    // Global product
+    isGlobalProduct = true;
+    regionalSettings = [];
+    if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = true;
+    if (regionalSettingsSection) regionalSettingsSection.classList.add("d-none");
+
+    console.log('🌎 [PRODUCTS] Product is global - no regional restrictions');
   }
 
   const statusRadio = document.querySelector(
@@ -1113,7 +1469,13 @@ function renderVariantField(variant, idx) {
                 <div class="col-md-3">
                     <label class="form-label">Variant Image (Optional)</label>
                     <input type="file" class="form-control form-control-sm" data-variant-image accept="image/jpeg,image/jpg,image/png,image/webp" />
-                    ${hasExistingImage ? `<small class="text-muted">Current: ${escapeHtml(existingImageUrl.split('/').pop())}</small>` : ''}
+                    ${
+                      hasExistingImage
+                        ? `<small class="text-muted">Current: ${escapeHtml(
+                            existingImageUrl.split("/").pop()
+                          )}</small>`
+                        : ""
+                    }
                 </div>
             </div>
         </div>
@@ -1180,7 +1542,7 @@ async function saveProduct() {
     return;
   }
 
-  // Stock required and MUST be > 0 (QA requirement)
+  // Stock required and MUST be > 0
   if (stockRaw === "") {
     console.warn('⚠️ [PRODUCTS] Validation failed: Stock is required');
     alert("Stock is required");
@@ -1209,29 +1571,39 @@ async function saveProduct() {
   // Get category name and parent info from selected option
   const categorySelect = document.getElementById("productCategory");
   const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-  const categoryName = selectedOption.getAttribute('data-category-name') || selectedOption.text.trim();
+  const categoryName =
+    selectedOption.getAttribute('data-category-name') ||
+    selectedOption.text.trim();
   const parentId = selectedOption.getAttribute('data-parent-id');
   const parentName = selectedOption.getAttribute('data-parent-name');
   console.log('📁 [PRODUCTS] Category info:', { categoryId, categoryName, parentId, parentName });
 
-  // Collect additional fields
+  // Product flags
   const isFeatured = document.getElementById("isFeatured")?.checked || false;
   const isPopular = document.getElementById("isPopular")?.checked || false;
   const isBestSeller = document.getElementById("isBestSeller")?.checked || false;
   const isTrending = document.getElementById("isTrending")?.checked || false;
   console.log('🏷️ [PRODUCTS] Product flags:', { isFeatured, isPopular, isBestSeller, isTrending });
 
-  const warrantyDays = parseInt(document.getElementById("warrantyDays")?.value) || 0;
-  const warrantyType = document.getElementById("warrantyType")?.value.trim() || "";
+  // Warranty (Option A)
+  const warrantyPeriod =
+    parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
+  const warrantyReturnPolicy =
+    parseInt(document.getElementById("warrantyReturnPolicy")?.value) || 0;
   const productOrigin = document.getElementById("productOrigin")?.value.trim() || "";
   const productProject = document.getElementById("productProject")?.value.trim() || "";
 
-  const dimensionLength = parseFloat(document.getElementById("dimensionLength")?.value) || 0;
-  const dimensionWidth = parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
-  const dimensionHeight = parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
-  const productWeight = parseFloat(document.getElementById("productWeight")?.value) || 0;
+  const dimensionLength =
+    parseFloat(document.getElementById("dimensionLength")?.value) || 0;
+  const dimensionWidth =
+    parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
+  const dimensionHeight =
+    parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
+  const productWeight =
+    parseFloat(document.getElementById("productWeight")?.value) || 0;
 
-  const productTags = document.getElementById("productTags")?.value.trim() || "";
+  const productTags =
+    document.getElementById("productTags")?.value.trim() || "";
 
   const payload = {
     name,
@@ -1241,10 +1613,10 @@ async function saveProduct() {
       long: description,
     },
     category: {
-      mainCategoryId: parentId || categoryId, // If it's a subcategory, use parent as main
-      mainCategoryName: parentName || categoryName, // If it's a subcategory, use parent name
-      subCategoryId: parentId ? categoryId : null, // If has parent, current is sub
-      subCategoryName: parentId ? categoryName : null, // If has parent, use current name as sub
+      mainCategoryId: parentId || categoryId,
+      mainCategoryName: parentName || categoryName,
+      subCategoryId: parentId ? categoryId : null,
+      subCategoryName: parentId ? categoryName : null,
     },
     sku,
     pricing: {
@@ -1266,41 +1638,134 @@ async function saveProduct() {
     isTrending,
   };
 
-  // Add warranty if provided
-  if (warrantyDays > 0 || warrantyType) {
+  // Warranty only if something provided
+  if (warrantyPeriod > 0 || warrantyReturnPolicy > 0) {
     payload.warranty = {
-      days: warrantyDays,
-      type: warrantyType || "Standard Warranty"
+      period: warrantyPeriod > 0 ? warrantyPeriod : undefined,
+      returnPolicy: warrantyReturnPolicy > 0 ? warrantyReturnPolicy : undefined,
     };
   }
 
-  // Add origin if provided
   if (productOrigin) {
     payload.origin = productOrigin;
   }
 
-  // Add project if provided
   if (productProject) {
     payload.project = productProject;
   }
 
-  // Add dimensions if any provided
-  if (dimensionLength > 0 || dimensionWidth > 0 || dimensionHeight > 0 || productWeight > 0) {
+  // Dimensions
+  if (
+    dimensionLength > 0 ||
+    dimensionWidth > 0 ||
+    dimensionHeight > 0 ||
+    productWeight > 0
+  ) {
     payload.dimensions = {
-      length: dimensionLength,
-      width: dimensionWidth,
-      height: dimensionHeight,
-      weight: productWeight,
-      unit: "cm" // length, width, height in cm
+      length: dimensionLength || 0,
+      width: dimensionWidth || 0,
+      height: dimensionHeight || 0,
+      weight: productWeight || 0,
+      unit: "cm",
     };
   }
 
-  // Add tags if provided (convert comma-separated string to array)
+  // Tags
   if (productTags) {
-    payload.tags = productTags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    payload.tags = productTags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
   }
 
-  // Collect payment plans
+  // SEO
+  const metaTitle =
+    document.getElementById("productMetaTitle")?.value.trim() || "";
+  const metaDescription =
+    document.getElementById("productMetaDescription")?.value.trim() || "";
+  const metaKeywordsRaw =
+    document.getElementById("productMetaKeywords")?.value.trim() || "";
+
+  if (metaTitle || metaDescription || metaKeywordsRaw) {
+    const keywords = metaKeywordsRaw
+      ? metaKeywordsRaw
+          .split(",")
+          .map((k) => k.trim())
+          .filter((k) => k.length > 0)
+      : [];
+    payload.seo = {
+      metaTitle: metaTitle || undefined,
+      metaDescription: metaDescription || undefined,
+      keywords,
+    };
+  }
+
+  // Referral Bonus
+  const referralEnabled =
+    document.getElementById("referralEnabled")?.checked || false;
+  const referralType =
+    document.getElementById("referralType")?.value || "percentage";
+  const referralValue =
+    parseFloat(document.getElementById("referralValue")?.value) || 0;
+  const referralMinPurchase =
+    parseFloat(
+      document.getElementById("referralMinPurchase")?.value
+    ) || 0;
+
+  if (referralEnabled && referralValue > 0) {
+    payload.referralBonus = {
+      enabled: true,
+      type: referralType,
+      value: referralValue,
+      minPurchase: referralMinPurchase || 0,
+    };
+  } else {
+    // If editing existing, explicitly send disabled
+    if (currentProductId) {
+      payload.referralBonus = {
+        enabled: false,
+        type: referralType,
+        value: referralValue || 0,
+        minPurchase: referralMinPurchase || 0,
+      };
+    }
+  }
+
+  // Global Payment Plan Config
+  const ppEnabled =
+    document.getElementById("paymentPlanEnabled")?.checked || false;
+  const ppMinDown =
+    parseFloat(
+      document.getElementById("paymentPlanMinDown")?.value
+    ) || 0;
+  const ppMaxDown =
+    parseFloat(
+      document.getElementById("paymentPlanMaxDown")?.value
+    ) || 0;
+  const ppInterest =
+    parseFloat(
+      document.getElementById("paymentPlanInterest")?.value
+    ) || 0;
+
+  if (ppEnabled && (ppMinDown > 0 || ppMaxDown > 0 || ppInterest > 0)) {
+    payload.paymentPlan = {
+      enabled: true,
+      minDownPayment: ppMinDown || 0,
+      maxDownPayment: ppMaxDown || 0,
+      interestRate: ppInterest || 0,
+    };
+  } else {
+    if (currentProductId) {
+      payload.paymentPlan = {
+        enabled: false,
+        minDownPayment: ppMinDown || 0,
+        maxDownPayment: ppMaxDown || 0,
+        interestRate: ppInterest || 0,
+      };
+    }
+  }
+
+  // Collect payment plans list
   const planCards = document.querySelectorAll('[id^="plan-"]');
   const plans = [];
 
@@ -1322,7 +1787,7 @@ async function saveProduct() {
         perDayAmount: perDayAmount,
         totalAmount: days * perDayAmount,
         isRecommended: recommendedInput?.checked || false,
-        description: descInput?.value?.trim() || ""
+        description: descInput?.value?.trim() || "",
       };
       plans.push(plan);
     }
@@ -1332,10 +1797,44 @@ async function saveProduct() {
     payload.plans = plans;
   }
 
-  console.log('📦 [PRODUCTS] Building payload...');
+  // Regional data
+  console.log('🌍 [PRODUCTS] Processing regional settings...');
+  console.log('🌍 [PRODUCTS] isGlobalProduct:', isGlobalProduct);
+  console.log('🌍 [PRODUCTS] regionalSettings:', regionalSettings);
+
+  if (!isGlobalProduct && regionalSettings.length > 0) {
+    // Build regionalAvailability array
+    payload.regionalAvailability = regionalSettings.map(r => ({
+      region: r.region,
+      isAvailable: r.isAvailable,
+      stockQuantity: r.stockQuantity,
+      lowStockLevel: Math.floor(r.stockQuantity * 0.1) || 5, // 10% of stock or minimum 5
+      stockStatus: r.stockQuantity > 0 ? 'in_stock' : 'out_of_stock',
+    }));
+
+    // Build regionalPricing array
+    payload.regionalPricing = regionalSettings.map(r => ({
+      region: r.region,
+      currency: r.currency,
+      regularPrice: r.regularPrice,
+      salePrice: r.salePrice || 0,
+      costPrice: 0, // Optional
+      finalPrice: r.salePrice > 0 ? r.salePrice : r.regularPrice, // Auto-calculated
+    }));
+
+    console.log('✅ [PRODUCTS] Added regional availability:', payload.regionalAvailability);
+    console.log('✅ [PRODUCTS] Added regional pricing:', payload.regionalPricing);
+  } else {
+    // Global product - empty arrays means available everywhere
+    payload.regionalAvailability = [];
+    payload.regionalPricing = [];
+    console.log('🌎 [PRODUCTS] Global product - no regional restrictions');
+  }
+
+  console.log('📦 [PRODUCTS] Building payload...', payload);
 
   // Collect variant data and files
-  let variantImageFiles = []; // Store variant image files with variant index
+  let variantImageFiles = [];
 
   if (hasVariants) {
     console.log('🔀 [PRODUCTS] Collecting variants...');
@@ -1356,10 +1855,9 @@ async function saveProduct() {
       const vPrice = parseFloat(variantPrice?.value) || 0;
       const vSalePrice = parseFloat(variantSalePrice?.value) || 0;
 
-      if (vPrice <= 0) return; // skip invalid variant
+      if (vPrice <= 0) return;
 
       if (vSalePrice > 0 && vSalePrice > vPrice) {
-        // prevent nonsense variant pricing too
         return;
       }
 
@@ -1371,14 +1869,16 @@ async function saveProduct() {
         price: vPrice,
         salePrice: vSalePrice > 0 ? vSalePrice : vPrice,
         stock: parseInt(variantStock?.value) || 0,
-        // Don't send images in payload - will upload separately
       };
 
-      // Collect variant image file if selected
-      if (variantImageInput && variantImageInput.files && variantImageInput.files.length > 0) {
+      if (
+        variantImageInput &&
+        variantImageInput.files &&
+        variantImageInput.files.length > 0
+      ) {
         variantImageFiles.push({
           variantIndex: idx,
-          file: variantImageInput.files[0]
+          file: variantImageInput.files[0],
         });
       }
 
@@ -1405,15 +1905,13 @@ async function saveProduct() {
     let createdVariants = null;
 
     if (currentProductId) {
-      // UPDATE: PUT /api/products/:productId - use productId in URL
       console.log('🔄 [PRODUCTS] UPDATE mode - productId:', currentProductId);
       console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
-      const updateResponse = await API.put("/products/:productId", payload, {
-        productId: currentProductId,
+      const updateResponse = await API.put("/products/:id", payload, {
+        id: currentProductId,  // ⭐ Pass MongoDB _id via 'id' param
       });
       console.log('✅ [PRODUCTS] Update response:', updateResponse);
 
-      // Get updated variants from response
       if (updateResponse && updateResponse.data && updateResponse.data.variants) {
         createdVariants = updateResponse.data.variants;
         console.log('🔀 [PRODUCTS] Got updated variants from response:', createdVariants);
@@ -1421,13 +1919,11 @@ async function saveProduct() {
 
       showNotification("Product updated successfully", "success");
     } else {
-      // CREATE: POST /api/products
       console.log('➕ [PRODUCTS] CREATE mode - new product');
       console.log('🌐 [PRODUCTS] Calling API.post("/products")');
       const response = await API.post("/products", payload);
       console.log('✅ [PRODUCTS] Create response:', response);
 
-      // Get the created product ID and variants from response
       if (response && response.data) {
         if (response.data.productId) {
           savedProductId = response.data.productId;
@@ -1442,13 +1938,11 @@ async function saveProduct() {
       showNotification("Product created successfully", "success");
     }
 
-    // Upload product images if any selected (one by one)
     if (savedProductId && selectedImageFiles.length > 0) {
       console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`);
       await uploadProductImages(savedProductId);
     }
 
-    // Upload variant images if any selected (one by one)
     if (savedProductId && variantImageFiles.length > 0 && createdVariants) {
       console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`);
       await uploadVariantImages(savedProductId, variantImageFiles, createdVariants);
@@ -1498,7 +1992,6 @@ async function toggleProductStatus(productId) {
       status: newStatus,
     };
 
-    // UPDATE: PUT /api/products/:productId
     await API.put("/products/:productId", payload, { productId });
     showNotification(`Product ${newStatus} successfully`, "success");
     await loadProducts();
@@ -1533,8 +2026,6 @@ async function deleteProduct(productId) {
   try {
     showLoading(true);
     console.log('⏳ [PRODUCTS] Loading overlay shown');
-    // DELETE: DELETE /api/products/:productId
-    console.log('🌐 [PRODUCTS] Calling API.delete("/products/:productId")');
     await API.delete("/products/:productId", { productId });
     console.log('✅ [PRODUCTS] Product deleted successfully');
     showNotification("Product deleted successfully", "success");
@@ -1630,7 +2121,7 @@ async function viewProductDetails(productId) {
   details += `</div>`;
   details += `</div>`;
 
-  // Variants (if applicable)
+  // Variants
   if (product.hasVariants && product.variants.length > 0) {
     details += `<div class="mb-3">`;
     details += `<strong class="d-block mb-2">Variants (${product.variants.length})</strong>`;
@@ -1665,27 +2156,13 @@ async function viewProductDetails(productId) {
 /* ---------- Loading Overlay ---------- */
 
 function showLoading(show) {
-  let overlay = document.getElementById("loadingOverlay");
+  const overlay = document.getElementById("loadingOverlay");
+  if (!overlay) return;
+
   if (show) {
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.id = "loadingOverlay";
-      overlay.style.position = "fixed";
-      overlay.style.left = "0";
-      overlay.style.top = "0";
-      overlay.style.width = "100%";
-      overlay.style.height = "100%";
-      overlay.style.background = "rgba(255,255,255,0.6)";
-      overlay.style.zIndex = "9999";
-      overlay.style.display = "flex";
-      overlay.style.alignItems = "center";
-      overlay.style.justifyContent = "center";
-      overlay.innerHTML =
-        '<div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>';
-      document.body.appendChild(overlay);
-    }
-  } else if (overlay) {
-    overlay.remove();
+    overlay.classList.add("show");
+  } else {
+    overlay.classList.remove("show");
   }
 }
 

@@ -1,18 +1,39 @@
 /*******************************
- * BASE URL (FORCE PRODUCTION)
+ * BASE URL (AUTO ENV DETECTION)
  *******************************/
-const BASE_URL = "https://api.epielio.com/api";
+let BASE_URL;
+
+// DEV ENVIRONMENTS
+const DEV_HOSTS = [
+  "dev-admin.epielio.com",
+  "admin-dashboard-site-dev.s3-website.ap-south-1.amazonaws.com",
+  "localhost",
+  "127.0.0.1",
+];
+
+BASE_URL = "https://api.epielio.com/api";
+// if 
+// (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
+//   BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
+// }
+
+
+// ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
+// This MUST happen before any script tries to use it
+if (!window.BASE_URL) {
+  window.BASE_URL = BASE_URL;
+}
 
 /*******************************
- * APP CONFIG 
+ * APP CONFIG
  *******************************/
 const APP_CONFIG = {
   version: "1.0.0",
   dateFormat: "YYYY-MM-DD",
   maxFileSize: 5 * 1024 * 1024,
   categories: {
-    maxLevels: 5
-  }
+    maxLevels: 5,
+  },
 };
 
 /*******************************
@@ -24,9 +45,17 @@ const API_CONFIG = {
 
   endpoints: {
     auth: {
-      adminLogin: "/auth/admin-login",
+      adminLogin: "/admin-auth/login", // Updated to new unified endpoint
+      legacyLogin: "/auth/admin-login", // Old endpoint for reference
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
+    },
+
+    adminManagement: {
+      subAdmins: "/admin-mgmt/sub-admins",
+      subAdminById: "/admin-mgmt/sub-admins/:adminId",
+      resetPassword: "/admin-mgmt/sub-admins/:adminId/reset-password",
+      myModules: "/admin-mgmt/my-modules",
     },
 
     users: {
@@ -51,7 +80,7 @@ const API_CONFIG = {
       withSubcategories: "/categories/:categoryId/with-subcategories",
       dropdown: "/categories/dropdown/all",
       getFeatured: "/categories/featured/all",
-      reorder: "/categories/bulk/reorder"
+      reorder: "/categories/bulk/reorder",
     },
 
     products: {
@@ -63,7 +92,12 @@ const API_CONFIG = {
       toggleStatus: "/products/:productId/toggle-status",
       search: "/products/search",
       uploadImage: "/products/:productId/upload-image",
-      deleteImage: "/products/:productId/image/:imageId"
+      deleteImage: "/products/:productId/image/:imageId",
+      // Regional endpoints
+      addRegionalPricing: "/products/:productId/regional-pricing",
+      addRegionalAvailability: "/products/:productId/regional-availability",
+      addRegionalSeo: "/products/:productId/regional-seo",
+      syncRegional: "/products/:productId/sync-regional",
     },
 
     about: {
@@ -71,7 +105,7 @@ const API_CONFIG = {
       getById: "/about/:aboutId",
       create: "/about",
       update: "/about/:aboutId",
-      delete: "/about/:aboutId"
+      delete: "/about/:aboutId",
     },
 
     notifications: {
@@ -85,7 +119,7 @@ const API_CONFIG = {
       uploadImage: "/admin/notifications/:id/upload-image",
       settings: "/admin/notifications/:id/settings",
       analytics: "/admin/notifications/analytics",
-      deleteComment: "/admin/notifications/:notificationId/comments/:commentId"
+      deleteComment: "/admin/notifications/:notificationId/comments/:commentId",
     },
 
     chat: {
@@ -95,7 +129,7 @@ const API_CONFIG = {
       reportAction: "/admin/chat/reports/:reportId/action",
       deleteMessage: "/admin/chat/messages/:messageId",
       broadcast: "/admin/chat/broadcast",
-      analytics: "/admin/chat/analytics"
+      analytics: "/admin/chat/analytics",
     },
 
     banners: {
@@ -109,7 +143,7 @@ const API_CONFIG = {
       permanentDelete: "/banners/:id/permanent",
       getActive: "/banners/public/active",
       trackClick: "/banners/:id/click",
-      stats: "/banners/admin/stats"
+      stats: "/banners/admin/stats",
     },
 
     successStories: {
@@ -122,13 +156,35 @@ const API_CONFIG = {
       delete: "/success-stories/:id",
       permanentDelete: "/success-stories/:id/permanent",
       getActive: "/success-stories/public/active",
-      stats: "/success-stories/admin/stats"
-    }
-  }
+      stats: "/success-stories/admin/stats",
+    },
+  },
 };
 
 /*******************************
- * AUTH HANDLER (FIXED)
+ * RBAC PERMISSIONS CONFIGURATION
+ *******************************/
+const PERMISSIONS = {
+  DASHBOARD: 'dashboard',
+  USERS: 'users',
+  WALLET: 'wallet',
+  KYC: 'kyc',
+  CATEGORIES: 'categories',
+  PRODUCTS: 'products',
+  UPLOADER: 'uploader',
+  COUPONS: 'coupons',
+  ORDERS: 'orders',
+  ANALYTICS: 'analytics',
+  NOTIFICATIONS: 'notifications',
+  CHAT: 'chat',
+  CHAT_REPORTS: 'chat-reports',
+  CHAT_ANALYTICS: 'chat-analytics',
+  SETTINGS: 'settings',
+  ADMIN_MANAGEMENT: 'admin_management'
+};
+
+/*******************************
+ * AUTH HANDLER (ENHANCED WITH RBAC)
  *******************************/
 const AUTH = {
   getToken() {
@@ -148,12 +204,100 @@ const AUTH = {
   removeToken() {
     localStorage.removeItem("epi_admin_token");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("epi_admin_user");
+    localStorage.removeItem("epi_admin_username");
   },
 
   getAuthHeaders() {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
+
+  // Get current user data from localStorage
+  getCurrentUser() {
+    const userData = localStorage.getItem("epi_admin_user");
+    return userData ? JSON.parse(userData) : null;
+  },
+
+  // Get username from localStorage
+  getUsername() {
+    return localStorage.getItem("epi_admin_username") || null;
+  },
+
+  // Get user's accessible modules/permissions
+  getUserModules() {
+    const user = this.getCurrentUser();
+    if (!user) return [];
+
+    // If user is super admin, return empty array (means ALL access)
+    if (user.isSuperAdmin === true) {
+      return [];
+    }
+
+    // Return user's specific modules array
+    return user.modules || [];
+  },
+
+  // Check if user has access to a specific module
+  hasModule(moduleName) {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+
+    // Super admin has access to ALL modules
+    if (user.isSuperAdmin === true) {
+      return true;
+    }
+
+    // Sub-admin only has assigned modules
+    const modules = user.modules || [];
+    return modules.includes(moduleName);
+  },
+
+  // Check if user is super admin
+  isSuperAdmin() {
+    const user = this.getCurrentUser();
+    return user && user.isSuperAdmin === true;
+  },
+
+  // Check if user is authenticated
+  isAuthenticated() {
+    return !!this.getToken() && !!this.getCurrentUser();
+  },
+
+  // Save user data after login
+  saveUserData(userData) {
+    if (!userData) return;
+
+    // Save complete user object
+    localStorage.setItem("epi_admin_user", JSON.stringify({
+      userId: userData.userId,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      profilePicture: userData.profilePicture || "",
+      isSuperAdmin: userData.isSuperAdmin,
+      modules: userData.modules || []
+    }));
+
+    // Save username separately for easy access
+    localStorage.setItem("epi_admin_username", userData.name);
+
+    // Save tokens
+    if (userData.accessToken) {
+      this.setToken(userData.accessToken);
+    }
+
+    if (userData.refreshToken) {
+      localStorage.setItem("epi_refresh_token", userData.refreshToken);
+    }
+  },
+
+  // Logout and clear all data
+  logout() {
+    this.removeToken();
+    localStorage.removeItem("epi_refresh_token");
+    window.location.href = "../pages/login.html";
+  }
 };
 
 /*******************************
@@ -184,7 +328,6 @@ const API = {
 
       const res = await fetch(url, config);
 
-      // Handle non-JSON responses
       if (res.status === 204) {
         return { success: true };
       }
@@ -193,11 +336,12 @@ const API = {
       const json = text ? JSON.parse(text) : {};
 
       if (!res.ok) {
-        throw new Error(json.message || `HTTP ${res.status}: ${res.statusText}`);
+        throw new Error(
+          json.message || `HTTP ${res.status}: ${res.statusText}`
+        );
       }
 
       return json;
-
     } catch (err) {
       console.error("API Request Error:", err);
       throw err;
@@ -245,8 +389,9 @@ const API = {
 /*******************************
  * EXPORT GLOBAL
  *******************************/
-window.BASE_URL = BASE_URL;
+// window.BASE_URL already set at line 22 (no duplication needed)
 window.API_CONFIG = API_CONFIG;
 window.APP_CONFIG = APP_CONFIG;
 window.AUTH = AUTH;
 window.API = API;
+window.PERMISSIONS = PERMISSIONS;

@@ -1,3 +1,7 @@
+// =========================
+// Safe Utils Fallbacks
+// =========================
+
 // Simple safe utils if window.utils is not present
 window.utils = window.utils || {};
 window.utils.debounce =
@@ -9,6 +13,7 @@ window.utils.debounce =
       t = setTimeout(() => fn.apply(this, args), delay);
     };
   };
+
 window.utils.formatDate =
   window.utils.formatDate ||
   function (d) {
@@ -36,39 +41,64 @@ window.adminPanel = window.adminPanel || {
   },
 };
 
-/* ---------- State ---------- */
+// =========================
+// State
+// =========================
 
 let categories = [];
-let currentCategoryId = null;
-let categoryImages = [];
+let currentCategoryId = null; // Mongo _id for edit/delete/etc.
+let categoryImages = []; // [{ url, altText, isPrimary }]
 
-// Pagination state (backend pagination) - Note: API doc doesn't show pagination for categories, but we'll add it for consistency
+// Regional state
+let selectedRegions = []; // Array of region codes ['india', 'usa', etc.]
+let isGlobalCategory = true; // Default: categories are global
+
+// Pagination (we're loading all at once but keeping structure for future)
 let pagination = {
   page: 1,
   limit: 50,
   total: 0,
 };
 
-/* DOM elements (will be init on DOMContentLoaded) */
+// DOM elements
 let searchInput, statusFilter, levelFilter, viewModeSelect;
 let categoriesContainer;
 let categoryForm;
 
-/* Stats elements */
+// Regional DOM elements
+let isGlobalCategoryCheckbox, regionalCheckboxesSection, regionalCheckboxesList;
+
+// Stats elements
 let totalCategoriesCount,
   activeCategoriesCount,
   featuredCategoriesCount,
   rootCategoriesCount;
 
-/* ---------- Initialization ---------- */
+// =========================
+// Initialization
+// =========================
 
 document.addEventListener("DOMContentLoaded", function () {
   initializeDOMElements();
   setupEventListeners();
   loadCategories();
+
+  // Logout button (same as products page)
+  const logoutBtn = document.getElementById("logout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      AUTH.removeToken && AUTH.removeToken();
+      localStorage.removeItem("epi_admin_token");
+      localStorage.removeItem("epi_admin_user");
+      window.location.href = "login.html";
+    });
+  }
 });
 
-/* ---------- DOM init ---------- */
+// =========================
+// DOM Init
+// =========================
 
 function initializeDOMElements() {
   searchInput = document.getElementById("searchInput");
@@ -84,9 +114,33 @@ function initializeDOMElements() {
   activeCategoriesCount = document.getElementById("activeCategoriesCount");
   featuredCategoriesCount = document.getElementById("featuredCategoriesCount");
   rootCategoriesCount = document.getElementById("rootCategoriesCount");
+
+  // Regional elements
+  isGlobalCategoryCheckbox = document.getElementById("isGlobalCategory");
+  regionalCheckboxesSection = document.getElementById("regionalCheckboxesSection");
+  regionalCheckboxesList = document.getElementById("regionalCheckboxesList");
+
+  // Regional toggle listener
+  if (isGlobalCategoryCheckbox) {
+    isGlobalCategoryCheckbox.addEventListener("change", function () {
+      isGlobalCategory = this.checked;
+
+      if (isGlobalCategory) {
+        // Hide regional checkboxes
+        regionalCheckboxesSection.classList.add("d-none");
+        selectedRegions = [];
+      } else {
+        // Show regional checkboxes and initialize
+        regionalCheckboxesSection.classList.remove("d-none");
+        initializeRegionalCheckboxes();
+      }
+    });
+  }
 }
 
-/* ---------- Events ---------- */
+// =========================
+// Events
+// =========================
 
 function setupEventListeners() {
   if (searchInput)
@@ -99,7 +153,6 @@ function setupEventListeners() {
   if (viewModeSelect)
     viewModeSelect.addEventListener("change", renderCategories);
 
-  // Form submit if exists
   if (categoryForm) {
     categoryForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -108,7 +161,72 @@ function setupEventListeners() {
   }
 }
 
-/* ---------- Load ---------- */
+// =========================
+// Regional Functions
+// =========================
+
+/**
+ * Initialize regional checkboxes with all supported regions
+ */
+function initializeRegionalCheckboxes() {
+  if (!regionalCheckboxesList) return;
+
+  regionalCheckboxesList.innerHTML = '';
+
+  window.SUPPORTED_REGIONS.forEach(region => {
+    const isChecked = selectedRegions.includes(region.code);
+
+    const colDiv = document.createElement('div');
+    colDiv.className = 'col-md-6 mb-2';
+
+    colDiv.innerHTML = `
+      <div class="form-check">
+        <input
+          class="form-check-input regional-checkbox"
+          type="checkbox"
+          id="region-cat-${region.code}"
+          ${isChecked ? 'checked' : ''}
+          data-region="${region.code}"
+        >
+        <label class="form-check-label" for="region-cat-${region.code}">
+          <span style="font-size: 1.2em;">${region.flag}</span>
+          <strong>${region.name}</strong>
+        </label>
+      </div>
+    `;
+
+    regionalCheckboxesList.appendChild(colDiv);
+  });
+
+  // Attach event listeners
+  document.querySelectorAll('.regional-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const regionCode = this.dataset.region;
+      handleRegionalCheckboxChange(regionCode, this.checked);
+    });
+  });
+}
+
+/**
+ * Handle regional checkbox change
+ */
+function handleRegionalCheckboxChange(regionCode, isChecked) {
+  if (isChecked) {
+    if (!selectedRegions.includes(regionCode)) {
+      selectedRegions.push(regionCode);
+      console.log(`✅ [REGIONAL] Added region: ${regionCode}`);
+    }
+  } else {
+    selectedRegions = selectedRegions.filter(r => r !== regionCode);
+    console.log(`❌ [REGIONAL] Removed region: ${regionCode}`);
+  }
+
+  console.log(`🔄 [REGIONAL] Selected regions:`, selectedRegions);
+}
+
+// =========================
+// Load Categories
+// =========================
 
 async function loadCategories() {
   console.log("📂 [CATEGORIES] loadCategories() - Starting to load categories");
@@ -116,31 +234,18 @@ async function loadCategories() {
     showLoading(true);
     console.log("⏳ [CATEGORIES] Loading overlay shown");
 
-    // IMPORTANT: fetch ALL categories (active + inactive)
+    // Fetch ALL categories (active + inactive)
+    // GET /api/categories?isActive=all
     console.log('🌐 [CATEGORIES] Calling API.get("/categories?isActive=all")');
     const response = await API.get("/categories", {}, { isActive: "all" });
     console.log("✅ [CATEGORIES] API Response received:", response);
 
-    // Handle response structure
     let categoriesData = [];
-    console.log("🔍 [CATEGORIES] Checking response structure...");
-
     if (response && response.success !== false) {
-      // If response has data property with array
       if (response.data && Array.isArray(response.data)) {
         categoriesData = response.data;
-        console.log(
-          "✅ [CATEGORIES] Found data array, length:",
-          categoriesData.length
-        );
-      }
-      // If response is directly the array (fallback)
-      else if (Array.isArray(response)) {
+      } else if (Array.isArray(response)) {
         categoriesData = response;
-        console.log(
-          "✅ [CATEGORIES] Response is direct array, length:",
-          categoriesData.length
-        );
       }
     } else {
       console.warn(
@@ -155,55 +260,50 @@ async function loadCategories() {
       name: c.name || "",
       slug: c.slug || "",
       description: c.description || "",
-      level: c.level || 0,
-      path: c.path || [],
-      parentCategory: c.parentCategoryId || null,
+      // level/path may come from schema (if present); otherwise default to 0
+      level: typeof c.level === "number" ? c.level : 0,
+      path: Array.isArray(c.path) ? c.path : [],
       parentCategoryId: c.parentCategoryId || null,
       isActive: c.isActive !== undefined ? c.isActive : true,
       isFeatured:
         c.isFeatured === true || c.isFeatured === "true" || c.isFeatured === 1,
       showInMenu: c.showInMenu !== undefined ? c.showInMenu : true,
-      productCount: 0, // Not in your API response
+      productCount: 0, // not provided by API, kept for future
       displayOrder: Number(c.displayOrder || 0),
       icon: c.icon || "",
-      image: c.image || {},
+      image: c.image || {}, // single main image object
       banner: c.banner || {},
-      images: c.images || [],
+      images: Array.isArray(c.images) ? c.images : [],
       meta: c.meta || {},
-      subCategories: c.subCategories || [],
+      subCategories: Array.isArray(c.subCategories) ? c.subCategories : [],
       createdAt: c.createdAt || new Date().toISOString(),
       updatedAt: c.updatedAt || new Date().toISOString(),
     }));
+
+    pagination.total = categories.length;
+
     console.log(
-      "✅ [CATEGORIES] Categories mapped successfully. Total count:",
+      "✅ [CATEGORIES] Categories mapped. Total:",
       categories.length
     );
 
-    // Update pagination total
-    pagination.total = categories.length;
-    console.log("📊 [CATEGORIES] Pagination total updated:", pagination.total);
-
-    console.log("📊 [CATEGORIES] Calling updateStats()...");
     updateStats();
-    console.log("🎨 [CATEGORIES] Calling renderCategories()...");
     renderCategories();
-    console.log("🔽 [CATEGORIES] Calling populateParentCategoryDropdown()...");
     populateParentCategoryDropdown();
-    console.log("✅ [CATEGORIES] loadCategories() completed successfully");
   } catch (error) {
     console.error("❌ [CATEGORIES] Error loading categories:", error);
-    console.error("❌ [CATEGORIES] Error details:", error.message, error.stack);
     window.adminPanel.showNotification(
       "Failed to load categories: " + (error.message || error),
       "error"
     );
   } finally {
-    console.log("⏳ [CATEGORIES] Hiding loading overlay");
     showLoading(false);
   }
 }
 
-/* ---------- Get Featured Categories ---------- */
+// =========================
+// Featured Helpers
+// =========================
 
 function getFeaturedCategories() {
   return categories.filter((c) => c.isFeatured && c.isActive);
@@ -211,16 +311,13 @@ function getFeaturedCategories() {
 
 async function fetchFeaturedCategoriesFromAPI() {
   try {
-    // GET /api/categories/featured
     const response = await API.get("/categories/featured");
     let featured = [];
-
     if (response && response.data && Array.isArray(response.data)) {
       featured = response.data;
     } else if (Array.isArray(response)) {
       featured = response;
     }
-
     return featured;
   } catch (error) {
     console.error("Error fetching featured categories:", error);
@@ -228,7 +325,9 @@ async function fetchFeaturedCategoriesFromAPI() {
   }
 }
 
-/* ---------- Stats & Filters ---------- */
+// =========================
+// Stats & Filters
+// =========================
 
 function updateStats() {
   const total = categories.length;
@@ -245,7 +344,7 @@ function updateStats() {
 function getFilteredCategories() {
   let filtered = categories.slice();
 
-  // search
+  // search by name/slug/description
   if (searchInput && searchInput.value.trim()) {
     const q = searchInput.value.trim().toLowerCase();
     filtered = filtered.filter(
@@ -267,13 +366,16 @@ function getFilteredCategories() {
   // level
   if (levelFilter && levelFilter.value !== "") {
     const lv = parseInt(levelFilter.value, 10);
-    if (!isNaN(lv)) filtered = filtered.filter((c) => Number(c.level) === lv);
+    if (!isNaN(lv)) {
+      filtered = filtered.filter((c) => Number(c.level) === lv);
+    }
   }
 
   // sort by displayOrder then name
   filtered.sort((a, b) => {
-    if ((a.displayOrder || 0) !== (b.displayOrder || 0))
-      return (a.displayOrder || 0) - (b.displayOrder || 0);
+    const da = a.displayOrder || 0;
+    const db = b.displayOrder || 0;
+    if (da !== db) return da - db;
     return (a.name || "").localeCompare(b.name || "");
   });
 
@@ -284,7 +386,9 @@ function filterCategories() {
   renderCategories();
 }
 
-/* ---------- Render ---------- */
+// =========================
+// Render
+// =========================
 
 function renderCategories() {
   if (!categoriesContainer) return;
@@ -299,13 +403,13 @@ function renderCategories() {
       <div class="alert alert-danger">
         <i class="bi bi-exclamation-triangle me-2"></i>
         Error rendering categories. Please refresh the page.
-        <br><small>${error.message}</small>
+        <br><small>${escapeHtml(error.message)}</small>
       </div>
     `;
   }
 }
 
-/* Tree view */
+// ----- Tree View (root + subcategories) -----
 
 function renderTreeView(container) {
   const filtered = getFilteredCategories();
@@ -334,52 +438,56 @@ function renderCategoryTreeItem(
   visitedIds = new Set(),
   depth = 0
 ) {
-  // Prevent infinite loops with circular references
+  // Avoid circular refs
   if (visitedIds.has(category._id)) {
     console.warn(`Circular reference detected for category: ${category.name}`);
-    return document.createElement("li"); // Return empty element
+    const li = document.createElement("li");
+    li.innerHTML =
+      '<div class="text-muted small">Circular reference detected...</div>';
+    return li;
   }
 
-  // Limit depth to prevent performance issues
+  // Hard safety cap (in case schema allows deeper nesting)
   const MAX_DEPTH = 10;
   if (depth >= MAX_DEPTH) {
-    console.warn(
-      `Maximum depth (${MAX_DEPTH}) reached for category: ${category.name}`
-    );
     const li = document.createElement("li");
-    li.innerHTML = '<div class="text-muted small">Max depth reached...</div>';
+    li.innerHTML =
+      '<div class="text-muted small">Max depth reached...</div>';
     return li;
   }
 
   visitedIds.add(category._id);
 
   const li = document.createElement("li");
+
+  // Direct children by parentCategoryId = _id
   const children = allCategories.filter(
     (c) => c.parentCategoryId === category._id
   );
   const hasChildren = children.length > 0;
 
   const itemDiv = document.createElement("div");
-  itemDiv.className = `category-item d-flex justify-content-between align-items-start py-2 px-2 level-${category.level}`;
+  itemDiv.className =
+    "category-item d-flex justify-content-between align-items-start py-2 px-2";
 
   const left = document.createElement("div");
   left.className = "d-flex align-items-start flex-grow-1";
 
-  // toggle icon
+  // Toggle icon
   if (hasChildren) {
     const toggle = document.createElement("button");
     toggle.className = "btn btn-sm btn-link p-0 me-2 toggle-children";
     toggle.setAttribute("type", "button");
+    toggle.innerHTML = '<i class="bi bi-chevron-down"></i>';
     toggle.onclick = function () {
       const sub = li.querySelector(".subcategories");
       if (!sub) return;
       const isHidden = sub.style.display === "none";
       sub.style.display = isHidden ? "block" : "none";
       toggle.innerHTML = isHidden
-        ? `<i class="bi bi-chevron-down"></i>`
-        : `<i class="bi bi-chevron-right"></i>`;
+        ? '<i class="bi bi-chevron-down"></i>'
+        : '<i class="bi bi-chevron-right"></i>';
     };
-    toggle.innerHTML = '<i class="bi bi-chevron-down"></i>';
     left.appendChild(toggle);
   } else {
     const spacer = document.createElement("span");
@@ -388,23 +496,26 @@ function renderCategoryTreeItem(
     left.appendChild(spacer);
   }
 
-  // icon / name
+  // Icon / folder
   const iconSpan = document.createElement("span");
   iconSpan.className = "me-2";
   iconSpan.innerHTML = category.icon
     ? escapeHtml(category.icon)
-    : `<i class="bi bi-folder"></i>`;
+    : '<i class="bi bi-folder"></i>';
   left.appendChild(iconSpan);
 
+  // Name + description + ID
   const titleWrap = document.createElement("div");
-  titleWrap.innerHTML = `<strong>${escapeHtml(category.name)}</strong>
+  titleWrap.innerHTML = `
+    <strong>${escapeHtml(category.name)}</strong>
     <div class="small text-muted">${escapeHtml(
       category.description || ""
     )}</div>
-    <div class="small"><code>${escapeHtml(category.categoryId)}</code></div>`;
+    <div class="small"><code>${escapeHtml(category.categoryId)}</code></div>
+  `;
   left.appendChild(titleWrap);
 
-  // badges
+  // Badges
   const badges = document.createElement("div");
   badges.className = "ms-3";
   badges.innerHTML = `
@@ -429,7 +540,7 @@ function renderCategoryTreeItem(
 
   itemDiv.appendChild(left);
 
-  // actions
+  // Actions
   const actions = document.createElement("div");
   actions.className = "btn-group btn-group-sm";
 
@@ -478,7 +589,6 @@ function renderCategoryTreeItem(
     const subUl = document.createElement("ul");
     subUl.className = "subcategories list-unstyled ms-4";
     children.forEach((child) => {
-      // Pass a copy of visitedIds to each branch to allow siblings with same children
       const childVisited = new Set(visitedIds);
       subUl.appendChild(
         renderCategoryTreeItem(child, allCategories, childVisited, depth + 1)
@@ -490,7 +600,7 @@ function renderCategoryTreeItem(
   return li;
 }
 
-/* List view */
+// ----- List View -----
 
 function renderListView(container) {
   const filtered = getFilteredCategories();
@@ -503,47 +613,51 @@ function renderListView(container) {
   const rows = filtered
     .map(
       (category) => `
-    <tr>
-      <td>
-        ${category.icon ? escapeHtml(category.icon) + " " : ""}
-        <strong>${escapeHtml(category.name)}</strong>
-        ${
-          category.isFeatured
-            ? '<i class="bi bi-star-fill text-warning ms-1"></i>'
-            : ""
-        }
-      </td>
-      <td><code>${escapeHtml(category.slug)}</code></td>
-      <td><span class="badge bg-secondary">Level ${category.level}</span></td>
-      <td>${
-        category.isActive
-          ? '<span class="badge bg-success">Active</span>'
-          : '<span class="badge bg-warning">Inactive</span>'
-      }</td>
-      <td>${category.productCount || 0}</td>
-      <td>${window.utils.formatDate(category.createdAt)}</td>
-      <td>
-        <div class="btn-group btn-group-sm">
-          <button class="btn btn-outline-primary" onclick="editCategory('${
-            category._id
-          }')"><i class="bi bi-pencil"></i></button>
-          <button class="btn btn-outline-${
-            category.isFeatured ? "info" : "secondary"
-          }" onclick="toggleCategoryFeatured('${category._id}')">
-            <i class="bi bi-${category.isFeatured ? "star-fill" : "star"}"></i>
-          </button>
-          <button class="btn btn-outline-${
-            category.isActive ? "warning" : "success"
-          }" onclick="toggleCategoryStatus('${category._id}')">
-            <i class="bi bi-${category.isActive ? "pause" : "play"}-circle"></i>
-          </button>
-          <button class="btn btn-outline-danger" onclick="deleteCategory('${
-            category._id
-          }')"><i class="bi bi-trash"></i></button>
-        </div>
-      </td>
-    </tr>
-  `
+      <tr>
+        <td>
+          ${category.icon ? escapeHtml(category.icon) + " " : ""}
+          <strong>${escapeHtml(category.name)}</strong>
+          ${
+            category.isFeatured
+              ? '<i class="bi bi-star-fill text-warning ms-1"></i>'
+              : ""
+          }
+        </td>
+        <td><code>${escapeHtml(category.slug)}</code></td>
+        <td><span class="badge bg-secondary">Level ${category.level}</span></td>
+        <td>${
+          category.isActive
+            ? '<span class="badge bg-success">Active</span>'
+            : '<span class="badge bg-warning">Inactive</span>'
+        }</td>
+        <td>${category.productCount || 0}</td>
+        <td>${window.utils.formatDate(category.createdAt)}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-primary" onclick="editCategory('${
+              category._id
+            }')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-outline-${
+              category.isFeatured ? "info" : "secondary"
+            }" onclick="toggleCategoryFeatured('${category._id}')">
+              <i class="bi bi-${
+                category.isFeatured ? "star-fill" : "star"
+              }"></i>
+            </button>
+            <button class="btn btn-outline-${
+              category.isActive ? "warning" : "success"
+            }" onclick="toggleCategoryStatus('${category._id}')">
+              <i class="bi bi-${
+                category.isActive ? "pause" : "play"
+              }-circle"></i>
+            </button>
+            <button class="btn btn-outline-danger" onclick="deleteCategory('${
+              category._id
+            }')"><i class="bi bi-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `
     )
     .join("");
 
@@ -552,7 +666,13 @@ function renderListView(container) {
       <table class="table table-hover">
         <thead>
           <tr>
-            <th>Name</th><th>Slug</th><th>Level</th><th>Status</th><th>Products</th><th>Created</th><th>Actions</th>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Level</th>
+            <th>Status</th>
+            <th>Products</th>
+            <th>Created</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -561,18 +681,20 @@ function renderListView(container) {
   `;
 }
 
-/* ---------- Parent dropdown ---------- */
+// =========================
+// Parent Dropdown
+// =========================
 
 function populateParentCategoryDropdown(excludeId = null) {
   const select = document.getElementById("parentCategory");
   if (!select) return;
 
-  const availableParents = categories.filter(
-    (c) =>
-      c._id !== excludeId &&
-      c.level < (APP_CONFIG?.categories?.maxLevels || 5) - 1 &&
-      c.isActive
-  );
+  const maxLevels = (window.APP_CONFIG?.categories?.maxLevels || 2) - 1;
+  const availableParents = categories.filter((c) => {
+    const canBeParent = (c.level || 0) <= maxLevels;
+    const notSelf = c._id !== excludeId;
+    return canBeParent && notSelf && c.isActive;
+  });
 
   select.innerHTML = '<option value="">None (Root Category)</option>';
 
@@ -587,18 +709,30 @@ function populateParentCategoryDropdown(excludeId = null) {
   });
 }
 
-/* ---------- Modal / CRUD ---------- */
+// =========================
+// Modal / CRUD
+// =========================
 
 function openAddCategoryModal() {
   currentCategoryId = null;
   categoryImages = [];
-  document.getElementById("categoryModalTitle").textContent = "Add Category";
+
+  // Reset regional state
+  isGlobalCategory = true;
+  selectedRegions = [];
+  if (isGlobalCategoryCheckbox) isGlobalCategoryCheckbox.checked = true;
+  if (regionalCheckboxesSection) regionalCheckboxesSection.classList.add("d-none");
+  if (regionalCheckboxesList) regionalCheckboxesList.innerHTML = '';
+
+  const titleEl = document.getElementById("categoryModalTitle");
+  if (titleEl) titleEl.textContent = "Add Category";
+
   if (categoryForm) categoryForm.reset();
+
   const imagesPreview = document.getElementById("imagesPreview");
   if (imagesPreview) imagesPreview.innerHTML = "";
+
   populateParentCategoryDropdown();
-  // IMPORTANT: do NOT manually show modal here.
-  // The button already has data-bs-toggle="modal" & data-bs-target="#categoryModal"
 }
 
 async function editCategory(categoryId) {
@@ -609,7 +743,8 @@ async function editCategory(categoryId) {
     return;
   }
 
-  document.getElementById("categoryModalTitle").textContent = "Edit Category";
+  const titleEl = document.getElementById("categoryModalTitle");
+  if (titleEl) titleEl.textContent = "Edit Category";
 
   document.getElementById("categoryName").value = category.name || "";
   document.getElementById("categoryDescription").value =
@@ -620,28 +755,67 @@ async function editCategory(categoryId) {
   document.getElementById("isFeatured").checked = !!category.isFeatured;
   document.getElementById("showInMenu").checked = !!category.showInMenu;
 
-  // SEO fields from meta object
+  // SEO from meta
   document.getElementById("metaTitle").value =
     category.meta && category.meta.title ? category.meta.title : "";
   document.getElementById("metaDescription").value =
-    category.meta && category.meta.description ? category.meta.description : "";
+    category.meta && category.meta.description
+      ? category.meta.description
+      : "";
   document.getElementById("metaKeywords").value =
     category.meta && Array.isArray(category.meta.keywords)
       ? category.meta.keywords.join(", ")
       : "";
 
-  // Handle images - single image object from API
+  // Prepare image objects (URL-only mode)
   categoryImages = [];
   if (category.image && category.image.url) {
-    categoryImages.push(category.image);
+    categoryImages.push({
+      url: category.image.url,
+      altText: category.image.altText || category.name || "",
+      isPrimary: true,
+    });
   } else if (Array.isArray(category.images) && category.images.length > 0) {
-    categoryImages = JSON.parse(JSON.stringify(category.images));
+    categoryImages = category.images.map((img, idx) => ({
+      url: img.url,
+      altText: img.altText || category.name || "",
+      isPrimary: idx === 0,
+    }));
   }
   renderImagePreview();
 
   populateParentCategoryDropdown(categoryId);
-  document.getElementById("parentCategory").value =
-    category.parentCategoryId || "";
+  const parentSelect = document.getElementById("parentCategory");
+  if (parentSelect) {
+    parentSelect.value = category.parentCategoryId || "";
+  }
+
+  // Load regional data
+  console.log('🌍 [CATEGORIES] Loading regional data for edit...');
+
+  const hasRegionalData =
+    category.availableInRegions &&
+    category.availableInRegions.length > 0;
+
+  if (hasRegionalData) {
+    // Category has regional restrictions
+    isGlobalCategory = false;
+    selectedRegions = [...category.availableInRegions];
+
+    if (isGlobalCategoryCheckbox) isGlobalCategoryCheckbox.checked = false;
+    if (regionalCheckboxesSection) regionalCheckboxesSection.classList.remove("d-none");
+    initializeRegionalCheckboxes();
+
+    console.log('✅ [CATEGORIES] Loaded regional settings:', selectedRegions);
+  } else {
+    // Global category
+    isGlobalCategory = true;
+    selectedRegions = [];
+    if (isGlobalCategoryCheckbox) isGlobalCategoryCheckbox.checked = true;
+    if (regionalCheckboxesSection) regionalCheckboxesSection.classList.add("d-none");
+
+    console.log('🌎 [CATEGORIES] Category is global - no regional restrictions');
+  }
 
   const modalEl = document.getElementById("categoryModal");
   if (modalEl) {
@@ -650,23 +824,32 @@ async function editCategory(categoryId) {
   }
 }
 
+// =========================
+// Image Handling (URL-only)
+// =========================
+
 function addImage() {
   const urlEl = document.getElementById("imageUrl");
   const altEl = document.getElementById("imageAltText");
   if (!urlEl) return;
+
   const url = urlEl.value.trim();
   const alt = altEl ? altEl.value.trim() : "";
+
   if (!url) {
     window.adminPanel.showNotification("Please enter image URL", "error");
     return;
   }
+
   categoryImages.push({
     url,
     altText: alt,
     isPrimary: categoryImages.length === 0,
   });
+
   urlEl.value = "";
   if (altEl) altEl.value = "";
+
   renderImagePreview();
 }
 
@@ -674,8 +857,9 @@ function removeImage(index) {
   if (index < 0 || index >= categoryImages.length) return;
   const wasPrimary = categoryImages[index].isPrimary;
   categoryImages.splice(index, 1);
-  if (wasPrimary && categoryImages.length > 0)
+  if (wasPrimary && categoryImages.length > 0) {
     categoryImages[0].isPrimary = true;
+  }
   renderImagePreview();
 }
 
@@ -687,18 +871,24 @@ function setPrimaryImage(index) {
 function renderImagePreview() {
   const container = document.getElementById("imagesPreview");
   if (!container) return;
+
   if (!categoryImages || categoryImages.length === 0) {
-    container.innerHTML = '<p class="text-muted small">No images added yet</p>';
+    container.innerHTML =
+      '<p class="text-muted small">No images added yet</p>';
     return;
   }
+
   container.innerHTML = categoryImages
     .map(
       (img, i) => `
     <div class="image-preview-item d-inline-block me-2 position-relative" style="width:100px;">
-      <img src="${escapeHtml(img.url)}" alt="${escapeHtml(
-        img.altText || "Category image"
-      )}" onerror="this.src='https://via.placeholder.com/100?text=Error'" class="img-fluid rounded">
-      <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removeImage(${i})">×</button>
+      <img src="${escapeHtml(img.url)}"
+           alt="${escapeHtml(img.altText || "Category image")}"
+           onerror="this.src='https://via.placeholder.com/100?text=Error'"
+           class="img-fluid rounded">
+      <button type="button"
+              class="btn btn-sm btn-danger position-absolute top-0 end-0"
+              onclick="removeImage(${i})">×</button>
       <div class="mt-1 text-center">
         ${
           img.isPrimary
@@ -712,15 +902,15 @@ function renderImagePreview() {
     .join("");
 }
 
+// =========================
+// Save Category (Create / Update)
+// =========================
+
 async function saveCategory() {
   console.log("💾 [CATEGORIES] saveCategory() - Starting save process");
-  const name = (document.getElementById("categoryName")?.value || "").trim();
-  console.log("📝 [CATEGORIES] Category name:", name);
 
+  const name = (document.getElementById("categoryName")?.value || "").trim();
   if (!name) {
-    console.warn(
-      "⚠️ [CATEGORIES] Validation failed: Category name is required"
-    );
     window.adminPanel.showNotification("Category name is required", "error");
     return;
   }
@@ -729,15 +919,14 @@ async function saveCategory() {
     .split(",")
     .map((k) => k.trim())
     .filter((k) => k);
-  console.log("🏷️ [CATEGORIES] Keywords:", keywords);
 
-  console.log("📦 [CATEGORIES] Building payload...");
   const payload = {
     name,
     description: (
       document.getElementById("categoryDescription")?.value || ""
     ).trim(),
-    parentCategoryId: document.getElementById("parentCategory")?.value || null,
+    parentCategoryId:
+      document.getElementById("parentCategory")?.value || null,
     displayOrder: Number(document.getElementById("displayOrder")?.value || 0),
     isActive: !!document.getElementById("isActive")?.checked,
     isFeatured: !!document.getElementById("isFeatured")?.checked,
@@ -747,30 +936,40 @@ async function saveCategory() {
       description: (
         document.getElementById("metaDescription")?.value || ""
       ).trim(),
-      keywords: keywords,
+      keywords,
     },
   };
 
-  // Add optional fields if they exist
   const icon = (document.getElementById("categoryIcon")?.value || "").trim();
   if (icon) {
     payload.icon = icon;
-    console.log("🎨 [CATEGORIES] Icon added to payload:", icon);
   }
 
-  // Note: Image uploads should use separate endpoint PUT /api/categories/:categoryId/image
-  // For now, we'll only handle image objects if they exist
+  // Image handling (URL-only, via updateCategory/createCategory body)
   if (categoryImages.length > 0) {
-    // Only send first image as per API doc structure { url, altText }
-    payload.image = categoryImages[0];
-    console.log("🖼️ [CATEGORIES] Image added to payload:", payload.image);
+    payload.image = categoryImages[0]; // first image as main
+    payload.images = categoryImages; // full list if schema supports it
   }
 
-  console.log("📦 [CATEGORIES] Final payload:", payload);
+  // Regional data
+  console.log('🌍 [CATEGORIES] Processing regional settings...');
+  console.log('🌍 [CATEGORIES] isGlobalCategory:', isGlobalCategory);
+  console.log('🌍 [CATEGORIES] selectedRegions:', selectedRegions);
+
+  if (!isGlobalCategory && selectedRegions.length > 0) {
+    // Category has regional restrictions
+    payload.availableInRegions = selectedRegions;
+    console.log('✅ [CATEGORIES] Added regional restrictions:', payload.availableInRegions);
+  } else {
+    // Global category - empty array means available everywhere
+    payload.availableInRegions = [];
+    console.log('🌎 [CATEGORIES] Global category - no regional restrictions');
+  }
+
+  console.log("📦 [CATEGORIES] Payload:", payload);
 
   try {
     showLoading(true);
-    console.log("⏳ [CATEGORIES] Loading overlay shown");
 
     if (currentCategoryId) {
       // UPDATE: PUT /api/categories/:categoryId
@@ -778,48 +977,44 @@ async function saveCategory() {
         "🔄 [CATEGORIES] UPDATE mode - categoryId:",
         currentCategoryId
       );
-      console.log('🌐 [CATEGORIES] Calling API.put("/categories/:categoryId")');
       await API.put("/categories/:categoryId", payload, {
         categoryId: currentCategoryId,
       });
-      console.log("✅ [CATEGORIES] Category updated successfully");
       window.adminPanel.showNotification(
         "Category updated successfully",
         "success"
       );
     } else {
       // CREATE: POST /api/categories
-      console.log("➕ [CATEGORIES] CREATE mode - new category");
-      console.log('🌐 [CATEGORIES] Calling API.post("/categories")');
+      console.log("➕ [CATEGORIES] CREATE mode");
       await API.post("/categories", payload);
-      console.log("✅ [CATEGORIES] Category created successfully");
       window.adminPanel.showNotification(
         "Category created successfully",
         "success"
       );
     }
-    // close modal
-    console.log("🚪 [CATEGORIES] Closing modal...");
+
     const modalEl = document.getElementById("categoryModal");
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
-    console.log("🔄 [CATEGORIES] Reloading categories...");
+
     await loadCategories();
-    updateStats();
   } catch (err) {
     console.error("❌ [CATEGORIES] Save category error:", err);
-    console.error("❌ [CATEGORIES] Error details:", err.message, err.stack);
     window.adminPanel.showNotification(
       err.message || "Failed to save category",
       "error"
     );
   } finally {
-    console.log("⏳ [CATEGORIES] Hiding loading overlay");
     showLoading(false);
   }
 }
+
+// =========================
+// Toggle Status / Featured
+// =========================
 
 async function toggleCategoryStatus(categoryId) {
   console.log(
@@ -829,30 +1024,20 @@ async function toggleCategoryStatus(categoryId) {
   try {
     showLoading(true);
     const category = categories.find((c) => c._id === categoryId);
-    console.log("🔍 [CATEGORIES] Found category:", category);
+    if (!category) throw new Error("Category not found");
 
-    if (!category) {
-      console.error("❌ [CATEGORIES] Category not found");
-      throw new Error("Category not found");
-    }
+    const payload = { isActive: !category.isActive };
 
-    const payload = {
-      isActive: !category.isActive,
-    };
-    console.log("📦 [CATEGORIES] Payload:", payload);
-
-    // UPDATE: PUT /api/categories/:categoryId
-    console.log('🌐 [CATEGORIES] Calling API.put("/categories/:categoryId")');
     await API.put("/categories/:categoryId", payload, {
-      categoryId: categoryId,
+      categoryId,
     });
-    console.log("✅ [CATEGORIES] Status toggled successfully");
+
     window.adminPanel.showNotification(
       `Category ${payload.isActive ? "activated" : "deactivated"} successfully`,
       "success"
     );
+
     await loadCategories();
-    updateStats();
   } catch (err) {
     console.error("❌ [CATEGORIES] Toggle status error:", err);
     window.adminPanel.showNotification(
@@ -872,29 +1057,21 @@ async function toggleCategoryFeatured(categoryId) {
   try {
     showLoading(true);
     const category = categories.find((c) => c._id === categoryId);
-    console.log("🔍 [CATEGORIES] Found category:", category);
+    if (!category) throw new Error("Category not found");
 
-    if (!category) {
-      console.error("❌ [CATEGORIES] Category not found");
-      throw new Error("Category not found");
-    }
-
-    // Use the toggle-featured endpoint: PUT /api/categories/:categoryId/toggle-featured
-    console.log(
-      '🌐 [CATEGORIES] Calling API.put("/categories/:categoryId/toggle-featured")'
-    );
+    // PUT /api/categories/:categoryId/toggle-featured
     await API.put(
       "/categories/:categoryId/toggle-featured",
       {},
-      { categoryId: categoryId }
+      { categoryId }
     );
-    console.log("✅ [CATEGORIES] Featured status toggled successfully");
+
     window.adminPanel.showNotification(
       "Category featured status toggled successfully",
       "success"
     );
+
     await loadCategories();
-    updateStats();
   } catch (err) {
     console.error("❌ [CATEGORIES] Toggle featured error:", err);
     window.adminPanel.showNotification(
@@ -906,57 +1083,50 @@ async function toggleCategoryFeatured(categoryId) {
   }
 }
 
+// =========================
+// Delete Category
+// =========================
+
 async function deleteCategory(categoryId) {
   console.log("🗑️ [CATEGORIES] deleteCategory() - categoryId:", categoryId);
   const cat = categories.find((c) => c._id === categoryId);
-  console.log("🔍 [CATEGORIES] Found category:", cat);
-
   if (!cat) {
-    console.error("❌ [CATEGORIES] Category not found");
     window.adminPanel.showNotification("Category not found", "error");
     return;
   }
 
-  const hasChildren = categories.some((c) => c.parentCategoryId === categoryId);
-  console.log("👶 [CATEGORIES] Has children:", hasChildren);
+  const hasChildren = categories.some(
+    (c) => c.parentCategoryId === categoryId
+  );
 
   let message = `Are you sure you want to delete "${cat.name}"?`;
   if (hasChildren)
     message +=
-      "\n\nThis category has subcategories. Use force=true to delete with subcategories.";
+      "\n\nThis category has subcategories. They will also be deleted.";
   if (cat.productCount > 0)
     message += `\n\nThis category has ${cat.productCount} products. You may need to reassign them.`;
 
-  console.log("❓ [CATEGORIES] Showing confirmation dialog...");
-  const confirmed = await window.adminPanel.confirmAction(message);
-  console.log("✅ [CATEGORIES] User confirmed:", confirmed);
-
-  if (!confirmed) {
-    console.log("❌ [CATEGORIES] User cancelled deletion");
-    return;
-  }
+  const confirmed = window.adminPanel.confirmAction(message);
+  if (!confirmed) return;
 
   try {
     showLoading(true);
-    // DELETE: DELETE /api/categories/:categoryId
-    // If has children, use force=true query param
+
+    // If has children, use force=true as per backend
     const queryParams = hasChildren ? { force: true } : {};
-    console.log("📦 [CATEGORIES] Query params:", queryParams);
-    console.log(
-      '🌐 [CATEGORIES] Calling API.delete("/categories/:categoryId")'
-    );
+
     await API.delete(
       "/categories/:categoryId",
-      { categoryId: categoryId },
+      { categoryId },
       queryParams
     );
-    console.log("✅ [CATEGORIES] Category deleted successfully");
+
     window.adminPanel.showNotification(
       "Category deleted successfully",
       "success"
     );
+
     await loadCategories();
-    updateStats();
   } catch (err) {
     console.error("❌ [CATEGORIES] Delete category error:", err);
     window.adminPanel.showNotification(
@@ -968,7 +1138,9 @@ async function deleteCategory(categoryId) {
   }
 }
 
-/* ---------- Loading overlay ---------- */
+// =========================
+// Loading Overlay
+// =========================
 
 function showLoading(show) {
   const overlay = document.getElementById("loadingOverlay");
@@ -981,7 +1153,9 @@ function showLoading(show) {
   }
 }
 
-/* ---------- Helpers ---------- */
+// =========================
+// Helpers
+// =========================
 
 function escapeHtml(text) {
   if (text === null || text === undefined) return "";
@@ -990,25 +1164,15 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-/* ---------- Expose to global (used by inline HTML) ---------- */
+// =========================
+// Expose to global (for HTML)
+// =========================
 
 window.openAddCategoryModal = openAddCategoryModal;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.toggleCategoryStatus = toggleCategoryStatus;
 window.toggleCategoryFeatured = toggleCategoryFeatured;
-window.toggleChildren = function (el) {
-  if (!el) return;
-  const li = el.closest("li");
-  if (!li) return;
-  const sub = li.querySelector("subcategories");
-  if (!sub) return;
-  const isHidden = sub.style.display === "none";
-  sub.style.display = isHidden ? "block" : "none";
-  const icon = el.querySelector("i");
-  if (icon)
-    icon.className = isHidden ? "bi bi-chevron-down" : "bi bi-chevron-right";
-};
 window.resetFilters = function () {
   if (searchInput) searchInput.value = "";
   if (statusFilter) statusFilter.value = "";
