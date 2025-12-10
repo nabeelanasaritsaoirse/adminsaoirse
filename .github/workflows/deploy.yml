@@ -1,5 +1,5 @@
 name: Host Static Site to AWS S3
-run-name: "🚀 Deployment by ${{ github.actor }} on ${{ github.ref_name }}"
+run-name: "🚀 Deployment by ${{ github.actor }} on branch ${{ github.ref_name }}"
 
 on:
   push:
@@ -14,7 +14,6 @@ jobs:
       AWS_REGION: ap-south-1
       S3_BUCKET: admin-dashboard-site-prod
       CUSTOM_DOMAIN: admin.epielio.com
-     
 
     steps:
       - name: Checkout code
@@ -47,7 +46,7 @@ jobs:
           echo "Invalidating CloudFront Distribution: $DIST_ID"
           aws cloudfront create-invalidation \
             --distribution-id "$DIST_ID" \
-            --paths "/*
+            --paths "/*"
 
       - name: 🌐 Print Website URL
         run: |
