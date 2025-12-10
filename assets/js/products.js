@@ -196,21 +196,19 @@ function setupEventListeners() {
 /* ---------- Load Categories ---------- */
 
 async function loadCategories() {
-  console.log('📂 [PRODUCTS] loadCategories() - Loading categories for dropdown');
+  console.log(
+    "📂 [PRODUCTS] loadCategories() - Loading categories for dropdown"
+  );
   try {
     // Use dropdown endpoint: GET /api/categories/dropdown/all
     console.log('🌐 [PRODUCTS] Calling API.get("/categories/dropdown/all")');
-    const response = await API.get(
-      "/categories/dropdown/all",
-      {},
-      {}
-    );
-    console.log('✅ [PRODUCTS] Categories response:', response);
+    const response = await API.get("/categories/dropdown/all", {}, {});
+    console.log("✅ [PRODUCTS] Categories response:", response);
 
     const categorySelect = document.getElementById("productCategory");
 
     if (!categorySelect) {
-      console.warn('⚠️ [PRODUCTS] Category select element not found');
+      console.warn("⚠️ [PRODUCTS] Category select element not found");
       return;
     }
 
@@ -218,39 +216,59 @@ async function loadCategories() {
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         categories = response.data;
-        console.log('✅ [PRODUCTS] Found categories in data array, length:', categories.length);
+        console.log(
+          "✅ [PRODUCTS] Found categories in data array, length:",
+          categories.length
+        );
       } else if (Array.isArray(response)) {
         categories = response;
-        console.log('✅ [PRODUCTS] Response is direct array, length:', categories.length);
+        console.log(
+          "✅ [PRODUCTS] Response is direct array, length:",
+          categories.length
+        );
       }
     } else {
-      console.warn('⚠️ [PRODUCTS] Response success is false or response is null');
+      console.warn(
+        "⚠️ [PRODUCTS] Response success is false or response is null"
+      );
     }
 
-    console.log('🔽 [PRODUCTS] Populating category dropdown...');
+    console.log("🔽 [PRODUCTS] Populating category dropdown...");
     categorySelect.innerHTML = '<option value="">Select Category</option>';
     categories.forEach((cat) => {
       const option = document.createElement("option");
       option.value = cat._id || cat.id || cat.categoryId;
       option.textContent = cat.name || cat.categoryName;
-      option.setAttribute('data-category-name', cat.name || cat.categoryName);
+      option.setAttribute("data-category-name", cat.name || cat.categoryName);
       categorySelect.appendChild(option);
 
       // Add subcategories if they exist
       if (cat.subCategories && Array.isArray(cat.subCategories)) {
-        console.log(`📁 [PRODUCTS] Adding ${cat.subCategories.length} subcategories for:`, cat.name);
+        console.log(
+          `📁 [PRODUCTS] Adding ${cat.subCategories.length} subcategories for:`,
+          cat.name
+        );
         cat.subCategories.forEach((subCat) => {
           const subOption = document.createElement("option");
           subOption.value = subCat._id || subCat.id || subCat.categoryId;
           subOption.textContent = `  → ${subCat.name || subCat.categoryName}`;
-          subOption.setAttribute('data-category-name', subCat.name || subCat.categoryName);
-          subOption.setAttribute('data-parent-id', cat._id || cat.id || cat.categoryId);
-          subOption.setAttribute('data-parent-name', cat.name || cat.categoryName);
+          subOption.setAttribute(
+            "data-category-name",
+            subCat.name || subCat.categoryName
+          );
+          subOption.setAttribute(
+            "data-parent-id",
+            cat._id || cat.id || cat.categoryId
+          );
+          subOption.setAttribute(
+            "data-parent-name",
+            cat.name || cat.categoryName
+          );
           categorySelect.appendChild(subOption);
         });
       }
     });
-    console.log('✅ [PRODUCTS] Category dropdown populated successfully');
+    console.log("✅ [PRODUCTS] Category dropdown populated successfully");
   } catch (err) {
     console.error("❌ [PRODUCTS] Load categories error:", err);
   }
@@ -259,10 +277,10 @@ async function loadCategories() {
 /* ---------- Load Products ---------- */
 
 async function loadProducts() {
-  console.log('📦 [PRODUCTS] loadProducts() - Starting to load products');
+  console.log("📦 [PRODUCTS] loadProducts() - Starting to load products");
   try {
     showLoading(true);
-    console.log('⏳ [PRODUCTS] Loading overlay shown');
+    console.log("⏳ [PRODUCTS] Loading overlay shown");
 
     // Build query params for backend pagination and filters
     const queryParams = {
@@ -274,42 +292,45 @@ async function loadProducts() {
     // Add search filter if exists
     if (searchInput && searchInput.value.trim()) {
       queryParams.search = searchInput.value.trim();
-      console.log('🔍 [PRODUCTS] Search query:', queryParams.search);
+      console.log("🔍 [PRODUCTS] Search query:", queryParams.search);
     }
 
     // Add status filter if exists
     if (statusFilter && statusFilter.value) {
       queryParams.status = statusFilter.value;
-      console.log('📊 [PRODUCTS] Status filter:', queryParams.status);
+      console.log("📊 [PRODUCTS] Status filter:", queryParams.status);
     }
 
     // Add variants filter if exists
     if (variantsFilter && variantsFilter.value !== "") {
       queryParams.hasVariants = variantsFilter.value;
-      console.log('🔀 [PRODUCTS] Variants filter:', queryParams.hasVariants);
+      console.log("🔀 [PRODUCTS] Variants filter:", queryParams.hasVariants);
     }
 
-    console.log('📦 [PRODUCTS] Query params:', queryParams);
+    console.log("📦 [PRODUCTS] Query params:", queryParams);
 
     // Use API endpoint: GET /api/products with query params
-    console.log('🌐 [PRODUCTS] Calling API.get("/products")');
-    const response = await API.get(
-      "/products",
-      {},
-      queryParams
-    );
-    console.log('✅ [PRODUCTS] API Response received:', response);
+    console.log('🌐 [PRODUCTS] Calling API.get("/products/admin/all")');
+    const response = await API.get("/products/admin/all", {}, queryParams);
+
+    console.log("✅ [PRODUCTS] API Response received:", response);
 
     let productsData = [];
-    console.log('🔍 [PRODUCTS] Checking response structure...');
+    console.log("🔍 [PRODUCTS] Checking response structure...");
 
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         productsData = response.data;
-        console.log('✅ [PRODUCTS] Found data array, length:', productsData.length);
+        console.log(
+          "✅ [PRODUCTS] Found data array, length:",
+          productsData.length
+        );
       } else if (Array.isArray(response)) {
         productsData = response;
-        console.log('✅ [PRODUCTS] Response is direct array, length:', productsData.length);
+        console.log(
+          "✅ [PRODUCTS] Response is direct array, length:",
+          productsData.length
+        );
       }
 
       // Update pagination state from API response
@@ -317,13 +338,15 @@ async function loadProducts() {
         pagination.page = response.pagination.current || pagination.page;
         pagination.pages = response.pagination.pages || 1;
         pagination.total = response.pagination.total || 0;
-        console.log('📊 [PRODUCTS] Pagination updated:', pagination);
+        console.log("📊 [PRODUCTS] Pagination updated:", pagination);
       }
     } else {
-      console.warn('⚠️ [PRODUCTS] Response success is false or response is null');
+      console.warn(
+        "⚠️ [PRODUCTS] Response success is false or response is null"
+      );
     }
 
-    console.log('🔄 [PRODUCTS] Mapping products data...');
+    console.log("🔄 [PRODUCTS] Mapping products data...");
     products = productsData.map((p) => {
       // Normalize description - handle both string and object formats
       let descText = "";
@@ -339,23 +362,24 @@ async function loadProducts() {
         name: p.name || "",
         brand: p.brand || "",
         description: descText,
-        category:
-          p.category || {
-            mainCategoryId: "",
-            mainCategoryName: "",
-            subCategoryId: "",
-            subCategoryName: "",
-          },
+        category: p.category || {
+          mainCategoryId: "",
+          mainCategoryName: "",
+          subCategoryId: "",
+          subCategoryName: "",
+        },
         sku: p.sku || "",
-        pricing:
-          p.pricing || { regularPrice: 0, salePrice: 0, currency: "USD" },
-        availability:
-          p.availability || {
-            stockQuantity: 0,
-            lowStockLevel: 5,
-            isAvailable: true,
-            stockStatus: "in_stock",
-          },
+        pricing: p.pricing || {
+          regularPrice: 0,
+          salePrice: 0,
+          currency: "USD",
+        },
+        availability: p.availability || {
+          stockQuantity: 0,
+          lowStockLevel: 5,
+          isAvailable: true,
+          stockStatus: "in_stock",
+        },
         images: Array.isArray(p.images) ? p.images : [],
         hasVariants: p.hasVariants || false,
         variants: Array.isArray(p.variants) ? p.variants : [],
@@ -379,13 +403,16 @@ async function loadProducts() {
         updatedAt: p.updatedAt || new Date().toISOString(),
       };
     });
-    console.log('✅ [PRODUCTS] Products mapped successfully. Total count:', products.length);
+    console.log(
+      "✅ [PRODUCTS] Products mapped successfully. Total count:",
+      products.length
+    );
 
-    console.log('📊 [PRODUCTS] Calling updateStats()...');
+    console.log("📊 [PRODUCTS] Calling updateStats()...");
     updateStats(pagination.total);
-    console.log('🎨 [PRODUCTS] Calling renderProducts()...');
+    console.log("🎨 [PRODUCTS] Calling renderProducts()...");
     renderProducts();
-    console.log('✅ [PRODUCTS] loadProducts() completed successfully');
+    console.log("✅ [PRODUCTS] loadProducts() completed successfully");
   } catch (error) {
     console.error("❌ [PRODUCTS] Error loading products:", error);
     console.error("❌ [PRODUCTS] Error details:", error.message, error.stack);
@@ -394,7 +421,7 @@ async function loadProducts() {
       "error"
     );
   } finally {
-    console.log('⏳ [PRODUCTS] Hiding loading overlay');
+    console.log("⏳ [PRODUCTS] Hiding loading overlay");
     showLoading(false);
   }
 }
@@ -408,9 +435,7 @@ function updateStats(totalOverride) {
   const withVariants = products.filter((p) => p.hasVariants).length;
   const totalStock = products.reduce((sum, p) => {
     if (p.hasVariants && p.variants.length > 0) {
-      return (
-        sum + p.variants.reduce((vsum, v) => vsum + (v.stock || 0), 0)
-      );
+      return sum + p.variants.reduce((vsum, v) => vsum + (v.stock || 0), 0);
     }
     return sum + (p.availability?.stockQuantity || 0);
   }, 0);
@@ -595,14 +620,15 @@ function renderProductCard(product) {
                     <div class="col-md-4 text-end">
                         <div class="mb-2">
                             <div class="h6 text-primary">₹${(
-                              (product.pricing?.salePrice ||
-                                product.pricing?.regularPrice) || 0
+                              product.pricing?.salePrice ||
+                              product.pricing?.regularPrice ||
+                              0
                             ).toFixed(2)}</div>
                             <small class="text-muted">Stock: <strong>${stock}</strong></small>
                         </div>
-                        <small class="d-block text-muted mb-3">${
-                          window.utils.formatDate(product.updatedAt)
-                        }</small>
+                        <small class="d-block text-muted mb-3">${window.utils.formatDate(
+                          product.updatedAt
+                        )}</small>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-primary" onclick="editProduct('${
                               product.productId
@@ -638,29 +664,33 @@ function handleImageSelect(e) {
   if (!imagePreviewContainer) return;
 
   if (selectedImageFiles.length === 0) {
-    imagePreviewContainer.innerHTML = '';
+    imagePreviewContainer.innerHTML = "";
     return;
   }
 
   if (selectedImageFiles.length > 10) {
-    showNotification('Maximum 10 images allowed', 'error');
+    showNotification("Maximum 10 images allowed", "error");
     selectedImageFiles = selectedImageFiles.slice(0, 10);
   }
 
-  imagePreviewContainer.innerHTML = '';
+  imagePreviewContainer.innerHTML = "";
 
   selectedImageFiles.forEach((file, index) => {
     const reader = new FileReader();
-    reader.onload = function(e) {
-      const col = document.createElement('div');
-      col.className = 'col-md-2';
+    reader.onload = function (e) {
+      const col = document.createElement("div");
+      col.className = "col-md-2";
       col.innerHTML = `
         <div class="position-relative">
           <img src="${e.target.result}" class="img-thumbnail" alt="Preview">
           <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removeImagePreview(${index})">
             <i class="bi bi-x"></i>
           </button>
-          ${index === 0 ? '<span class="badge bg-primary position-absolute bottom-0 start-0 m-1">Primary</span>' : ''}
+          ${
+            index === 0
+              ? '<span class="badge bg-primary position-absolute bottom-0 start-0 m-1">Primary</span>'
+              : ""
+          }
         </div>
       `;
       imagePreviewContainer.appendChild(col);
@@ -675,7 +705,7 @@ function removeImagePreview(index) {
   // Re-render preview
   if (productImagesInput) {
     const dt = new DataTransfer();
-    selectedImageFiles.forEach(file => dt.items.add(file));
+    selectedImageFiles.forEach((file) => dt.items.add(file));
     productImagesInput.files = dt.files;
   }
 
@@ -684,11 +714,11 @@ function removeImagePreview(index) {
 }
 
 async function uploadProductImages(productId) {
-  console.log('🖼️ [PRODUCTS] uploadProductImages() - productId:', productId);
-  console.log('🖼️ [PRODUCTS] Selected image files:', selectedImageFiles);
+  console.log("🖼️ [PRODUCTS] uploadProductImages() - productId:", productId);
+  console.log("🖼️ [PRODUCTS] Selected image files:", selectedImageFiles);
 
   if (!selectedImageFiles || selectedImageFiles.length === 0) {
-    console.log('⚠️ [PRODUCTS] No images to upload');
+    console.log("⚠️ [PRODUCTS] No images to upload");
     return;
   }
 
@@ -697,28 +727,32 @@ async function uploadProductImages(productId) {
     let failedCount = 0;
 
     // Upload each image one by one
-    console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} images one by one...`);
+    console.log(
+      `🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} images one by one...`
+    );
     for (let i = 0; i < selectedImageFiles.length; i++) {
       const file = selectedImageFiles[i];
-      console.log(`📤 [PRODUCTS] Uploading image ${i + 1}/${selectedImageFiles.length}:`, file.name);
+      console.log(
+        `📤 [PRODUCTS] Uploading image ${i + 1}/${selectedImageFiles.length}:`,
+        file.name
+      );
 
       const formData = new FormData();
 
-      formData.append('images', file);
-      formData.append('altText', 'Product image');
+      formData.append("images", file);
+      formData.append("altText", "Product image");
 
       try {
         const url = `${window.BASE_URL}/products/${productId}/images`;
         console.log(`🌐 [PRODUCTS] Uploading to URL:`, url);
 
         const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${AUTH.getToken()}`
-            },
-            body: formData
-          }
-        );
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${AUTH.getToken()}`,
+          },
+          body: formData,
+        });
 
         const result = await response.json();
         console.log(`📥 [PRODUCTS] Image ${i + 1} response:`, result);
@@ -728,7 +762,10 @@ async function uploadProductImages(productId) {
           console.log(`✅ [PRODUCTS] Image ${i + 1} uploaded successfully`);
         } else {
           failedCount++;
-          console.error(`❌ [PRODUCTS] Failed to upload image ${i + 1}:`, result.message);
+          console.error(
+            `❌ [PRODUCTS] Failed to upload image ${i + 1}:`,
+            result.message
+          );
         }
       } catch (err) {
         failedCount++;
@@ -736,27 +773,38 @@ async function uploadProductImages(productId) {
       }
     }
 
-    console.log(`📊 [PRODUCTS] Upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`);
+    console.log(
+      `📊 [PRODUCTS] Upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`
+    );
 
     if (uploadedCount > 0) {
-      showNotification(`${uploadedCount} images uploaded successfully${failedCount > 0 ? `, ${failedCount} failed` : ''}`, uploadedCount === selectedImageFiles.length ? 'success' : 'info');
+      showNotification(
+        `${uploadedCount} images uploaded successfully${
+          failedCount > 0 ? `, ${failedCount} failed` : ""
+        }`,
+        uploadedCount === selectedImageFiles.length ? "success" : "info"
+      );
     } else {
-      showNotification('Failed to upload images', 'error');
+      showNotification("Failed to upload images", "error");
     }
   } catch (err) {
-    console.error('❌ [PRODUCTS] Image upload error:', err);
-    showNotification('Failed to upload images: ' + err.message, 'error');
+    console.error("❌ [PRODUCTS] Image upload error:", err);
+    showNotification("Failed to upload images: " + err.message, "error");
   }
 }
 
 // Upload variant images after product creation
-async function uploadVariantImages(productId, variantImageFiles, createdVariants) {
-  console.log('🖼️ [PRODUCTS] uploadVariantImages() - productId:', productId);
-  console.log('🖼️ [PRODUCTS] Variant image files:', variantImageFiles);
-  console.log('🖼️ [PRODUCTS] Created variants:', createdVariants);
+async function uploadVariantImages(
+  productId,
+  variantImageFiles,
+  createdVariants
+) {
+  console.log("🖼️ [PRODUCTS] uploadVariantImages() - productId:", productId);
+  console.log("🖼️ [PRODUCTS] Variant image files:", variantImageFiles);
+  console.log("🖼️ [PRODUCTS] Created variants:", createdVariants);
 
   if (!variantImageFiles || variantImageFiles.length === 0) {
-    console.log('⚠️ [PRODUCTS] No variant images to upload');
+    console.log("⚠️ [PRODUCTS] No variant images to upload");
     return;
   }
 
@@ -764,60 +812,86 @@ async function uploadVariantImages(productId, variantImageFiles, createdVariants
     let uploadedCount = 0;
     let failedCount = 0;
 
-    console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`);
+    console.log(
+      `🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`
+    );
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
-      console.log(`📤 [PRODUCTS] Uploading variant image ${i + 1}/${variantImageFiles.length} for variant index:`, variantIndex);
+      console.log(
+        `📤 [PRODUCTS] Uploading variant image ${i + 1}/${
+          variantImageFiles.length
+        } for variant index:`,
+        variantIndex
+      );
 
       const variant = createdVariants && createdVariants[variantIndex];
-      console.log(`🔍 [PRODUCTS] Found variant for index ${variantIndex}:`, variant);
+      console.log(
+        `🔍 [PRODUCTS] Found variant for index ${variantIndex}:`,
+        variant
+      );
 
       if (!variant || !variant.variantId) {
-        console.error(`❌ [PRODUCTS] Variant ID not found for variant index ${variantIndex}`);
+        console.error(
+          `❌ [PRODUCTS] Variant ID not found for variant index ${variantIndex}`
+        );
         failedCount++;
         continue;
       }
 
       const formData = new FormData();
-      formData.append('images', file);
-      formData.append('altText', 'Variant image');
+      formData.append("images", file);
+      formData.append("altText", "Variant image");
 
       try {
         const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
         console.log(`🌐 [PRODUCTS] Uploading variant image to URL:`, url);
 
         const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${AUTH.getToken()}`
-            },
-            body: formData
-          }
-        );
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${AUTH.getToken()}`,
+          },
+          body: formData,
+        });
 
         const result = await response.json();
         console.log(`📥 [PRODUCTS] Variant image ${i + 1} response:`, result);
 
         if (result.success) {
           uploadedCount++;
-          console.log(`✅ [PRODUCTS] Variant image ${i + 1} uploaded successfully`);
+          console.log(
+            `✅ [PRODUCTS] Variant image ${i + 1} uploaded successfully`
+          );
         } else {
           failedCount++;
-          console.error(`❌ [PRODUCTS] Failed to upload variant image ${i + 1}:`, result.message);
+          console.error(
+            `❌ [PRODUCTS] Failed to upload variant image ${i + 1}:`,
+            result.message
+          );
         }
       } catch (err) {
         failedCount++;
-        console.error(`❌ [PRODUCTS] Error uploading variant image ${i + 1}:`, err);
+        console.error(
+          `❌ [PRODUCTS] Error uploading variant image ${i + 1}:`,
+          err
+        );
       }
     }
 
-    console.log(`📊 [PRODUCTS] Variant images upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`);
+    console.log(
+      `📊 [PRODUCTS] Variant images upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`
+    );
 
     if (uploadedCount > 0) {
-      showNotification(`${uploadedCount} variant images uploaded${failedCount > 0 ? `, ${failedCount} failed` : ''}`, 'info');
+      showNotification(
+        `${uploadedCount} variant images uploaded${
+          failedCount > 0 ? `, ${failedCount} failed` : ""
+        }`,
+        "info"
+      );
     }
   } catch (err) {
-    console.error('❌ [PRODUCTS] Variant image upload error:', err);
+    console.error("❌ [PRODUCTS] Variant image upload error:", err);
   }
 }
 
@@ -867,13 +941,13 @@ function addPlanField() {
       </div>
     </div>
   `;
-  plansList.insertAdjacentHTML('beforeend', html);
+  plansList.insertAdjacentHTML("beforeend", html);
 
   // Add auto-calculation for total
   const card = document.getElementById(`plan-${planCount}`);
-  const daysInput = card.querySelector('[data-plan-days]');
-  const amountInput = card.querySelector('[data-plan-amount]');
-  const totalInput = card.querySelector('[data-plan-total]');
+  const daysInput = card.querySelector("[data-plan-days]");
+  const amountInput = card.querySelector("[data-plan-amount]");
+  const totalInput = card.querySelector("[data-plan-total]");
 
   const calculateTotal = () => {
     const days = parseFloat(daysInput.value) || 0;
@@ -881,8 +955,8 @@ function addPlanField() {
     totalInput.value = (days * amount).toFixed(2);
   };
 
-  daysInput.addEventListener('input', calculateTotal);
-  amountInput.addEventListener('input', calculateTotal);
+  daysInput.addEventListener("input", calculateTotal);
+  amountInput.addEventListener("input", calculateTotal);
 }
 
 function removePlanField(idx) {
@@ -963,7 +1037,7 @@ async function editProduct(productId) {
     return;
   }
 
-  currentProductId = product._id;  // ⭐ Store MongoDB _id, not productId
+  currentProductId = product._id; // ⭐ Store MongoDB _id, not productId
 
   const labelEl = document.getElementById("productModalLabel");
   if (labelEl) labelEl.textContent = "Edit Product";
@@ -1014,9 +1088,10 @@ async function editProduct(productId) {
 
   // Warranty (Option A: period + returnPolicy)
   const warrantyPeriodEl = document.getElementById("warrantyPeriod");
-  const warrantyReturnPolicyEl = document.getElementById("warrantyReturnPolicy");
-  if (warrantyPeriodEl)
-    warrantyPeriodEl.value = product.warranty?.period || "";
+  const warrantyReturnPolicyEl = document.getElementById(
+    "warrantyReturnPolicy"
+  );
+  if (warrantyPeriodEl) warrantyPeriodEl.value = product.warranty?.period || "";
   if (warrantyReturnPolicyEl)
     warrantyReturnPolicyEl.value = product.warranty?.returnPolicy || "";
 
@@ -1038,8 +1113,7 @@ async function editProduct(productId) {
     dimensionWidthEl.value = product.dimensions?.width || "";
   if (dimensionHeightEl)
     dimensionHeightEl.value = product.dimensions?.height || "";
-  if (productWeightEl)
-    productWeightEl.value = product.dimensions?.weight || "";
+  if (productWeightEl) productWeightEl.value = product.dimensions?.weight || "";
 
   // Tags
   const productTagsEl = document.getElementById("productTags");
@@ -1054,10 +1128,8 @@ async function editProduct(productId) {
   const metaTitleEl = document.getElementById("productMetaTitle");
   const metaDescEl = document.getElementById("productMetaDescription");
   const metaKeywordsEl = document.getElementById("productMetaKeywords");
-  if (metaTitleEl)
-    metaTitleEl.value = product.seo?.metaTitle || "";
-  if (metaDescEl)
-    metaDescEl.value = product.seo?.metaDescription || "";
+  if (metaTitleEl) metaTitleEl.value = product.seo?.metaTitle || "";
+  if (metaDescEl) metaDescEl.value = product.seo?.metaDescription || "";
   if (metaKeywordsEl)
     metaKeywordsEl.value = Array.isArray(product.seo?.keywords)
       ? product.seo.keywords.join(", ")
@@ -1084,12 +1156,9 @@ async function editProduct(productId) {
   const ppMaxEl = document.getElementById("paymentPlanMaxDown");
   const ppInterestEl = document.getElementById("paymentPlanInterest");
 
-  if (ppEnabledEl)
-    ppEnabledEl.checked = product.paymentPlan?.enabled || false;
-  if (ppMinEl)
-    ppMinEl.value = product.paymentPlan?.minDownPayment ?? "";
-  if (ppMaxEl)
-    ppMaxEl.value = product.paymentPlan?.maxDownPayment ?? "";
+  if (ppEnabledEl) ppEnabledEl.checked = product.paymentPlan?.enabled || false;
+  if (ppMinEl) ppMinEl.value = product.paymentPlan?.minDownPayment ?? "";
+  if (ppMaxEl) ppMaxEl.value = product.paymentPlan?.maxDownPayment ?? "";
   if (ppInterestEl)
     ppInterestEl.value = product.paymentPlan?.interestRate ?? "";
 
@@ -1213,7 +1282,7 @@ function removeVariantField(idx) {
 }
 
 async function saveProduct() {
-  console.log('💾 [PRODUCTS] saveProduct() - Starting save process');
+  console.log("💾 [PRODUCTS] saveProduct() - Starting save process");
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
   const description = document
@@ -1222,7 +1291,7 @@ async function saveProduct() {
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
 
-  console.log('📝 [PRODUCTS] Form data:', { name, brand, categoryId, sku });
+  console.log("📝 [PRODUCTS] Form data:", { name, brand, categoryId, sku });
 
   const priceInput = document.getElementById("productPrice");
   const salePriceInput = document.getElementById("productSalePrice");
@@ -1236,88 +1305,115 @@ async function saveProduct() {
       ? NaN
       : parseInt(stockRaw, 10);
 
-  console.log('💰 [PRODUCTS] Pricing data:', { price, salePrice, stock });
+  console.log("💰 [PRODUCTS] Pricing data:", { price, salePrice, stock });
 
-  const availabilityValue =
-    document.getElementById("productAvailability").value;
+  const availabilityValue = document.getElementById(
+    "productAvailability"
+  ).value;
   const status =
     document.querySelector('input[name="status"]:checked')?.value || "draft";
   const hasVariants = document.getElementById("hasVariants").checked;
 
-  console.log('📊 [PRODUCTS] Status data:', { availabilityValue, status, hasVariants });
+  console.log("📊 [PRODUCTS] Status data:", {
+    availabilityValue,
+    status,
+    hasVariants,
+  });
 
   // Validation
   if (!name) {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Product name is required');
+    console.warn("⚠️ [PRODUCTS] Validation failed: Product name is required");
     alert("Product name is required");
     return;
   }
   if (!categoryId) {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Category is required');
+    console.warn("⚠️ [PRODUCTS] Validation failed: Category is required");
     alert("Category is required");
     return;
   }
   if (isNaN(price) || price <= 0) {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Price must be greater than 0');
+    console.warn(
+      "⚠️ [PRODUCTS] Validation failed: Price must be greater than 0"
+    );
     alert("Price must be greater than 0");
     return;
   }
   if (!description) {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Description is required');
+    console.warn("⚠️ [PRODUCTS] Validation failed: Description is required");
     alert("Description is required");
     return;
   }
 
   // Stock required and MUST be > 0
   if (stockRaw === "") {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Stock is required');
+    console.warn("⚠️ [PRODUCTS] Validation failed: Stock is required");
     alert("Stock is required");
     return;
   }
   if (isNaN(stock) || stock <= 0) {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Stock must be greater than 0');
+    console.warn(
+      "⚠️ [PRODUCTS] Validation failed: Stock must be greater than 0"
+    );
     alert("Stock must be greater than 0");
     return;
   }
 
   // Sale price validation
   if (!isNaN(salePrice) && salePrice > 0 && salePrice > price) {
-    console.warn('⚠️ [PRODUCTS] Validation failed: Sale price cannot be greater than regular price');
+    console.warn(
+      "⚠️ [PRODUCTS] Validation failed: Sale price cannot be greater than regular price"
+    );
     alert("Sale price cannot be greater than regular price");
     return;
   }
 
-  console.log('✅ [PRODUCTS] All validations passed');
+  console.log("✅ [PRODUCTS] All validations passed");
 
   // Map UI availability to backend format
   const { stockStatus, isAvailable } =
     mapUIAvailabilityToBackend(availabilityValue);
-  console.log('🔄 [PRODUCTS] Mapped availability:', { stockStatus, isAvailable });
+  console.log("🔄 [PRODUCTS] Mapped availability:", {
+    stockStatus,
+    isAvailable,
+  });
 
   // Get category name and parent info from selected option
   const categorySelect = document.getElementById("productCategory");
   const selectedOption = categorySelect.options[categorySelect.selectedIndex];
   const categoryName =
-    selectedOption.getAttribute('data-category-name') ||
+    selectedOption.getAttribute("data-category-name") ||
     selectedOption.text.trim();
-  const parentId = selectedOption.getAttribute('data-parent-id');
-  const parentName = selectedOption.getAttribute('data-parent-name');
-  console.log('📁 [PRODUCTS] Category info:', { categoryId, categoryName, parentId, parentName });
+  const parentId = selectedOption.getAttribute("data-parent-id");
+  const parentName = selectedOption.getAttribute("data-parent-name");
+  console.log("📁 [PRODUCTS] Category info:", {
+    categoryId,
+    categoryName,
+    parentId,
+    parentName,
+  });
 
   // Product flags
   const isFeatured = document.getElementById("isFeatured")?.checked || false;
   const isPopular = document.getElementById("isPopular")?.checked || false;
-  const isBestSeller = document.getElementById("isBestSeller")?.checked || false;
+  const isBestSeller =
+    document.getElementById("isBestSeller")?.checked || false;
   const isTrending = document.getElementById("isTrending")?.checked || false;
-  console.log('🏷️ [PRODUCTS] Product flags:', { isFeatured, isPopular, isBestSeller, isTrending });
+  console.log("🏷️ [PRODUCTS] Product flags:", {
+    isFeatured,
+    isPopular,
+    isBestSeller,
+    isTrending,
+  });
 
   // Warranty (Option A)
   const warrantyPeriod =
     parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
   const warrantyReturnPolicy =
     parseInt(document.getElementById("warrantyReturnPolicy")?.value) || 0;
-  const productOrigin = document.getElementById("productOrigin")?.value.trim() || "";
-  const productProject = document.getElementById("productProject")?.value.trim() || "";
+  const productOrigin =
+    document.getElementById("productOrigin")?.value.trim() || "";
+  const productProject =
+    document.getElementById("productProject")?.value.trim() || "";
 
   const dimensionLength =
     parseFloat(document.getElementById("dimensionLength")?.value) || 0;
@@ -1434,9 +1530,7 @@ async function saveProduct() {
   const referralValue =
     parseFloat(document.getElementById("referralValue")?.value) || 0;
   const referralMinPurchase =
-    parseFloat(
-      document.getElementById("referralMinPurchase")?.value
-    ) || 0;
+    parseFloat(document.getElementById("referralMinPurchase")?.value) || 0;
 
   if (referralEnabled && referralValue > 0) {
     payload.referralBonus = {
@@ -1461,17 +1555,11 @@ async function saveProduct() {
   const ppEnabled =
     document.getElementById("paymentPlanEnabled")?.checked || false;
   const ppMinDown =
-    parseFloat(
-      document.getElementById("paymentPlanMinDown")?.value
-    ) || 0;
+    parseFloat(document.getElementById("paymentPlanMinDown")?.value) || 0;
   const ppMaxDown =
-    parseFloat(
-      document.getElementById("paymentPlanMaxDown")?.value
-    ) || 0;
+    parseFloat(document.getElementById("paymentPlanMaxDown")?.value) || 0;
   const ppInterest =
-    parseFloat(
-      document.getElementById("paymentPlanInterest")?.value
-    ) || 0;
+    parseFloat(document.getElementById("paymentPlanInterest")?.value) || 0;
 
   if (ppEnabled && (ppMinDown > 0 || ppMaxDown > 0 || ppInterest > 0)) {
     payload.paymentPlan = {
@@ -1496,11 +1584,11 @@ async function saveProduct() {
   const plans = [];
 
   planCards.forEach((card) => {
-    const nameInput = card.querySelector('[data-plan-name]');
-    const daysInput = card.querySelector('[data-plan-days]');
-    const amountInput = card.querySelector('[data-plan-amount]');
-    const descInput = card.querySelector('[data-plan-description]');
-    const recommendedInput = card.querySelector('[data-plan-recommended]');
+    const nameInput = card.querySelector("[data-plan-name]");
+    const daysInput = card.querySelector("[data-plan-days]");
+    const amountInput = card.querySelector("[data-plan-amount]");
+    const descInput = card.querySelector("[data-plan-description]");
+    const recommendedInput = card.querySelector("[data-plan-recommended]");
 
     const planName = nameInput?.value?.trim();
     const days = parseInt(daysInput?.value) || 0;
@@ -1523,24 +1611,22 @@ async function saveProduct() {
     payload.plans = plans;
   }
 
-  console.log('📦 [PRODUCTS] Building payload...', payload);
+  console.log("📦 [PRODUCTS] Building payload...", payload);
 
   // Collect variant data and files
   let variantImageFiles = [];
 
   if (hasVariants) {
-    console.log('🔀 [PRODUCTS] Collecting variants...');
+    console.log("🔀 [PRODUCTS] Collecting variants...");
     const variantCards = document.querySelectorAll(".variant-card");
     const variants = [];
-    console.log('🔢 [PRODUCTS] Found variant cards:', variantCards.length);
+    console.log("🔢 [PRODUCTS] Found variant cards:", variantCards.length);
 
     variantCards.forEach((card, idx) => {
       const colorInput = card.querySelector("[data-variant-color]");
       const storageInput = card.querySelector("[data-variant-storage]");
       const variantPrice = card.querySelector("[data-variant-price]");
-      const variantSalePrice = card.querySelector(
-        "[data-variant-sale-price]"
-      );
+      const variantSalePrice = card.querySelector("[data-variant-sale-price]");
       const variantStock = card.querySelector("[data-variant-stock]");
       const variantImageInput = card.querySelector("[data-variant-image]");
 
@@ -1578,52 +1664,65 @@ async function saveProduct() {
     });
 
     if (variants.length === 0) {
-      console.warn('⚠️ [PRODUCTS] No valid variants found');
+      console.warn("⚠️ [PRODUCTS] No valid variants found");
       alert("Add at least one variant with valid price");
       return;
     }
 
-    console.log('✅ [PRODUCTS] Collected variants:', variants);
+    console.log("✅ [PRODUCTS] Collected variants:", variants);
     payload.variants = variants;
   }
 
-  console.log('📦 [PRODUCTS] Final payload:', payload);
+  console.log("📦 [PRODUCTS] Final payload:", payload);
 
   try {
     showLoading(true);
-    console.log('⏳ [PRODUCTS] Loading overlay shown');
+    console.log("⏳ [PRODUCTS] Loading overlay shown");
 
     let savedProductId = currentProductId;
     let createdVariants = null;
 
     if (currentProductId) {
-      console.log('🔄 [PRODUCTS] UPDATE mode - productId:', currentProductId);
+      console.log("🔄 [PRODUCTS] UPDATE mode - productId:", currentProductId);
       console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
       const updateResponse = await API.put("/products/:id", payload, {
-        id: currentProductId,  // ⭐ Pass MongoDB _id via 'id' param
+        id: currentProductId, // ⭐ Pass MongoDB _id via 'id' param
       });
-      console.log('✅ [PRODUCTS] Update response:', updateResponse);
+      console.log("✅ [PRODUCTS] Update response:", updateResponse);
 
-      if (updateResponse && updateResponse.data && updateResponse.data.variants) {
+      if (
+        updateResponse &&
+        updateResponse.data &&
+        updateResponse.data.variants
+      ) {
         createdVariants = updateResponse.data.variants;
-        console.log('🔀 [PRODUCTS] Got updated variants from response:', createdVariants);
+        console.log(
+          "🔀 [PRODUCTS] Got updated variants from response:",
+          createdVariants
+        );
       }
 
       showNotification("Product updated successfully", "success");
     } else {
-      console.log('➕ [PRODUCTS] CREATE mode - new product');
+      console.log("➕ [PRODUCTS] CREATE mode - new product");
       console.log('🌐 [PRODUCTS] Calling API.post("/products")');
       const response = await API.post("/products", payload);
-      console.log('✅ [PRODUCTS] Create response:', response);
+      console.log("✅ [PRODUCTS] Create response:", response);
 
       if (response && response.data) {
         if (response.data.productId) {
           savedProductId = response.data.productId;
-          console.log('🆔 [PRODUCTS] Got product ID from response:', savedProductId);
+          console.log(
+            "🆔 [PRODUCTS] Got product ID from response:",
+            savedProductId
+          );
         }
         if (response.data.variants) {
           createdVariants = response.data.variants;
-          console.log('🔀 [PRODUCTS] Got created variants from response:', createdVariants);
+          console.log(
+            "🔀 [PRODUCTS] Got created variants from response:",
+            createdVariants
+          );
         }
       }
 
@@ -1631,23 +1730,31 @@ async function saveProduct() {
     }
 
     if (savedProductId && selectedImageFiles.length > 0) {
-      console.log(`🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`);
+      console.log(
+        `🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`
+      );
       await uploadProductImages(savedProductId);
     }
 
     if (savedProductId && variantImageFiles.length > 0 && createdVariants) {
-      console.log(`🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`);
-      await uploadVariantImages(savedProductId, variantImageFiles, createdVariants);
+      console.log(
+        `🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`
+      );
+      await uploadVariantImages(
+        savedProductId,
+        variantImageFiles,
+        createdVariants
+      );
     }
 
-    console.log('🚪 [PRODUCTS] Closing modal...');
+    console.log("🚪 [PRODUCTS] Closing modal...");
     const modalEl = document.getElementById("productModal");
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
 
-    console.log('🧹 [PRODUCTS] Cleaning up form...');
+    console.log("🧹 [PRODUCTS] Cleaning up form...");
     productForm.reset();
     currentProductId = null;
     variantCount = 0;
@@ -1658,16 +1765,19 @@ async function saveProduct() {
     if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
     if (productImagesInput) productImagesInput.value = "";
 
-    console.log('🔄 [PRODUCTS] Reloading products...');
+    console.log("🔄 [PRODUCTS] Reloading products...");
     await loadProducts();
-    console.log('✅ [PRODUCTS] saveProduct() completed successfully');
+    console.log("✅ [PRODUCTS] saveProduct() completed successfully");
   } catch (err) {
     console.error("❌ [PRODUCTS] Save product error:", err);
     console.error("❌ [PRODUCTS] Error details:", err.message, err.stack);
     console.error("❌ [PRODUCTS] Current Product ID:", currentProductId);
-    showNotification("Error: " + (err.message || "Failed to save product"), "error");
+    showNotification(
+      "Error: " + (err.message || "Failed to save product"),
+      "error"
+    );
   } finally {
-    console.log('⏳ [PRODUCTS] Hiding loading overlay');
+    console.log("⏳ [PRODUCTS] Hiding loading overlay");
     showLoading(false);
   }
 }
@@ -1696,30 +1806,30 @@ async function toggleProductStatus(productId) {
 }
 
 async function deleteProduct(productId) {
-  console.log('🗑️ [PRODUCTS] deleteProduct() - productId:', productId);
+  console.log("🗑️ [PRODUCTS] deleteProduct() - productId:", productId);
   const product = products.find((p) => p.productId === productId);
-  console.log('🔍 [PRODUCTS] Found product:', product);
+  console.log("🔍 [PRODUCTS] Found product:", product);
 
   if (!product) {
-    console.error('❌ [PRODUCTS] Product not found');
+    console.error("❌ [PRODUCTS] Product not found");
     showNotification("Product not found", "error");
     return;
   }
 
-  console.log('❓ [PRODUCTS] Showing confirmation dialog...');
+  console.log("❓ [PRODUCTS] Showing confirmation dialog...");
   const confirmed = confirm(`Delete "${product.name}"?`);
-  console.log('✅ [PRODUCTS] User confirmed:', confirmed);
+  console.log("✅ [PRODUCTS] User confirmed:", confirmed);
 
   if (!confirmed) {
-    console.log('❌ [PRODUCTS] User cancelled deletion');
+    console.log("❌ [PRODUCTS] User cancelled deletion");
     return;
   }
 
   try {
     showLoading(true);
-    console.log('⏳ [PRODUCTS] Loading overlay shown');
+    console.log("⏳ [PRODUCTS] Loading overlay shown");
     await API.delete("/products/:productId", { productId });
-    console.log('✅ [PRODUCTS] Product deleted successfully');
+    console.log("✅ [PRODUCTS] Product deleted successfully");
     showNotification("Product deleted successfully", "success");
     await loadProducts();
   } catch (err) {
@@ -1805,9 +1915,7 @@ async function viewProductDetails(productId) {
   details += `<strong>Availability:</strong>`;
   details += `<div>`;
   const available = product.availability?.isAvailable !== false;
-  details += `<span class="badge ${
-    available ? "bg-success" : "bg-danger"
-  }">`;
+  details += `<span class="badge ${available ? "bg-success" : "bg-danger"}">`;
   details += available ? "Available" : "Unavailable";
   details += `</span>`;
   details += `</div>`;
