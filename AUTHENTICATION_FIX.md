@@ -10,7 +10,6 @@ Category creation redirects to login page because:
 
 I've disabled the auto-redirect in `config.js` (lines 194-200). You can now test without authentication.
 
----
 
 ## Solutions (Choose One)
 
