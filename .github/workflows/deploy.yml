@@ -31,16 +31,22 @@ jobs:
           echo "Cleaning bucket: $S3_BUCKET"
           aws s3 rm s3://$S3_BUCKET --recursive
 
-      - name: 🔄 Sync files to S3
+      - name: 🔄 Sync ONLY Required Files to S3
         run: |
-          echo "Deploying to bucket: $S3_BUCKET"
-          aws s3 sync . s3://$S3_BUCKET --delete \
-            --exclude ".git/*" \
-            --exclude ".github/*" \
-            --exclude "*.md" \
-            --exclude ".gitignore"
+          echo "Deploying only static site files"
 
-      - name: 🚀 Invalidate CloudFront Cache (Production Only)
+          # Upload folders
+          aws s3 sync assets/ s3://$S3_BUCKET/assets/ --delete
+          aws s3 sync pages/ s3://$S3_BUCKET/pages/ --delete
+
+          # Upload HTML files in root
+          for file in *.html *.txt; do
+            if [ -f "$file" ]; then
+              aws s3 cp "$file" s3://$S3_BUCKET/
+            fi
+          done
+
+      - name: 🚀 Invalidate CloudFront Cache
         run: |
           DIST_ID="${{ secrets.CF_PROD }}"
           echo "Invalidating CloudFront Distribution: $DIST_ID"
@@ -52,23 +58,7 @@ jobs:
         run: |
           echo "-----------------------------------"
           echo "Deployment completed successfully!"
-          echo "Branch: ${{ github.ref_name }}"
           echo "S3 Bucket: $S3_BUCKET"
-          echo "URL: http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com"
+          echo "CloudFront: https://${CUSTOM_DOMAIN}"
           echo "-----------------------------------"
 
-      - name: 🧾 Add summary with clickable links
-        if: success()
-        run: |
-          echo "## ✅ Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**S3 Static Website URL:**" >> $GITHUB_STEP_SUMMARY
-          echo "http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Custom Domain:**" >> $GITHUB_STEP_SUMMARY
-          echo "https://${CUSTOM_DOMAIN}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🚀 Deployment successful!" >> $GITHUB_STEP_SUMMARY
