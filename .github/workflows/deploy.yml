@@ -1,11 +1,10 @@
 name: Host Static Site to AWS S3
-run-name: "🚀 Deployment triggered by ${{ github.actor }} on branch ${{ github.ref_name }}"
+run-name: "🚀 Deployment by ${{ github.actor }} on ${{ github.ref_name }}"
 
 on:
   push:
     branches:
-      - main
-      - dev
+      - main   # ONLY main will deploy
 
 jobs:
   deploy:
@@ -13,10 +12,9 @@ jobs:
 
     env:
       AWS_REGION: ap-south-1
-
-      # ✔ No secrets for bucket names = no censorship
-      S3_BUCKET: ${{ github.ref_name == 'main' && 'admin-dashboard-site-prod' || 'admin-dashboard-site-dev' }}
-      CUSTOM_DOMAIN: ${{ github.ref_name == 'main' && 'admin.epielio.com' || 'dev-admin.epielio.com' }}
+      S3_BUCKET: admin-dashboard-site-prod
+      CUSTOM_DOMAIN: admin.epielio.com
+     
 
     steps:
       - name: Checkout code
@@ -29,6 +27,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: 🧹 Clean S3 Bucket Before Deploy
+        run: |
+          echo "Cleaning bucket: $S3_BUCKET"
+          aws s3 rm s3://$S3_BUCKET --recursive
+
       - name: 🔄 Sync files to S3
         run: |
           echo "Deploying to bucket: $S3_BUCKET"
@@ -38,16 +41,13 @@ jobs:
             --exclude "*.md" \
             --exclude ".gitignore"
 
-      - name: 🚀 Invalidate CloudFront Cache
+      - name: 🚀 Invalidate CloudFront Cache (Production Only)
         run: |
           DIST_ID="${{ secrets.CF_PROD }}"
           echo "Invalidating CloudFront Distribution: $DIST_ID"
-
           aws cloudfront create-invalidation \
             --distribution-id "$DIST_ID" \
-            --paths "/*"
-
-
+            --paths "/*
 
       - name: 🌐 Print Website URL
         run: |
@@ -61,20 +61,15 @@ jobs:
       - name: 🧾 Add summary with clickable links
         if: success()
         run: |
-          ENVIRONMENT=$([[ "${{ github.ref_name }}" == "main" ]] && echo "Production" || echo "Development")
-          
-          echo "## ✅ Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** $ENVIRONMENT" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           echo "**S3 Static Website URL:**" >> $GITHUB_STEP_SUMMARY
           echo "http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           echo "**Custom Domain:**" >> $GITHUB_STEP_SUMMARY
-          echo "http://${CUSTOM_DOMAIN}" >> $GITHUB_STEP_SUMMARY
+          echo "https://${CUSTOM_DOMAIN}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-
           echo "🚀 Deployment successful!" >> $GITHUB_STEP_SUMMARY
