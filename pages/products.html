@@ -1,81 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Product Management - Admin Dashboard</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../assets/css/style.css" />
     <link rel="stylesheet" href="../assets/css/responsive.css" />
     <style>
-        .variant-card {
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            background-color: #f8f9fa;
-        }
-        .variant-header {
-            background-color: #e7f3ff;
-            padding: 0.75rem;
-            border-radius: 0.375rem;
-            margin-bottom: 0.75rem;
-            border-left: 3px solid #0d6efd;
-        }
-        .remove-variant-btn {
-            position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-        }
-        #loadingOverlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        }
-        #loadingOverlay.show {
-            display: flex;
-        }
+      .variant-card {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+      }
+      .variant-header {
+        background-color: #e7f3ff;
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0.75rem;
+        border-left: 3px solid #0d6efd;
+      }
+      .remove-variant-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+      }
+      #loadingOverlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+      }
+      #loadingOverlay.show {
+        display: flex;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+
+    <!-- FIXED RBAC GUARD -->
+    <script src="../assets/js/config.js"></script>
     <script>
-        (function () {
-            const token = localStorage.getItem("epi_admin_token");
-            const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+      (function () {
+        const REQUIRED_PERMISSION = "products";
 
-            if (!token) {
-                window.location.href = "login.html";
-                return;
-            }
+        if (!AUTH.isAuthenticated()) {
+          window.location.href = "login.html";
+          return;
+        }
 
-            if (user.role !== "admin") {
-                localStorage.removeItem("epi_admin_token");
-                localStorage.removeItem("epi_admin_user");
-                window.location.href = "login.html";
-                return;
-            }
-        })();
+        const user = AUTH.getCurrentUser();
+
+        // ⭐ Super admin always allowed
+        if (user.isSuperAdmin === true) return;
+
+        // ⭐ Sub-admin must have permission
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+          alert("Access Denied! You do not have permission to access Products.");
+          window.location.href = "dashboard.html";
+        }
+      })();
     </script>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay">
-        <div class="spinner-border text-light" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
+      <div class="spinner-border text-light" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
     </div>
 
     <!-- NAVBAR -->
@@ -117,13 +132,12 @@
       </div>
     </nav>
 
-    <!-- SIDEBAR (DYNAMIC) -->
+    <!-- SIDEBAR -->
     <div id="sidebar" class="sidebar"></div>
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
       <div class="container-fluid">
-        <!-- HEADER -->
         <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
           <h1 class="h2">Product Management</h1>
           <button class="btn btn-sm btn-primary" id="addProductBtn">
@@ -131,7 +145,6 @@
           </button>
         </div>
 
-        <!-- STATS CARDS -->
         <div class="row mb-4">
           <div class="col-md-3">
             <div class="card border-start border-primary border-4 shadow-sm">
@@ -141,6 +154,7 @@
               </div>
             </div>
           </div>
+
           <div class="col-md-3">
             <div class="card border-start border-success border-4 shadow-sm">
               <div class="card-body">
@@ -149,6 +163,7 @@
               </div>
             </div>
           </div>
+
           <div class="col-md-3">
             <div class="card border-start border-warning border-4 shadow-sm">
               <div class="card-body">
@@ -157,6 +172,7 @@
               </div>
             </div>
           </div>
+
           <div class="col-md-3">
             <div class="card border-start border-info border-4 shadow-sm">
               <div class="card-body">
@@ -175,6 +191,7 @@
               <input type="text" id="searchProducts" class="form-control" placeholder="Search products..." />
             </div>
           </div>
+
           <div class="col-md-3">
             <select class="form-select" id="filterStatus">
               <option value="">All Status</option>
@@ -182,6 +199,7 @@
               <option value="draft">Draft</option>
             </select>
           </div>
+
           <div class="col-md-2">
             <select class="form-select" id="filterVariants">
               <option value="">All Products</option>
@@ -191,303 +209,18 @@
           </div>
         </div>
 
-        <!-- PRODUCTS GRID -->
-        <div class="row" id="productsContainer">
-          <!-- Product cards rendered here -->
-        </div>
+        <div class="row" id="productsContainer"></div>
       </div>
     </div>
 
-    <!-- ADD/EDIT PRODUCT MODAL -->
-    <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="productModalLabel">Add Product</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <form id="productForm">
-              <!-- Basic Info Section -->
-              <h6 class="text-primary mb-3"><i class="bi bi-info-circle"></i> Basic Information</h6>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Product Name *</label>
-                  <input type="text" class="form-control" id="productName" required />
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Brand</label>
-                  <input type="text" class="form-control" id="productBrand" />
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Category *</label>
-                  <select class="form-select" id="productCategory" required>
-                    <option value="">Select Category</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">SKU</label>
-                  <input type="text" class="form-control" id="productSku" />
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Description</label>
-                <textarea class="form-control" id="productDescription" rows="2"></textarea>
-              </div>
-
-              <!-- Pricing & Stock Section -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-tag"></i> Pricing & Stock</h6>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Price *</label>
-                  <input type="number" class="form-control" id="productPrice" min="0" step="0.01" required />
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Sale Price</label>
-                  <input type="number" class="form-control" id="productSalePrice" min="0" step="0.01" />
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Stock *</label>
-                  <input type="number" class="form-control" id="productStock" min="0" required />
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Availability</label>
-                  <select class="form-select" id="productAvailability">
-                    <option value="in-stock">In Stock</option>
-                    <option value="out-of-stock">Out of Stock</option>
-                    <option value="pre-order">Pre-order</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Product Images -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-images"></i> Product Images</h6>
-              <div class="mb-3">
-                <label class="form-label">Upload Images (Max 10 files, 10MB each)</label>
-                <input type="file" class="form-control" id="productImages" accept="image/jpeg,image/jpg,image/png,image/webp" multiple>
-                <small class="text-muted">Note: Images will be uploaded after product is created</small>
-              </div>
-              <div id="imagePreviewContainer" class="row g-2 mb-3"></div>
-
-              <!-- Payment Plans (per-day style) -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-credit-card"></i> Payment Plans (Optional)</h6>
-              <div id="plansSection">
-                <div id="plansList"></div>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="addPlanBtn">
-                  <i class="bi bi-plus"></i> Add Payment Plan
-                </button>
-              </div>
-
-              <!-- Variants Section -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-diagram-3"></i> Variants (Optional)</h6>
-              <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="hasVariants" />
-                <label class="form-check-label" for="hasVariants">
-                  This product has multiple variants (colors, storage, etc.)
-                </label>
-              </div>
-              <div id="variantsSection" class="d-none">
-                <div id="variantsList"></div>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="addVariantBtn">
-                  <i class="bi bi-plus"></i> Add Variant
-                </button>
-              </div>
-
-              <!-- Product Flags -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-star"></i> Product Flags</h6>
-              <div class="row">
-                <div class="col-md-3">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="isFeatured" />
-                    <label class="form-check-label" for="isFeatured">Featured</label>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="isPopular" />
-                    <label class="form-check-label" for="isPopular">Popular</label>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="isBestSeller" />
-                    <label class="form-check-label" for="isBestSeller">Best Seller</label>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="isTrending" />
-                    <label class="form-check-label" for="isTrending">Trending</label>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Product Details -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-box"></i> Product Details</h6>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Warranty Period (days)</label>
-                  <input type="number" class="form-control" id="warrantyPeriod" min="0" placeholder="e.g., 365" />
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Return Policy (days)</label>
-                  <input type="number" class="form-control" id="warrantyReturnPolicy" min="0" placeholder="e.g., 7" />
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Origin/Manufacturer</label>
-                  <input type="text" class="form-control" id="productOrigin" placeholder="e.g., Made in India" />
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Project Name (Optional)</label>
-                  <input type="text" class="form-control" id="productProject" placeholder="e.g., Premium Series 2024" />
-                </div>
-              </div>
-
-              <!-- Dimensions & Weight -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-rulers"></i> Dimensions & Weight</h6>
-              <div class="row mb-3">
-                <div class="col-md-3">
-                  <label class="form-label">Length (cm)</label>
-                  <input type="number" class="form-control" id="dimensionLength" min="0" step="0.01" placeholder="e.g., 15.5" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label">Width (cm)</label>
-                  <input type="number" class="form-control" id="dimensionWidth" min="0" step="0.01" placeholder="e.g., 10.5" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label">Height (cm)</label>
-                  <input type="number" class="form-control" id="dimensionHeight" min="0" step="0.01" placeholder="e.g., 5.2" />
-                </div>
-                <div class="col-md-3">
-                  <label class="form-label">Weight (kg)</label>
-                  <input type="number" class="form-control" id="productWeight" min="0" step="0.01" placeholder="e.g., 0.5" />
-                </div>
-              </div>
-
-              <!-- Tags -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-tags"></i> Tags</h6>
-              <div class="mb-3">
-                <label class="form-label">Product Tags (comma-separated)</label>
-                <input type="text" class="form-control" id="productTags" placeholder="e.g., smartphone, 5G, android, premium" />
-                <small class="text-muted">Separate tags with commas for better search and filtering</small>
-              </div>
-
-              <!-- SEO Section -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-globe"></i> SEO</h6>
-              <div class="mb-3">
-                <label class="form-label">Meta Title</label>
-                <input type="text" class="form-control" id="productMetaTitle" placeholder="SEO title for product page" />
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Meta Description</label>
-                <textarea class="form-control" id="productMetaDescription" rows="2" placeholder="Short SEO description"></textarea>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Meta Keywords (comma-separated)</label>
-                <input type="text" class="form-control" id="productMetaKeywords" placeholder="e.g., ac, cooler, inverter, 1.5 ton" />
-              </div>
-
-              <!-- Referral Bonus Section -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-gift"></i> Referral Bonus</h6>
-              <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="referralEnabled" />
-                <label class="form-check-label" for="referralEnabled">
-                  Enable referral bonus for this product
-                </label>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label">Bonus Type</label>
-                  <select class="form-select" id="referralType">
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="flat">Flat (₹)</option>
-                  </select>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Bonus Value</label>
-                  <input type="number" class="form-control" id="referralValue" min="0" step="0.01" placeholder="e.g., 5 or 500" />
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Min Purchase Amount (₹)</label>
-                  <input type="number" class="form-control" id="referralMinPurchase" min="0" step="0.01" placeholder="e.g., 10000" />
-                </div>
-              </div>
-
-              <!-- Global Payment Plan Config -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-wallet2"></i> Global Payment Plan Config</h6>
-              <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="paymentPlanEnabled" />
-                <label class="form-check-label" for="paymentPlanEnabled">
-                  Enable EMI-style payment plan for this product
-                </label>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label">Min Down Payment (₹)</label>
-                  <input type="number" class="form-control" id="paymentPlanMinDown" min="0" step="0.01" placeholder="e.g., 5000" />
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Max Down Payment (₹)</label>
-                  <input type="number" class="form-control" id="paymentPlanMaxDown" min="0" step="0.01" placeholder="e.g., 25000" />
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Interest Rate (%)</label>
-                  <input type="number" class="form-control" id="paymentPlanInterest" min="0" step="0.01" placeholder="e.g., 12" />
-                </div>
-              </div>
-
-              <!-- Status -->
-              <h6 class="text-primary mb-3 mt-4"><i class="bi bi-graph-up"></i> Status</h6>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" id="statusPublished" name="status" value="published" />
-                <label class="form-check-label" for="statusPublished">Published</label>
-              </div>
-              <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" id="statusDraft" name="status" value="draft" checked />
-                <label class="form-check-label" for="statusDraft">Draft</label>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="saveProductBtn">Save Product</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- VIEW PRODUCT DETAILS MODAL -->
-    <div class="modal fade" id="viewProductModal" tabindex="-1" aria-labelledby="viewProductModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="viewProductModalLabel">Product Details</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body" id="viewProductContent">
-            <!-- Content populated by JS -->
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- FOOTER -->
     <footer class="footer mt-auto py-3 bg-light">
       <div class="container-fluid text-center">
         <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
       </div>
     </footer>
 
-    <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../assets/js/utils.js"></script>
-    <script src="../assets/js/config.js"></script>
     <script src="../assets/js/products.js"></script>
     <script src="../assets/js/navigation.js"></script>
   </body>
