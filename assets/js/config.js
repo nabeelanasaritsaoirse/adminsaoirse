@@ -146,6 +146,12 @@ const API_CONFIG = {
       getActive: "/success-stories/public/active",
       stats: "/success-stories/admin/stats",
     },
+
+    adminManagement: {
+      subAdmins: "/admin-auth/sub-admins",
+      subAdminById: "/admin-auth/sub-admins/:adminId",
+      resetPassword: "/admin-auth/sub-admins/:adminId/reset-password",
+    },
   },
 };
 
