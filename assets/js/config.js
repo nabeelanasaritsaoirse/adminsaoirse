@@ -45,7 +45,8 @@ const API_CONFIG = {
 
   endpoints: {
     auth: {
-      adminLogin: "/auth/admin-login",
+      adminLogin: "/admin-auth/login", // ✅ New unified endpoint
+      legacyLogin: "/auth/admin-login", // Old endpoint for reference
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
     },
