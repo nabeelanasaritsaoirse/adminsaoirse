@@ -38,6 +38,17 @@ jobs:
             --exclude "*.md" \
             --exclude ".gitignore"
 
+      - name: 🚀 Invalidate CloudFront Cache
+        run: |
+          DIST_ID="${{ secrets.CF_PROD }}"
+          echo "Invalidating CloudFront Distribution: $DIST_ID"
+
+          aws cloudfront create-invalidation \
+            --distribution-id "$DIST_ID" \
+            --paths "/*"
+
+
+
       - name: 🌐 Print Website URL
         run: |
           echo "-----------------------------------"
