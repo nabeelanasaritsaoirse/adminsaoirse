@@ -50,6 +50,12 @@ const API_CONFIG = {
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
     },
+    
+    adminManagement: {
+        subAdmins: "/admin-mgmt/sub-admins",
+        subAdminById: "/admin-mgmt/sub-admins/:adminId",
+        resetPassword: "/admin-mgmt/sub-admins/:adminId/reset-password",
+    },
 
     users: {
       getAll: "/users",
