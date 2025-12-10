@@ -19,17 +19,32 @@
 
 <body>
 
-<!-- AUTH CHECK -->
+<!-- Load config for AUTH helper -->
+<script src="../assets/js/config.js"></script>
 <script>
-(() => {
-    const token = localStorage.getItem("epi_admin_token");
-    const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+    // Permission Guard - Check if user has access to dashboard module
+    console.log('[DASHBOARD] 🔐 Auth Guard - Checking permissions...');
+    (function () {
+        const REQUIRED_PERMISSION = 'dashboard';
 
-    if (!token || user.role !== "admin") {
-        localStorage.clear();
-        window.location.href = "login.html";
-    }
-})();
+        if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
+            console.error('[DASHBOARD] ❌ Not authenticated');
+            alert('Please login first');
+            window.location.href = "login.html";
+            return;
+        }
+
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+            console.error('[DASHBOARD] ❌ No permission for dashboard module');
+            alert('Access Denied! You do not have permission to access Dashboard.');
+            window.location.href = "login.html";
+            return;
+        }
+
+        console.log('[DASHBOARD] ✅ Auth check passed');
+        console.log('[DASHBOARD] User:', AUTH.getUsername());
+        console.log('[DASHBOARD] Is Super Admin:', AUTH.isSuperAdmin());
+    })();
 </script>
 
 <!-- NAVBAR -->

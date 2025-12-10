@@ -150,7 +150,29 @@ const API_CONFIG = {
 };
 
 /*******************************
- * AUTH HANDLER (FIXED)
+ * RBAC PERMISSIONS CONFIGURATION
+ *******************************/
+const PERMISSIONS = {
+  DASHBOARD: 'dashboard',
+  USERS: 'users',
+  WALLET: 'wallet',
+  KYC: 'kyc',
+  CATEGORIES: 'categories',
+  PRODUCTS: 'products',
+  UPLOADER: 'uploader',
+  COUPONS: 'coupons',
+  ORDERS: 'orders',
+  ANALYTICS: 'analytics',
+  NOTIFICATIONS: 'notifications',
+  CHAT: 'chat',
+  CHAT_REPORTS: 'chat-reports',
+  CHAT_ANALYTICS: 'chat-analytics',
+  SETTINGS: 'settings',
+  ADMIN_MANAGEMENT: 'admin_management'
+};
+
+/*******************************
+ * AUTH HANDLER (ENHANCED WITH RBAC)
  *******************************/
 const AUTH = {
   getToken() {
@@ -170,12 +192,102 @@ const AUTH = {
   removeToken() {
     localStorage.removeItem("epi_admin_token");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("epi_admin_user");
+    localStorage.removeItem("epi_admin_username");
+    localStorage.removeItem("epi_refresh_token");
   },
 
   getAuthHeaders() {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
+
+  // ===== RBAC FUNCTIONS =====
+
+  // Get current user data from localStorage
+  getCurrentUser() {
+    const userData = localStorage.getItem("epi_admin_user");
+    return userData ? JSON.parse(userData) : null;
+  },
+
+  // Get username from localStorage
+  getUsername() {
+    return localStorage.getItem("epi_admin_username") || null;
+  },
+
+  // Get user's accessible modules/permissions
+  getUserModules() {
+    const user = this.getCurrentUser();
+    if (!user) return [];
+
+    // If user is super admin, return empty array (means ALL access)
+    if (user.isSuperAdmin === true) {
+      return [];
+    }
+
+    // Return user's specific modules array
+    return user.modules || [];
+  },
+
+  // Check if user has access to a specific module
+  hasModule(moduleName) {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+
+    // Super admin has access to ALL modules
+    if (user.isSuperAdmin === true) {
+      return true;
+    }
+
+    // Sub-admin only has assigned modules
+    const modules = user.modules || [];
+    return modules.includes(moduleName);
+  },
+
+  // Check if user is super admin
+  isSuperAdmin() {
+    const user = this.getCurrentUser();
+    return user && user.isSuperAdmin === true;
+  },
+
+  // Check if user is authenticated
+  isAuthenticated() {
+    return !!this.getToken() && !!this.getCurrentUser();
+  },
+
+  // Save user data after login
+  saveUserData(userData) {
+    if (!userData) return;
+
+    // Save complete user object
+    localStorage.setItem("epi_admin_user", JSON.stringify({
+      userId: userData.userId,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      profilePicture: userData.profilePicture || "",
+      isSuperAdmin: userData.isSuperAdmin,
+      modules: userData.modules || []
+    }));
+
+    // Save username separately for easy access
+    localStorage.setItem("epi_admin_username", userData.name);
+
+    // Save tokens
+    if (userData.accessToken) {
+      this.setToken(userData.accessToken);
+    }
+
+    if (userData.refreshToken) {
+      localStorage.setItem("epi_refresh_token", userData.refreshToken);
+    }
+  },
+
+  // Logout and clear all data
+  logout() {
+    this.removeToken();
+    window.location.href = "../pages/login.html";
+  }
 };
 
 /*******************************
@@ -272,3 +384,4 @@ window.API_CONFIG = API_CONFIG;
 window.APP_CONFIG = APP_CONFIG;
 window.AUTH = AUTH;
 window.API = API;
+window.PERMISSIONS = PERMISSIONS;

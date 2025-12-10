@@ -51,7 +51,7 @@
             </div>
 
             <div class="card-body p-4">
-                <form id="loginForm">
+                <form id="loginForm" onsubmit="return false;">
                     <div class="mb-3">
                         <label class="form-label">
                             <i class="bi bi-envelope"></i> Email Address
@@ -67,7 +67,7 @@
                     </div>
 
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="handleLoginSubmit(event)">
                             <i class="bi bi-box-arrow-in-right"></i> Sign In
                         </button>
                     </div>
@@ -111,12 +111,20 @@
             console.log("   API Endpoint:", window.API_CONFIG.endpoints.auth.adminLogin);
 
             // Setup login form handler
-            document.getElementById("loginForm").addEventListener("submit", handleLoginSubmit);
+            const form = document.getElementById("loginForm");
+            if (!form) {
+                console.error("❌ Login form not found!");
+                return false;
+            }
+
+            form.addEventListener("submit", handleLoginSubmit);
+            console.log('✅ Login form handler attached successfully');
             return true;
         }
 
         // Main login handler
         async function handleLoginSubmit(e) {
+            console.log('🔵 handleLoginSubmit called');
             e.preventDefault();
 
             const email = document.getElementById("email").value.trim();
@@ -166,11 +174,16 @@
                     return;
                 }
 
-                // ✅ Login successful - Store token and user data
+                // ✅ Login successful - Use AUTH.saveUserData() to store everything
                 console.log("✅ Login successful");
-                localStorage.setItem("epi_admin_token", result.data.accessToken);
-                localStorage.setItem("authToken", result.data.accessToken);
-                localStorage.setItem("epi_admin_user", JSON.stringify(result.data));
+                console.log("📦 User data:", result.data);
+
+                // Save user data using AUTH helper (stores username, tokens, modules, etc.)
+                window.AUTH.saveUserData(result.data);
+
+                console.log("💾 Stored username:", window.AUTH.getUsername());
+                console.log("💾 Stored modules:", window.AUTH.getUserModules());
+                console.log("💾 Is super admin:", window.AUTH.isSuperAdmin());
 
                 // Redirect to dashboard
                 window.location.href = "dashboard.html";
