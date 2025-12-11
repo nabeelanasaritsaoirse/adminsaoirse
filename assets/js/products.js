@@ -1,4 +1,5 @@
-// Products Management Controller
+// product.js (paste-ready)
+// Products Management Controller with optional regional support (safe, non-invasive)
 
 /* ---------- Helper Functions ---------- */
 
@@ -64,7 +65,7 @@ function mapUIAvailabilityToBackend(availabilityValue) {
 /* ---------- State ---------- */
 
 let products = [];
-let currentProductId = null; // NOTE: this will hold product.productId (NOT Mongo _id)
+let currentProductId = null; // NOTE: this will hold product._id for updates or productId for creation depending on flow
 let variantCount = 0;
 let planCount = 0;
 let selectedImageFiles = [];
@@ -77,7 +78,7 @@ let pagination = {
   pages: 0,
 };
 
-/* DOM elements */
+/* DOM elements (populated in init) */
 let searchInput, statusFilter, variantsFilter;
 let productsContainer;
 let productForm;
@@ -87,6 +88,9 @@ let plansList;
 
 /* Stats elements */
 let totalProductsCount, publishedCount, variantsCount, totalStockCount;
+
+/* Regional DOM (optional) */
+let isGlobalProductCheckbox, regionalSettingsSection, regionalSettingsTableBody;
 
 /* ---------- Initialization ---------- */
 
@@ -120,18 +124,30 @@ function initializeDOMElements() {
   imagePreviewContainer = document.getElementById("imagePreviewContainer");
   plansList = document.getElementById("plansList");
 
+  // Regional elements — optional; safe checks
+  isGlobalProductCheckbox = document.getElementById("isGlobalProduct");
+  regionalSettingsSection = document.getElementById("regionalSettingsSection");
+  regionalSettingsTableBody = document.getElementById(
+    "regionalSettingsTableBody"
+  );
+
+  // Wire up variants checkbox behavior (existing logic preserved)
   if (hasVariantsCheckbox) {
     hasVariantsCheckbox.addEventListener("change", function () {
       if (this.checked) {
-        variantsSection.classList.remove("d-none");
-        variantsSection.style.display = "block";
-        if (variantsList.innerHTML === "") {
+        if (variantsSection) {
+          variantsSection.classList.remove("d-none");
+          variantsSection.style.display = "block";
+        }
+        if (variantsList && variantsList.innerHTML === "") {
           addVariantField();
         }
       } else {
-        variantsSection.classList.add("d-none");
-        variantsSection.style.display = "none";
-        variantsList.innerHTML = "";
+        if (variantsSection) {
+          variantsSection.classList.add("d-none");
+          variantsSection.style.display = "none";
+        }
+        if (variantsList) variantsList.innerHTML = "";
         variantCount = 0;
       }
     });
@@ -141,6 +157,16 @@ function initializeDOMElements() {
   if (productImagesInput) {
     productImagesInput.addEventListener("change", handleImageSelect);
   }
+
+  // If regions-config exists and regional UI exists, populate rows
+  if (
+    typeof window !== "undefined" &&
+    window.SUPPORTED_REGIONS &&
+    Array.isArray(window.SUPPORTED_REGIONS) &&
+    regionalSettingsTableBody
+  ) {
+    buildRegionalRowsFromConfig();
+  }
 }
 
 /* ---------- Events ---------- */
@@ -149,7 +175,9 @@ function setupEventListeners() {
   if (searchInput)
     searchInput.addEventListener(
       "input",
-      window.utils.debounce(filterProducts, 300)
+      window.utils
+        ? window.utils.debounce(filterProducts, 300)
+        : debounce(filterProducts, 300)
     );
   if (statusFilter) statusFilter.addEventListener("change", filterProducts);
   if (variantsFilter) variantsFilter.addEventListener("change", filterProducts);
@@ -191,49 +219,51 @@ function setupEventListeners() {
       window.location.href = "login.html";
     });
   }
+
+ // Regional: global toggle show/hide
+if (isGlobalProductCheckbox && regionalSettingsSection) {
+  isGlobalProductCheckbox.addEventListener("change", function () {
+    if (this.checked) {
+      regionalSettingsSection.classList.add("d-none");
+      regionalSettingsSection.style.display = "none";
+
+      buildRegionalRowsFromConfig(null, false, true);
+    } else {
+      regionalSettingsSection.classList.remove("d-none");
+      regionalSettingsSection.style.display = "block";
+
+      buildRegionalRowsFromConfig(null, true, false);
+    }
+  });
+}
+}
+
+/* ---------- Debounce fallback (if window.utils absent) ---------- */
+function debounce(fn, wait) {
+  let t;
+  return function (...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
 }
 
 /* ---------- Load Categories ---------- */
 
 async function loadCategories() {
-  console.log(
-    "📂 [PRODUCTS] loadCategories() - Loading categories for dropdown"
-  );
   try {
-    // Use dropdown endpoint: GET /api/categories/dropdown/all
-    console.log('🌐 [PRODUCTS] Calling API.get("/categories/dropdown/all")');
     const response = await API.get("/categories/dropdown/all", {}, {});
-    console.log("✅ [PRODUCTS] Categories response:", response);
-
     const categorySelect = document.getElementById("productCategory");
-
-    if (!categorySelect) {
-      console.warn("⚠️ [PRODUCTS] Category select element not found");
-      return;
-    }
+    if (!categorySelect) return;
 
     let categories = [];
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         categories = response.data;
-        console.log(
-          "✅ [PRODUCTS] Found categories in data array, length:",
-          categories.length
-        );
       } else if (Array.isArray(response)) {
         categories = response;
-        console.log(
-          "✅ [PRODUCTS] Response is direct array, length:",
-          categories.length
-        );
       }
-    } else {
-      console.warn(
-        "⚠️ [PRODUCTS] Response success is false or response is null"
-      );
     }
 
-    console.log("🔽 [PRODUCTS] Populating category dropdown...");
     categorySelect.innerHTML = '<option value="">Select Category</option>';
     categories.forEach((cat) => {
       const option = document.createElement("option");
@@ -242,12 +272,7 @@ async function loadCategories() {
       option.setAttribute("data-category-name", cat.name || cat.categoryName);
       categorySelect.appendChild(option);
 
-      // Add subcategories if they exist
       if (cat.subCategories && Array.isArray(cat.subCategories)) {
-        console.log(
-          `📁 [PRODUCTS] Adding ${cat.subCategories.length} subcategories for:`,
-          cat.name
-        );
         cat.subCategories.forEach((subCat) => {
           const subOption = document.createElement("option");
           subOption.value = subCat._id || subCat.id || subCat.categoryId;
@@ -268,7 +293,6 @@ async function loadCategories() {
         });
       }
     });
-    console.log("✅ [PRODUCTS] Category dropdown populated successfully");
   } catch (err) {
     console.error("❌ [PRODUCTS] Load categories error:", err);
   }
@@ -277,78 +301,46 @@ async function loadCategories() {
 /* ---------- Load Products ---------- */
 
 async function loadProducts() {
-  console.log("📦 [PRODUCTS] loadProducts() - Starting to load products");
   try {
     showLoading(true);
-    console.log("⏳ [PRODUCTS] Loading overlay shown");
 
-    // Build query params for backend pagination and filters
     const queryParams = {
       page: pagination.page,
       limit: pagination.limit,
-      region: "global", // Default to global, can be changed based on filter
+      region: "global",
     };
 
-    // Add search filter if exists
     if (searchInput && searchInput.value.trim()) {
       queryParams.search = searchInput.value.trim();
-      console.log("🔍 [PRODUCTS] Search query:", queryParams.search);
     }
 
-    // Add status filter if exists
     if (statusFilter && statusFilter.value) {
       queryParams.status = statusFilter.value;
-      console.log("📊 [PRODUCTS] Status filter:", queryParams.status);
     }
 
-    // Add variants filter if exists
     if (variantsFilter && variantsFilter.value !== "") {
       queryParams.hasVariants = variantsFilter.value;
-      console.log("🔀 [PRODUCTS] Variants filter:", queryParams.hasVariants);
     }
 
-    console.log("📦 [PRODUCTS] Query params:", queryParams);
-
-    // Use API endpoint: GET /api/products with query params
-    console.log('🌐 [PRODUCTS] Calling API.get("/products/admin/all")');
     const response = await API.get("/products/admin/all", {}, queryParams);
 
-    console.log("✅ [PRODUCTS] API Response received:", response);
-
     let productsData = [];
-    console.log("🔍 [PRODUCTS] Checking response structure...");
 
     if (response && response.success !== false) {
       if (response.data && Array.isArray(response.data)) {
         productsData = response.data;
-        console.log(
-          "✅ [PRODUCTS] Found data array, length:",
-          productsData.length
-        );
       } else if (Array.isArray(response)) {
         productsData = response;
-        console.log(
-          "✅ [PRODUCTS] Response is direct array, length:",
-          productsData.length
-        );
       }
 
-      // Update pagination state from API response
       if (response.pagination) {
         pagination.page = response.pagination.current || pagination.page;
         pagination.pages = response.pagination.pages || 1;
         pagination.total = response.pagination.total || 0;
-        console.log("📊 [PRODUCTS] Pagination updated:", pagination);
       }
-    } else {
-      console.warn(
-        "⚠️ [PRODUCTS] Response success is false or response is null"
-      );
     }
 
-    console.log("🔄 [PRODUCTS] Mapping products data...");
     products = productsData.map((p) => {
-      // Normalize description - handle both string and object formats
       let descText = "";
       if (typeof p.description === "string") {
         descText = p.description;
@@ -384,44 +376,34 @@ async function loadProducts() {
         hasVariants: p.hasVariants || false,
         variants: Array.isArray(p.variants) ? p.variants : [],
         status: p.status || "draft",
-        // Product flags
         isFeatured: p.isFeatured || false,
         isPopular: p.isPopular || false,
         isBestSeller: p.isBestSeller || false,
         isTrending: p.isTrending || false,
-        // Additional product details
         warranty: p.warranty || null,
         origin: p.origin || "",
         project: p.project || "",
         dimensions: p.dimensions || null,
         tags: Array.isArray(p.tags) ? p.tags : [],
-        // New fields we now support in admin
         seo: p.seo || null,
         referralBonus: p.referralBonus || null,
         paymentPlan: p.paymentPlan || null,
+        regionalPricing: p.regionalPricing || [],
+        regionalAvailability: p.regionalAvailability || [],
         createdAt: p.createdAt || new Date().toISOString(),
         updatedAt: p.updatedAt || new Date().toISOString(),
       };
     });
-    console.log(
-      "✅ [PRODUCTS] Products mapped successfully. Total count:",
-      products.length
-    );
 
-    console.log("📊 [PRODUCTS] Calling updateStats()...");
     updateStats(pagination.total);
-    console.log("🎨 [PRODUCTS] Calling renderProducts()...");
     renderProducts();
-    console.log("✅ [PRODUCTS] loadProducts() completed successfully");
   } catch (error) {
     console.error("❌ [PRODUCTS] Error loading products:", error);
-    console.error("❌ [PRODUCTS] Error details:", error.message, error.stack);
     showNotification(
       "Failed to load products: " + (error.message || error),
       "error"
     );
   } finally {
-    console.log("⏳ [PRODUCTS] Hiding loading overlay");
     showLoading(false);
   }
 }
@@ -447,7 +429,6 @@ function updateStats(totalOverride) {
 }
 
 function filterProducts() {
-  // whenever filters/search change, go back to page 1 and reload from backend
   pagination.page = 1;
   loadProducts();
 }
@@ -486,7 +467,6 @@ function renderPagination() {
     </li>
   `;
 
-  // Show max 5 page numbers with ellipsis
   const maxButtons = 5;
   let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
   let endPage = Math.min(totalPages, startPage + maxButtons - 1);
@@ -626,9 +606,11 @@ function renderProductCard(product) {
                             ).toFixed(2)}</div>
                             <small class="text-muted">Stock: <strong>${stock}</strong></small>
                         </div>
-                        <small class="d-block text-muted mb-3">${window.utils.formatDate(
-                          product.updatedAt
-                        )}</small>
+                        <small class="d-block text-muted mb-3">${
+                          window.utils
+                            ? window.utils.formatDate(product.updatedAt)
+                            : new Date(product.updatedAt).toLocaleString()
+                        }</small>
                         <div class="btn-group btn-group-sm">
                             <button class="btn btn-outline-primary" onclick="editProduct('${
                               product.productId
@@ -653,9 +635,7 @@ function renderProductCard(product) {
     `;
 }
 
-/* ---------- Modal / CRUD ---------- */
-
-/* ---------- Image Upload Functions ---------- */
+/* ---------- Modal / CRUD / Image Upload ---------- */
 
 function handleImageSelect(e) {
   const files = e.target.files;
@@ -702,50 +682,30 @@ function handleImageSelect(e) {
 function removeImagePreview(index) {
   selectedImageFiles.splice(index, 1);
 
-  // Re-render preview
   if (productImagesInput) {
     const dt = new DataTransfer();
     selectedImageFiles.forEach((file) => dt.items.add(file));
     productImagesInput.files = dt.files;
   }
 
-  // Trigger change event to re-render
   handleImageSelect({ target: { files: selectedImageFiles } });
 }
 
 async function uploadProductImages(productId) {
-  console.log("🖼️ [PRODUCTS] uploadProductImages() - productId:", productId);
-  console.log("🖼️ [PRODUCTS] Selected image files:", selectedImageFiles);
-
-  if (!selectedImageFiles || selectedImageFiles.length === 0) {
-    console.log("⚠️ [PRODUCTS] No images to upload");
-    return;
-  }
+  if (!selectedImageFiles || selectedImageFiles.length === 0) return;
 
   try {
     let uploadedCount = 0;
     let failedCount = 0;
 
-    // Upload each image one by one
-    console.log(
-      `🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} images one by one...`
-    );
     for (let i = 0; i < selectedImageFiles.length; i++) {
       const file = selectedImageFiles[i];
-      console.log(
-        `📤 [PRODUCTS] Uploading image ${i + 1}/${selectedImageFiles.length}:`,
-        file.name
-      );
-
       const formData = new FormData();
-
       formData.append("images", file);
       formData.append("altText", "Product image");
 
       try {
         const url = `${window.BASE_URL}/products/${productId}/images`;
-        console.log(`🌐 [PRODUCTS] Uploading to URL:`, url);
-
         const response = await fetch(url, {
           method: "PUT",
           headers: {
@@ -753,29 +713,18 @@ async function uploadProductImages(productId) {
           },
           body: formData,
         });
-
         const result = await response.json();
-        console.log(`📥 [PRODUCTS] Image ${i + 1} response:`, result);
-
         if (result.success) {
           uploadedCount++;
-          console.log(`✅ [PRODUCTS] Image ${i + 1} uploaded successfully`);
         } else {
           failedCount++;
-          console.error(
-            `❌ [PRODUCTS] Failed to upload image ${i + 1}:`,
-            result.message
-          );
+          console.error("Image upload failed:", result);
         }
       } catch (err) {
         failedCount++;
-        console.error(`❌ [PRODUCTS] Error uploading image ${i + 1}:`, err);
+        console.error("Image upload error:", err);
       }
     }
-
-    console.log(
-      `📊 [PRODUCTS] Upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`
-    );
 
     if (uploadedCount > 0) {
       showNotification(
@@ -793,47 +742,21 @@ async function uploadProductImages(productId) {
   }
 }
 
-// Upload variant images after product creation
 async function uploadVariantImages(
   productId,
   variantImageFiles,
   createdVariants
 ) {
-  console.log("🖼️ [PRODUCTS] uploadVariantImages() - productId:", productId);
-  console.log("🖼️ [PRODUCTS] Variant image files:", variantImageFiles);
-  console.log("🖼️ [PRODUCTS] Created variants:", createdVariants);
-
-  if (!variantImageFiles || variantImageFiles.length === 0) {
-    console.log("⚠️ [PRODUCTS] No variant images to upload");
-    return;
-  }
+  if (!variantImageFiles || variantImageFiles.length === 0) return;
 
   try {
     let uploadedCount = 0;
     let failedCount = 0;
 
-    console.log(
-      `🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images one by one...`
-    );
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
-      console.log(
-        `📤 [PRODUCTS] Uploading variant image ${i + 1}/${
-          variantImageFiles.length
-        } for variant index:`,
-        variantIndex
-      );
-
       const variant = createdVariants && createdVariants[variantIndex];
-      console.log(
-        `🔍 [PRODUCTS] Found variant for index ${variantIndex}:`,
-        variant
-      );
-
       if (!variant || !variant.variantId) {
-        console.error(
-          `❌ [PRODUCTS] Variant ID not found for variant index ${variantIndex}`
-        );
         failedCount++;
         continue;
       }
@@ -844,8 +767,6 @@ async function uploadVariantImages(
 
       try {
         const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
-        console.log(`🌐 [PRODUCTS] Uploading variant image to URL:`, url);
-
         const response = await fetch(url, {
           method: "PUT",
           headers: {
@@ -853,34 +774,18 @@ async function uploadVariantImages(
           },
           body: formData,
         });
-
         const result = await response.json();
-        console.log(`📥 [PRODUCTS] Variant image ${i + 1} response:`, result);
-
         if (result.success) {
           uploadedCount++;
-          console.log(
-            `✅ [PRODUCTS] Variant image ${i + 1} uploaded successfully`
-          );
         } else {
           failedCount++;
-          console.error(
-            `❌ [PRODUCTS] Failed to upload variant image ${i + 1}:`,
-            result.message
-          );
+          console.error("Variant image upload failed:", result);
         }
       } catch (err) {
         failedCount++;
-        console.error(
-          `❌ [PRODUCTS] Error uploading variant image ${i + 1}:`,
-          err
-        );
+        console.error("Variant image upload error:", err);
       }
     }
-
-    console.log(
-      `📊 [PRODUCTS] Variant images upload summary - Success: ${uploadedCount}, Failed: ${failedCount}`
-    );
 
     if (uploadedCount > 0) {
       showNotification(
@@ -943,7 +848,6 @@ function addPlanField() {
   `;
   plansList.insertAdjacentHTML("beforeend", html);
 
-  // Add auto-calculation for total
   const card = document.getElementById(`plan-${planCount}`);
   const daysInput = card.querySelector("[data-plan-days]");
   const amountInput = card.querySelector("[data-plan-amount]");
@@ -986,7 +890,6 @@ function openAddProductModal() {
   if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
   if (productImagesInput) productImagesInput.value = "";
 
-  // Reset product flags
   const isFeaturedEl = document.getElementById("isFeatured");
   const isPopularEl = document.getElementById("isPopular");
   const isBestSellerEl = document.getElementById("isBestSeller");
@@ -997,7 +900,6 @@ function openAddProductModal() {
   if (isBestSellerEl) isBestSellerEl.checked = false;
   if (isTrendingEl) isTrendingEl.checked = false;
 
-  // Reset SEO
   const metaTitleEl = document.getElementById("productMetaTitle");
   const metaDescEl = document.getElementById("productMetaDescription");
   const metaKeywordsEl = document.getElementById("productMetaKeywords");
@@ -1005,7 +907,6 @@ function openAddProductModal() {
   if (metaDescEl) metaDescEl.value = "";
   if (metaKeywordsEl) metaKeywordsEl.value = "";
 
-  // Reset referral
   const referralEnabledEl = document.getElementById("referralEnabled");
   const referralTypeEl = document.getElementById("referralType");
   const referralValueEl = document.getElementById("referralValue");
@@ -1015,7 +916,6 @@ function openAddProductModal() {
   if (referralValueEl) referralValueEl.value = "";
   if (referralMinPurchaseEl) referralMinPurchaseEl.value = "";
 
-  // Reset payment plan config
   const ppEnabledEl = document.getElementById("paymentPlanEnabled");
   const ppMinEl = document.getElementById("paymentPlanMinDown");
   const ppMaxEl = document.getElementById("paymentPlanMaxDown");
@@ -1025,19 +925,32 @@ function openAddProductModal() {
   if (ppMaxEl) ppMaxEl.value = "";
   if (ppInterestEl) ppInterestEl.value = "";
 
+  // Regional reset — only if UI exists
+  if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = true;
+  if (regionalSettingsSection) {
+    regionalSettingsSection.classList.add("d-none");
+    regionalSettingsSection.style.display = "none";
+  }
+  if (regionalSettingsTableBody) regionalSettingsTableBody.innerHTML = "";
+
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
+
+  // rebuild regional rows with defaults if config present
+  if (window.SUPPORTED_REGIONS && regionalSettingsTableBody) {
+    buildRegionalRowsFromConfig();
+  }
 }
 
 async function editProduct(productId) {
-  // productId is business ID (e.g., "PROD123"), not Mongo _id
   const product = products.find((p) => p.productId === productId);
   if (!product) {
     alert("Product not found in list. Please refresh the page.");
     return;
   }
 
-  currentProductId = product._id; // ⭐ Store MongoDB _id, not productId
+  // Store Mongo _id for update endpoints (consistent with previous logic)
+  currentProductId = product._id || product.productId;
 
   const labelEl = document.getElementById("productModalLabel");
   if (labelEl) labelEl.textContent = "Edit Product";
@@ -1053,17 +966,19 @@ async function editProduct(productId) {
     product.pricing?.regularPrice || "";
   document.getElementById("productSalePrice").value =
     product.pricing?.salePrice || "";
-
   document.getElementById("productStock").value =
     product.availability?.stockQuantity ?? "";
 
   const uiAvailability = mapBackendStockStatusToUI(
     product.availability?.stockStatus
   );
-  document.getElementById("productAvailability").value = uiAvailability;
+  const availabilityEl = document.getElementById("productAvailability");
+  if (availabilityEl) availabilityEl.value = uiAvailability;
 
-  document.getElementById("hasVariants").checked = product.hasVariants || false;
-  variantsSection.style.display = product.hasVariants ? "block" : "none";
+  const hasVariantsEl = document.getElementById("hasVariants");
+  if (hasVariantsEl) hasVariantsEl.checked = product.hasVariants || false;
+  if (variantsSection)
+    variantsSection.style.display = product.hasVariants ? "block" : "none";
 
   if (product.hasVariants && product.variants.length > 0) {
     variantsList.innerHTML = product.variants
@@ -1075,7 +990,6 @@ async function editProduct(productId) {
     variantCount = 0;
   }
 
-  // Product flags
   const isFeaturedEl = document.getElementById("isFeatured");
   const isPopularEl = document.getElementById("isPopular");
   const isBestSellerEl = document.getElementById("isBestSeller");
@@ -1086,7 +1000,6 @@ async function editProduct(productId) {
   if (isBestSellerEl) isBestSellerEl.checked = product.isBestSeller || false;
   if (isTrendingEl) isTrendingEl.checked = product.isTrending || false;
 
-  // Warranty (Option A: period + returnPolicy)
   const warrantyPeriodEl = document.getElementById("warrantyPeriod");
   const warrantyReturnPolicyEl = document.getElementById(
     "warrantyReturnPolicy"
@@ -1095,13 +1008,11 @@ async function editProduct(productId) {
   if (warrantyReturnPolicyEl)
     warrantyReturnPolicyEl.value = product.warranty?.returnPolicy || "";
 
-  // Origin and project
   const productOriginEl = document.getElementById("productOrigin");
   const productProjectEl = document.getElementById("productProject");
   if (productOriginEl) productOriginEl.value = product.origin || "";
   if (productProjectEl) productProjectEl.value = product.project || "";
 
-  // Dimensions
   const dimensionLengthEl = document.getElementById("dimensionLength");
   const dimensionWidthEl = document.getElementById("dimensionWidth");
   const dimensionHeightEl = document.getElementById("dimensionHeight");
@@ -1115,7 +1026,6 @@ async function editProduct(productId) {
     dimensionHeightEl.value = product.dimensions?.height || "";
   if (productWeightEl) productWeightEl.value = product.dimensions?.weight || "";
 
-  // Tags
   const productTagsEl = document.getElementById("productTags");
   if (productTagsEl) {
     const tagsValue = Array.isArray(product.tags)
@@ -1124,7 +1034,6 @@ async function editProduct(productId) {
     productTagsEl.value = tagsValue;
   }
 
-  // SEO
   const metaTitleEl = document.getElementById("productMetaTitle");
   const metaDescEl = document.getElementById("productMetaDescription");
   const metaKeywordsEl = document.getElementById("productMetaKeywords");
@@ -1135,7 +1044,6 @@ async function editProduct(productId) {
       ? product.seo.keywords.join(", ")
       : "";
 
-  // Referral Bonus
   const referralEnabledEl = document.getElementById("referralEnabled");
   const referralTypeEl = document.getElementById("referralType");
   const referralValueEl = document.getElementById("referralValue");
@@ -1150,7 +1058,6 @@ async function editProduct(productId) {
   if (referralMinPurchaseEl)
     referralMinPurchaseEl.value = product.referralBonus?.minPurchase ?? "";
 
-  // Global Payment Plan Config
   const ppEnabledEl = document.getElementById("paymentPlanEnabled");
   const ppMinEl = document.getElementById("paymentPlanMinDown");
   const ppMaxEl = document.getElementById("paymentPlanMaxDown");
@@ -1166,6 +1073,11 @@ async function editProduct(productId) {
     `input[name="status"][value="${product.status}"]`
   );
   if (statusRadio) statusRadio.checked = true;
+
+  // Regional: populate regional rows with product data when available
+  if (regionalSettingsTableBody && window.SUPPORTED_REGIONS) {
+    buildRegionalRowsFromConfig(product);
+  }
 
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
@@ -1220,11 +1132,14 @@ function renderVariantField(variant, idx) {
   const hasExistingImage = variant.images && variant.images.length > 0;
   const existingImageUrl = hasExistingImage ? variant.images[0]?.url : "";
 
+  // idx might be 0-based; ensure unique DOM id
+  const domIdx = typeof idx === "number" ? idx + 1 : variantCount + 1;
+
   return `
-        <div class="variant-card" id="variant-${idx}">
+        <div class="variant-card" id="variant-${domIdx}">
             <div class="variant-header d-flex justify-content-between align-items-center">
-                <span><strong>Variant ${idx + 1}</strong></span>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVariantField(${idx})">
+                <span><strong>Variant ${domIdx}</strong></span>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVariantField(${domIdx})">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -1281,8 +1196,161 @@ function removeVariantField(idx) {
   document.getElementById(`variant-${idx}`)?.remove();
 }
 
+/* ---------- Regional helpers (optional) ---------- */
+
+/**
+ * buildRegionalRowsFromConfig
+ * - If called with a product, fills the rows with product.regionalPricing/regionalAvailability values
+ * - If called without product, builds empty/default rows from SUPPORTED_REGIONS
+ * Safe: does nothing if SUPPORTED_REGIONS or regionalSettingsTableBody are not present.
+ */
+function buildRegionalRowsFromConfig(
+  product = null,
+  forceAllOff = false,
+  forceAllOn = false
+) {
+  if (!regionalSettingsTableBody || typeof window === "undefined") return;
+  regionalSettingsTableBody.innerHTML = "";
+
+  const regions = Array.isArray(window.SUPPORTED_REGIONS)
+    ? window.SUPPORTED_REGIONS
+    : [];
+
+  regions.forEach((r) => {
+    const existingPricing =
+      product && Array.isArray(product.regionalPricing)
+        ? product.regionalPricing.find((p) => p.region === r.code)
+        : null;
+
+    const existingAvailability =
+      product && Array.isArray(product.regionalAvailability)
+        ? product.regionalAvailability.find((a) => a.region === r.code)
+        : null;
+
+    let checkedState = "";
+
+    // ------------------------------
+    //  NEW LOGIC
+    // ------------------------------
+    if (forceAllOff) {
+      checkedState = ""; // all unchecked
+    } else if (forceAllOn) {
+      checkedState = "checked"; // all checked
+    } else {
+      // editing existing product → use stored values
+      checkedState = existingAvailability
+        ? existingAvailability.isAvailable
+          ? "checked"
+          : ""
+        : "checked"; // default old behavior
+    }
+
+    const row = document.createElement("tr");
+    row.setAttribute("data-region", r.code);
+    row.innerHTML = `
+      <td>${r.flag} ${
+      r.name
+    } <input type="hidden" class="regional-region" value="${r.code}" /></td>
+
+      <td>
+        <div class="form-check form-switch">
+          <input class="form-check-input regional-available" type="checkbox" ${checkedState}>
+        </div>
+      </td>
+
+      <td>
+        <input type="number" class="form-control form-control-sm regional-stock"
+          value="${
+            existingAvailability ? existingAvailability.stockQuantity : 0
+          }"
+          min="0"
+        />
+      </td>
+
+      <td>
+        <input type="number" class="form-control form-control-sm regional-price"
+          value="${
+            existingPricing
+              ? existingPricing.finalPrice ||
+                existingPricing.salePrice ||
+                existingPricing.regularPrice ||
+                0
+              : 0
+          }"
+          step="0.01"
+          min="0"
+        />
+      </td>
+
+      <td>
+        <input type="number" class="form-control form-control-sm regional-sale-price"
+          value="${existingPricing ? existingPricing.salePrice || "" : ""}"
+          step="0.01"
+          min="0"
+        />
+      </td>
+    `;
+
+    regionalSettingsTableBody.appendChild(row);
+  });
+}
+
+/**
+ * collectRegionalPayloadFromUI
+ * - Reads the regional rows and returns arrays: regionalPricing[] and regionalAvailability[]
+ * - Safe: returns empty arrays if regional UI not present
+ */
+function collectRegionalPayloadFromUI() {
+  const pricing = [];
+  const availability = [];
+
+  if (!regionalSettingsTableBody)
+    return { regionalPricing: pricing, regionalAvailability: availability };
+
+  const rows = Array.from(regionalSettingsTableBody.querySelectorAll("tr"));
+  rows.forEach((row) => {
+    const region = row.querySelector(".regional-region")?.value;
+    if (!region) return;
+
+    const isAvailable = !!row.querySelector(".regional-available")?.checked;
+    const stockQuantity =
+      parseInt(row.querySelector(".regional-stock")?.value) || 0;
+    const finalPrice =
+      parseFloat(row.querySelector(".regional-price")?.value) || 0;
+    const salePriceVal = row.querySelector(".regional-sale-price")?.value;
+    const salePrice = salePriceVal === "" ? null : parseFloat(salePriceVal);
+
+    pricing.push({
+      region,
+      currency:
+        RegionUtils && RegionUtils.getRegionByCode
+          ? RegionUtils.getRegionByCode(region)?.currency || "USD"
+          : "USD",
+      regularPrice: finalPrice,
+      salePrice: salePrice || finalPrice,
+      costPrice: null,
+      finalPrice: salePrice || finalPrice,
+    });
+
+    let stockStatus = "in_stock";
+    if (stockQuantity <= 0) stockStatus = "out_of_stock";
+    else if (stockQuantity <= 10) stockStatus = "low_stock";
+
+    availability.push({
+      region,
+      stockQuantity,
+      lowStockLevel: 10,
+      isAvailable,
+      stockStatus,
+    });
+  });
+
+  return { regionalPricing: pricing, regionalAvailability: availability };
+}
+
+/* ---------- Save Product (create/update) ---------- */
+
 async function saveProduct() {
-  console.log("💾 [PRODUCTS] saveProduct() - Starting save process");
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
   const description = document
@@ -1290,8 +1358,6 @@ async function saveProduct() {
     .value.trim();
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
-
-  console.log("📝 [PRODUCTS] Form data:", { name, brand, categoryId, sku });
 
   const priceInput = document.getElementById("productPrice");
   const salePriceInput = document.getElementById("productSalePrice");
@@ -1305,8 +1371,6 @@ async function saveProduct() {
       ? NaN
       : parseInt(stockRaw, 10);
 
-  console.log("💰 [PRODUCTS] Pricing data:", { price, salePrice, stock });
-
   const availabilityValue = document.getElementById(
     "productAvailability"
   ).value;
@@ -1314,70 +1378,39 @@ async function saveProduct() {
     document.querySelector('input[name="status"]:checked')?.value || "draft";
   const hasVariants = document.getElementById("hasVariants").checked;
 
-  console.log("📊 [PRODUCTS] Status data:", {
-    availabilityValue,
-    status,
-    hasVariants,
-  });
-
-  // Validation
+  // basic validations (kept identical to previous logic)
   if (!name) {
-    console.warn("⚠️ [PRODUCTS] Validation failed: Product name is required");
     alert("Product name is required");
     return;
   }
   if (!categoryId) {
-    console.warn("⚠️ [PRODUCTS] Validation failed: Category is required");
     alert("Category is required");
     return;
   }
   if (isNaN(price) || price <= 0) {
-    console.warn(
-      "⚠️ [PRODUCTS] Validation failed: Price must be greater than 0"
-    );
     alert("Price must be greater than 0");
     return;
   }
   if (!description) {
-    console.warn("⚠️ [PRODUCTS] Validation failed: Description is required");
     alert("Description is required");
     return;
   }
-
-  // Stock required and MUST be > 0
   if (stockRaw === "") {
-    console.warn("⚠️ [PRODUCTS] Validation failed: Stock is required");
     alert("Stock is required");
     return;
   }
   if (isNaN(stock) || stock <= 0) {
-    console.warn(
-      "⚠️ [PRODUCTS] Validation failed: Stock must be greater than 0"
-    );
     alert("Stock must be greater than 0");
     return;
   }
-
-  // Sale price validation
   if (!isNaN(salePrice) && salePrice > 0 && salePrice > price) {
-    console.warn(
-      "⚠️ [PRODUCTS] Validation failed: Sale price cannot be greater than regular price"
-    );
     alert("Sale price cannot be greater than regular price");
     return;
   }
 
-  console.log("✅ [PRODUCTS] All validations passed");
-
-  // Map UI availability to backend format
   const { stockStatus, isAvailable } =
     mapUIAvailabilityToBackend(availabilityValue);
-  console.log("🔄 [PRODUCTS] Mapped availability:", {
-    stockStatus,
-    isAvailable,
-  });
 
-  // Get category name and parent info from selected option
   const categorySelect = document.getElementById("productCategory");
   const selectedOption = categorySelect.options[categorySelect.selectedIndex];
   const categoryName =
@@ -1385,27 +1418,13 @@ async function saveProduct() {
     selectedOption.text.trim();
   const parentId = selectedOption.getAttribute("data-parent-id");
   const parentName = selectedOption.getAttribute("data-parent-name");
-  console.log("📁 [PRODUCTS] Category info:", {
-    categoryId,
-    categoryName,
-    parentId,
-    parentName,
-  });
 
-  // Product flags
   const isFeatured = document.getElementById("isFeatured")?.checked || false;
   const isPopular = document.getElementById("isPopular")?.checked || false;
   const isBestSeller =
     document.getElementById("isBestSeller")?.checked || false;
   const isTrending = document.getElementById("isTrending")?.checked || false;
-  console.log("🏷️ [PRODUCTS] Product flags:", {
-    isFeatured,
-    isPopular,
-    isBestSeller,
-    isTrending,
-  });
 
-  // Warranty (Option A)
   const warrantyPeriod =
     parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
   const warrantyReturnPolicy =
@@ -1430,10 +1449,7 @@ async function saveProduct() {
   const payload = {
     name,
     brand,
-    description: {
-      short: description,
-      long: description,
-    },
+    description: { short: description, long: description },
     category: {
       mainCategoryId: parentId || categoryId,
       mainCategoryName: parentName || categoryName,
@@ -1460,7 +1476,6 @@ async function saveProduct() {
     isTrending,
   };
 
-  // Warranty only if something provided
   if (warrantyPeriod > 0 || warrantyReturnPolicy > 0) {
     payload.warranty = {
       period: warrantyPeriod > 0 ? warrantyPeriod : undefined,
@@ -1468,15 +1483,9 @@ async function saveProduct() {
     };
   }
 
-  if (productOrigin) {
-    payload.origin = productOrigin;
-  }
+  if (productOrigin) payload.origin = productOrigin;
+  if (productProject) payload.project = productProject;
 
-  if (productProject) {
-    payload.project = productProject;
-  }
-
-  // Dimensions
   if (
     dimensionLength > 0 ||
     dimensionWidth > 0 ||
@@ -1492,7 +1501,6 @@ async function saveProduct() {
     };
   }
 
-  // Tags
   if (productTags) {
     payload.tags = productTags
       .split(",")
@@ -1500,7 +1508,6 @@ async function saveProduct() {
       .filter((tag) => tag.length > 0);
   }
 
-  // SEO
   const metaTitle =
     document.getElementById("productMetaTitle")?.value.trim() || "";
   const metaDescription =
@@ -1522,7 +1529,7 @@ async function saveProduct() {
     };
   }
 
-  // Referral Bonus
+  // Referral
   const referralEnabled =
     document.getElementById("referralEnabled")?.checked || false;
   const referralType =
@@ -1540,7 +1547,6 @@ async function saveProduct() {
       minPurchase: referralMinPurchase || 0,
     };
   } else {
-    // If editing existing, explicitly send disabled
     if (currentProductId) {
       payload.referralBonus = {
         enabled: false,
@@ -1582,7 +1588,6 @@ async function saveProduct() {
   // Collect payment plans list
   const planCards = document.querySelectorAll('[id^="plan-"]');
   const plans = [];
-
   planCards.forEach((card) => {
     const nameInput = card.querySelector("[data-plan-name]");
     const daysInput = card.querySelector("[data-plan-days]");
@@ -1607,20 +1612,13 @@ async function saveProduct() {
     }
   });
 
-  if (plans.length > 0) {
-    payload.plans = plans;
-  }
+  if (plans.length > 0) payload.plans = plans;
 
-  console.log("📦 [PRODUCTS] Building payload...", payload);
-
-  // Collect variant data and files
+  // Collect variants
   let variantImageFiles = [];
-
   if (hasVariants) {
-    console.log("🔀 [PRODUCTS] Collecting variants...");
     const variantCards = document.querySelectorAll(".variant-card");
     const variants = [];
-    console.log("🔢 [PRODUCTS] Found variant cards:", variantCards.length);
 
     variantCards.forEach((card, idx) => {
       const colorInput = card.querySelector("[data-variant-color]");
@@ -1634,10 +1632,7 @@ async function saveProduct() {
       const vSalePrice = parseFloat(variantSalePrice?.value) || 0;
 
       if (vPrice <= 0) return;
-
-      if (vSalePrice > 0 && vSalePrice > vPrice) {
-        return;
-      }
+      if (vSalePrice > 0 && vSalePrice > vPrice) return;
 
       const variant = {
         attributes: {
@@ -1664,82 +1659,68 @@ async function saveProduct() {
     });
 
     if (variants.length === 0) {
-      console.warn("⚠️ [PRODUCTS] No valid variants found");
       alert("Add at least one variant with valid price");
       return;
     }
 
-    console.log("✅ [PRODUCTS] Collected variants:", variants);
     payload.variants = variants;
   }
 
-  console.log("📦 [PRODUCTS] Final payload:", payload);
+  // Regional: collect regional pricing & availability if UI present AND user unchecked global
+  if (regionalSettingsTableBody) {
+    // if global checkbox exists and is checked => treat as global product (no regional override)
+    const isGlobal = isGlobalProductCheckbox
+      ? !!isGlobalProductCheckbox.checked
+      : true;
+    if (!isGlobal) {
+      const { regionalPricing, regionalAvailability } =
+        collectRegionalPayloadFromUI();
+      payload.regionalPricing = regionalPricing;
+      payload.regionalAvailability = regionalAvailability;
+    } else {
+      // If global, ensure at least one global entry exists (backend default handles fallback)
+      // Optionally, include global pricing from main payload.pricing
+      payload.regionalPricing = payload.regionalPricing || [];
+      payload.regionalAvailability = payload.regionalAvailability || [];
+    }
+  }
 
+  // Save/start API call
   try {
     showLoading(true);
-    console.log("⏳ [PRODUCTS] Loading overlay shown");
-
     let savedProductId = currentProductId;
     let createdVariants = null;
 
     if (currentProductId) {
-      console.log("🔄 [PRODUCTS] UPDATE mode - productId:", currentProductId);
-      console.log('🌐 [PRODUCTS] Calling API.put("/products/:productId")');
+      // Update mode: use existing API.put flow (preserve your API util usage)
       const updateResponse = await API.put("/products/:id", payload, {
-        id: currentProductId, // ⭐ Pass MongoDB _id via 'id' param
+        id: currentProductId,
       });
-      console.log("✅ [PRODUCTS] Update response:", updateResponse);
-
       if (
         updateResponse &&
         updateResponse.data &&
         updateResponse.data.variants
       ) {
         createdVariants = updateResponse.data.variants;
-        console.log(
-          "🔀 [PRODUCTS] Got updated variants from response:",
-          createdVariants
-        );
       }
-
       showNotification("Product updated successfully", "success");
     } else {
-      console.log("➕ [PRODUCTS] CREATE mode - new product");
-      console.log('🌐 [PRODUCTS] Calling API.post("/products")');
+      // Create mode
       const response = await API.post("/products", payload);
-      console.log("✅ [PRODUCTS] Create response:", response);
-
       if (response && response.data) {
-        if (response.data.productId) {
-          savedProductId = response.data.productId;
-          console.log(
-            "🆔 [PRODUCTS] Got product ID from response:",
-            savedProductId
-          );
-        }
-        if (response.data.variants) {
-          createdVariants = response.data.variants;
-          console.log(
-            "🔀 [PRODUCTS] Got created variants from response:",
-            createdVariants
-          );
-        }
+        if (response.data.productId) savedProductId = response.data.productId;
+        if (response.data.variants) createdVariants = response.data.variants;
       }
-
       showNotification("Product created successfully", "success");
     }
 
+    // Upload product images (if any)
     if (savedProductId && selectedImageFiles.length > 0) {
-      console.log(
-        `🖼️ [PRODUCTS] Uploading ${selectedImageFiles.length} product images...`
-      );
       await uploadProductImages(savedProductId);
     }
 
+    // Upload variant images
     if (savedProductId && variantImageFiles.length > 0 && createdVariants) {
-      console.log(
-        `🖼️ [PRODUCTS] Uploading ${variantImageFiles.length} variant images...`
-      );
       await uploadVariantImages(
         savedProductId,
         variantImageFiles,
@@ -1747,15 +1728,14 @@ async function saveProduct() {
       );
     }
 
-    console.log("🚪 [PRODUCTS] Closing modal...");
+    // Close modal, reset
     const modalEl = document.getElementById("productModal");
     if (modalEl) {
       const modal = bootstrap.Modal.getInstance(modalEl);
       if (modal) modal.hide();
     }
 
-    console.log("🧹 [PRODUCTS] Cleaning up form...");
-    productForm.reset();
+    if (productForm) productForm.reset();
     currentProductId = null;
     variantCount = 0;
     planCount = 0;
@@ -1765,22 +1745,19 @@ async function saveProduct() {
     if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
     if (productImagesInput) productImagesInput.value = "";
 
-    console.log("🔄 [PRODUCTS] Reloading products...");
     await loadProducts();
-    console.log("✅ [PRODUCTS] saveProduct() completed successfully");
   } catch (err) {
     console.error("❌ [PRODUCTS] Save product error:", err);
-    console.error("❌ [PRODUCTS] Error details:", err.message, err.stack);
-    console.error("❌ [PRODUCTS] Current Product ID:", currentProductId);
     showNotification(
       "Error: " + (err.message || "Failed to save product"),
       "error"
     );
   } finally {
-    console.log("⏳ [PRODUCTS] Hiding loading overlay");
     showLoading(false);
   }
 }
+
+/* ---------- Toggle / Delete / View ---------- */
 
 async function toggleProductStatus(productId) {
   try {
@@ -1790,9 +1767,7 @@ async function toggleProductStatus(productId) {
 
     const newStatus = product.status === "published" ? "draft" : "published";
 
-    const payload = {
-      status: newStatus,
-    };
+    const payload = { status: newStatus };
 
     await API.put("/products/:productId", payload, { productId });
     showNotification(`Product ${newStatus} successfully`, "success");
@@ -1806,30 +1781,18 @@ async function toggleProductStatus(productId) {
 }
 
 async function deleteProduct(productId) {
-  console.log("🗑️ [PRODUCTS] deleteProduct() - productId:", productId);
   const product = products.find((p) => p.productId === productId);
-  console.log("🔍 [PRODUCTS] Found product:", product);
-
   if (!product) {
-    console.error("❌ [PRODUCTS] Product not found");
     showNotification("Product not found", "error");
     return;
   }
 
-  console.log("❓ [PRODUCTS] Showing confirmation dialog...");
   const confirmed = confirm(`Delete "${product.name}"?`);
-  console.log("✅ [PRODUCTS] User confirmed:", confirmed);
-
-  if (!confirmed) {
-    console.log("❌ [PRODUCTS] User cancelled deletion");
-    return;
-  }
+  if (!confirmed) return;
 
   try {
     showLoading(true);
-    console.log("⏳ [PRODUCTS] Loading overlay shown");
     await API.delete("/products/:productId", { productId });
-    console.log("✅ [PRODUCTS] Product deleted successfully");
     showNotification("Product deleted successfully", "success");
     await loadProducts();
   } catch (err) {
@@ -1854,7 +1817,6 @@ async function viewProductDetails(productId) {
 
   let details = `<div class="container-fluid">`;
 
-  // Header
   details += `<div class="mb-4 pb-3 border-bottom">`;
   details += `<h5>${escapeHtml(product.name)}</h5>`;
   details += `<div class="mb-2">`;
@@ -1867,7 +1829,6 @@ async function viewProductDetails(productId) {
   details += `</div>`;
   details += `</div>`;
 
-  // Description
   if (product.description) {
     details += `<div class="mb-3">`;
     details += `<strong>Description:</strong>`;
@@ -1875,15 +1836,13 @@ async function viewProductDetails(productId) {
     details += `</div>`;
   }
 
-  // Category and SKU
   details += `<div class="row mb-3">`;
   details += `<div class="col-md-6">`;
   details += `<div><strong>Category:</strong> ${escapeHtml(
     product.category?.mainCategoryName || "N/A"
   )}`;
-  if (product.category?.subCategoryName) {
+  if (product.category?.subCategoryName)
     details += ` > ${escapeHtml(product.category.subCategoryName)}`;
-  }
   details += `</div>`;
   details += `</div>`;
   details += `<div class="col-md-6">`;
@@ -1893,7 +1852,6 @@ async function viewProductDetails(productId) {
   details += `</div>`;
   details += `</div>`;
 
-  // Pricing and Stock
   details += `<div class="row mb-3 pb-3 border-bottom">`;
   details += `<div class="col-md-4">`;
   details += `<div><strong>Regular Price:</strong> ₹${(
@@ -1910,7 +1868,6 @@ async function viewProductDetails(productId) {
   details += `</div>`;
   details += `</div>`;
 
-  // Availability
   details += `<div class="mb-3 pb-3 border-bottom">`;
   details += `<strong>Availability:</strong>`;
   details += `<div>`;
@@ -1921,7 +1878,6 @@ async function viewProductDetails(productId) {
   details += `</div>`;
   details += `</div>`;
 
-  // Variants
   if (product.hasVariants && product.variants.length > 0) {
     details += `<div class="mb-3">`;
     details += `<strong class="d-block mb-2">Variants (${product.variants.length})</strong>`;
@@ -1941,6 +1897,25 @@ async function viewProductDetails(productId) {
     });
 
     details += `</tbody></table></div>`;
+    details += `</div>`;
+  }
+
+  // Regional summary (if available)
+  if (product.regionalAvailability && product.regionalAvailability.length > 0) {
+    details += `<div class="mb-3">`;
+    details += `<strong class="d-block mb-2">Regional Availability</strong>`;
+    details += `<ul class="list-unstyled small">`;
+    product.regionalAvailability.forEach((a) => {
+      const regionLabel =
+        (window.RegionUtils &&
+          RegionUtils.getRegionByCode &&
+          RegionUtils.getRegionByCode(a.region)?.name) ||
+        a.region;
+      details += `<li>${regionLabel}: ${
+        a.isAvailable ? "Available" : "Unavailable"
+      } — Stock: ${a.stockQuantity} (${a.stockStatus})</li>`;
+    });
+    details += `</ul>`;
     details += `</div>`;
   }
 
