@@ -1566,9 +1566,7 @@ function collectRegionalPayloadFromUI() {
 async function saveProduct() {
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
-  const description = document
-    .getElementById("productDescription")
-    .value.trim();
+  const description = document.getElementById("productDescription").value.trim();
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
 
@@ -1578,12 +1576,20 @@ async function saveProduct() {
   const stockRaw = document.getElementById("productStock").value;
   const stock = stockRaw === "" || isNaN(stockRaw) ? NaN : parseInt(stockRaw);
 
-  const availabilityValue = document.getElementById(
-    "productAvailability"
-  ).value;
+  const availabilityValue = document.getElementById("productAvailability").value;
   const status =
     document.querySelector('input[name="status"]:checked')?.value || "draft";
-  const hasVariants = document.getElementById("hasVariants").checked;
+  let hasVariants = document.getElementById("hasVariants").checked;
+
+// Auto-disable variants if no variant rows exist
+if (hasVariants) {
+  const variantCards = document.querySelectorAll('[id^="variant-"]');
+
+  // If checkbox enabled but user added zero variants → backend rejects → fix
+  if (!variantCards || variantCards.length === 0) {
+    hasVariants = false; // silently force disable to satisfy backend
+  }
+}
 
   // ---------------------------
   // BASIC VALIDATIONS
@@ -1592,10 +1598,13 @@ async function saveProduct() {
   if (!categoryId) return alert("Category is required");
   if (isNaN(price) || price <= 0) return alert("Price must be greater than 0");
   if (!description) return alert("Description is required");
-  if (stockRaw === "") return alert("Stock is required");
-  if (isNaN(stock) || stock <= 0) return alert("Stock must be greater than 0");
-  if (salePrice > price)
-    return alert("Sale price cannot be greater than regular price");
+  if (salePrice > price) return alert("Sale price cannot be greater than regular price");
+
+  // Stock validation only when NOT variants
+  if (!hasVariants) {
+    if (stockRaw === "") return alert("Stock is required");
+    if (isNaN(stock) || stock < 0) return alert("Stock must be 0 or greater");
+  }
 
   const { stockStatus, isAvailable } =
     mapUIAvailabilityToBackend(availabilityValue);
@@ -1629,12 +1638,12 @@ async function saveProduct() {
     },
     availability: {
       isAvailable,
-      stockQuantity: stock,
+      stockQuantity: hasVariants ? 0 : stock,
       lowStockLevel: 5,
       stockStatus,
     },
     status,
-    hasVariants,
+    hasVariants: hasVariants,
     isFeatured: document.getElementById("isFeatured")?.checked || false,
     isPopular: document.getElementById("isPopular")?.checked || false,
     isBestSeller: document.getElementById("isBestSeller")?.checked || false,
@@ -1644,8 +1653,7 @@ async function saveProduct() {
   // ---------------------------
   // WARRANTY
   // ---------------------------
-  const warrantyPeriod =
-    parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
+  const warrantyPeriod = parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
   const warrantyReturnPolicy =
     parseInt(document.getElementById("warrantyReturnPolicy")?.value) || 0;
 
@@ -1657,29 +1665,20 @@ async function saveProduct() {
   }
 
   // ---------------------------
-  // ✅ FIXED ORIGIN OBJECT (both fields)
+  // ORIGIN (fixed)
   // ---------------------------
-  const originCountry =
-    document.getElementById("productOrigin")?.value.trim() || "";
-  const originManufacturer =
-    document.getElementById("productOriginManufacturer")?.value.trim() || "";
-
   payload.origin = {
-    country: originCountry,
-    manufacturer: originManufacturer,
+    country: document.getElementById("productOrigin")?.value.trim() || "",
+    manufacturer:
+      document.getElementById("productOriginManufacturer")?.value.trim() || "",
   };
 
   // ---------------------------
-  // ✅ FIXED PROJECT OBJECT (both fields)
+  // PROJECT (fixed)
   // ---------------------------
-  const projectId =
-    document.getElementById("productProjectId")?.value.trim() || "";
-  const projectName =
-    document.getElementById("productProject")?.value.trim() || "";
-
   payload.project = {
-    projectId: projectId,
-    projectName: projectName,
+    projectId: document.getElementById("productProjectId")?.value.trim() || "",
+    projectName: document.getElementById("productProject")?.value.trim() || "",
   };
 
   // ---------------------------
@@ -1688,29 +1687,25 @@ async function saveProduct() {
   const L = parseFloat(document.getElementById("dimensionLength")?.value) || 0;
   const W = parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
   const H = parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
-  const Weight =
+  const weight =
     parseFloat(document.getElementById("productWeight")?.value) || 0;
 
-  if (L || W || H || Weight) {
-    payload.dimensions = { length: L, width: W, height: H, weight: Weight };
+  if (L || W || H || weight) {
+    payload.dimensions = { length: L, width: W, height: H, weight };
   }
 
   // ---------------------------
-  // FIX TAGS
+  // TAGS
   // ---------------------------
   const rawTags = document.getElementById("productTags")?.value.trim() || "";
-  payload.tags = rawTags.length
-    ? rawTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t)
+  payload.tags = rawTags
+    ? rawTags.split(",").map((t) => t.trim()).filter(Boolean)
     : [];
 
   // ---------------------------
   // SEO
   // ---------------------------
-  const metaTitle =
-    document.getElementById("productMetaTitle")?.value.trim() || "";
+  const metaTitle = document.getElementById("productMetaTitle")?.value.trim() || "";
   const metaDescription =
     document.getElementById("productMetaDescription")?.value.trim() || "";
   const metaKeywordsRaw =
@@ -1719,11 +1714,8 @@ async function saveProduct() {
   payload.seo = {
     metaTitle,
     metaDescription,
-    keywords: metaKeywordsRaw.length
-      ? metaKeywordsRaw
-          .split(",")
-          .map((k) => k.trim())
-          .filter((k) => k)
+    keywords: metaKeywordsRaw
+      ? metaKeywordsRaw.split(",").map((k) => k.trim()).filter(Boolean)
       : [],
   };
 
@@ -1752,13 +1744,10 @@ async function saveProduct() {
   };
 
   // ---------------------------
-  // FIXED PER-DAY PLANS
-  // (Always send array, even empty → avoids overwriting to undefined)
+  // PER-DAY PLANS
   // ---------------------------
-  const planCards = document.querySelectorAll('[id^="plan-"]');
   payload.plans = [];
-
-  planCards.forEach((card) => {
+  document.querySelectorAll('[id^="plan-"]').forEach((card) => {
     const name = card.querySelector("[data-plan-name]")?.value.trim();
     const days = parseInt(card.querySelector("[data-plan-days]")?.value) || 0;
     const perDayAmount =
@@ -1780,8 +1769,42 @@ async function saveProduct() {
     }
   });
 
+  // // ---------------------------
+  // - VARIANTS (REQUIRED WHEN hasVariants = true)
+  // // ---------------------------
+  payload.variants = [];
+
+  if (hasVariants) {
+    const variantCards = document.querySelectorAll('[id^="variant-"]');
+
+    variantCards.forEach((card) => {
+      const color = card.querySelector("[data-variant-color]")?.value.trim();
+      const storage = card.querySelector("[data-variant-storage]")?.value.trim();
+
+      const price =
+        parseFloat(card.querySelector("[data-variant-price]")?.value) || 0;
+      const variantSalePrice =
+        parseFloat(card.querySelector("[data-variant-sale-price]")?.value) || 0;
+      const variantStock =
+        parseInt(card.querySelector("[data-variant-stock]")?.value) || 0;
+
+      if (price > 0) {
+        payload.variants.push({
+          attributes: { color, storage },
+          price,
+          salePrice: variantSalePrice,
+          stock: variantStock,
+        });
+      }
+    });
+
+    if (payload.variants.length === 0) {
+  hasVariants = false; // fix backend requirement
+}
+  }
+
   // ---------------------------
-  // REGIONAL SETTINGS (UNCHANGED)
+  // REGIONAL SETTINGS
   // ---------------------------
   if (regionalSettingsTableBody) {
     const { regionalPricing, regionalAvailability } =
@@ -1795,6 +1818,7 @@ async function saveProduct() {
   // ---------------------------
   try {
     showLoading(true);
+
     if (currentProductId) {
       await API.put("/products/:id", payload, { id: currentProductId });
       showNotification("Product updated successfully", "success");

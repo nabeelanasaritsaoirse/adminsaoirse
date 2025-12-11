@@ -12,11 +12,10 @@ const DEV_HOSTS = [
 ];
 
 BASE_URL = "https://api.epielio.com/api";
-// if 
+// if
 // (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
 //   BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
 // }
-
 
 // ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
 // This MUST happen before any script tries to use it
@@ -50,11 +49,11 @@ const API_CONFIG = {
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
     },
-    
+
     adminManagement: {
-        subAdmins: "/admin-mgmt/sub-admins",
-        subAdminById: "/admin-mgmt/sub-admins/:adminId",
-        resetPassword: "/admin-mgmt/sub-admins/:adminId/reset-password",
+      subAdmins: "/admin-mgmt/sub-admins",
+      subAdminById: "/admin-mgmt/sub-admins/:adminId",
+      resetPassword: "/admin-mgmt/sub-admins/:adminId/reset-password",
     },
 
     users: {
@@ -152,7 +151,6 @@ const API_CONFIG = {
       getActive: "/success-stories/public/active",
       stats: "/success-stories/admin/stats",
     },
-
   },
 };
 
@@ -160,22 +158,22 @@ const API_CONFIG = {
  * RBAC PERMISSIONS CONFIGURATION
  *******************************/
 const PERMISSIONS = {
-  DASHBOARD: 'dashboard',
-  USERS: 'users',
-  WALLET: 'wallet',
-  KYC: 'kyc',
-  CATEGORIES: 'categories',
-  PRODUCTS: 'products',
-  UPLOADER: 'uploader',
-  COUPONS: 'coupons',
-  ORDERS: 'orders',
-  ANALYTICS: 'analytics',
-  NOTIFICATIONS: 'notifications',
-  CHAT: 'chat',
-  CHAT_REPORTS: 'chat-reports',
-  CHAT_ANALYTICS: 'chat-analytics',
-  SETTINGS: 'settings',
-  ADMIN_MANAGEMENT: 'admin_management'
+  DASHBOARD: "dashboard",
+  USERS: "users",
+  WALLET: "wallet",
+  KYC: "kyc",
+  CATEGORIES: "categories",
+  PRODUCTS: "products",
+  UPLOADER: "uploader",
+  COUPONS: "coupons",
+  ORDERS: "orders",
+  ANALYTICS: "analytics",
+  NOTIFICATIONS: "notifications",
+  CHAT: "chat",
+  CHAT_REPORTS: "chat-reports",
+  CHAT_ANALYTICS: "chat-analytics",
+  SETTINGS: "settings",
+  ADMIN_MANAGEMENT: "admin_management",
 };
 
 /*******************************
@@ -267,15 +265,18 @@ const AUTH = {
     if (!userData) return;
 
     // Save complete user object
-    localStorage.setItem("epi_admin_user", JSON.stringify({
-      userId: userData.userId,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
-      profilePicture: userData.profilePicture || "",
-      isSuperAdmin: userData.isSuperAdmin,
-      modules: userData.modules || []
-    }));
+    localStorage.setItem(
+      "epi_admin_user",
+      JSON.stringify({
+        userId: userData.userId,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        profilePicture: userData.profilePicture || "",
+        isSuperAdmin: userData.isSuperAdmin,
+        modules: userData.modules || [],
+      })
+    );
 
     // Save username separately for easy access
     localStorage.setItem("epi_admin_username", userData.name);
@@ -294,7 +295,7 @@ const AUTH = {
   logout() {
     this.removeToken();
     window.location.href = "../pages/login.html";
-  }
+  },
 };
 
 /*******************************
@@ -369,8 +370,14 @@ const API = {
     });
   },
 
-  delete(endpoint, params = {}) {
-    const url = this.buildURL(endpoint, params);
+  delete(endpoint, pathParams = {}, queryParams = {}) {
+    let url = this.buildURL(endpoint, pathParams);
+
+    // Attach query params like ?force=true
+    if (Object.keys(queryParams).length > 0) {
+      url += "?" + new URLSearchParams(queryParams).toString();
+    }
+
     return this.request(url, { method: "DELETE" });
   },
 
