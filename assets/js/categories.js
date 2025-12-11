@@ -1214,9 +1214,11 @@ async function deleteCategory(categoryId) {
 
   const hasChildren = categories.some((c) => c.parentCategoryId === categoryId);
   let message = `Are you sure you want to delete "${cat.name}"?`;
+
   if (hasChildren)
     message +=
       "\n\nThis category has subcategories. They will also be deleted.";
+
   if (cat.productCount > 0)
     message += `\n\nThis category has ${cat.productCount} products. You may need to reassign them.`;
 
@@ -1225,12 +1227,21 @@ async function deleteCategory(categoryId) {
 
   try {
     showLoading(true);
+
+    // ✅ Proper way to pass force delete as query param
     const queryParams = hasChildren ? { force: true } : {};
-    await API.delete("/categories/:categoryId", { categoryId }, queryParams);
+
+    await API.delete(
+      "/categories/:categoryId",
+      { categoryId }, // path params
+      queryParams // query params
+    );
+
     window.adminPanel.showNotification(
       "Category deleted successfully",
       "success"
     );
+
     await loadCategories();
   } catch (err) {
     console.error("❌ [CATEGORIES] Delete category error:", err);
