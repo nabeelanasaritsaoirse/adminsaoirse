@@ -222,19 +222,152 @@ async function loadProducts() {
 /**
  * Populate product dropdown
  */
-function populateProductDropdown() {
-  const productSelect = document.getElementById('productId');
-  if (!productSelect) return;
+function populateProductForm(p) {
+  if (!p) return;
 
-  productSelect.innerHTML = '<option value="">Select Product...</option>';
+  // Basic fields
+  document.getElementById("productName").value = p.name || "";
+  document.getElementById("productBrand").value = p.brand || "";
+  document.getElementById("productDescription").value = (p.description && (p.description.short || p.description.long)) || "";
+  document.getElementById("productSku").value = p.sku || "";
 
-  products.forEach(product => {
-    const option = document.createElement('option');
-    option.value = product.productId;
-    option.textContent = `${product.name} (${product.sku || product.productId})`;
-    productSelect.appendChild(option);
-  });
+  // Pricing
+  if (p.pricing) {
+    document.getElementById("productPrice").value = p.pricing.regularPrice !== undefined ? p.pricing.regularPrice : "";
+    document.getElementById("productSalePrice").value = p.pricing.salePrice !== undefined ? p.pricing.salePrice : "";
+  } else {
+    document.getElementById("productPrice").value = "";
+    document.getElementById("productSalePrice").value = "";
+  }
+
+  // Availability
+  if (p.availability) {
+    document.getElementById("productStock").value = p.availability.stockQuantity ?? "";
+    // map stockStatus -> UI value if needed (implement mapBackendToUIAvailability)
+    const uiAvailabilityVal = mapBackendToUIAvailability(p.availability.stockStatus);
+    if (uiAvailabilityVal) document.getElementById("productAvailability").value = uiAvailabilityVal;
+    document.querySelector('input[name="status"][value="' + (p.status || "draft") + '"]')?.checked && null;
+  }
+
+  // Category select (if select exists)
+  if (p.category && p.category.subCategoryId) {
+    // try set selected by value
+    const select = document.getElementById("productCategory");
+    if (select) {
+      const toSelect = p.category.subCategoryId || p.category.mainCategoryId;
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === (toSelect || "")) {
+          select.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
+
+  // Flags
+  document.getElementById("isFeatured").checked = !!p.isFeatured;
+  document.getElementById("isPopular").checked = !!p.isPopular;
+  document.getElementById("isBestSeller").checked = !!p.isBestSeller;
+  document.getElementById("isTrending").checked = !!p.isTrending;
+
+  // Warranty
+  document.getElementById("warrantyPeriod").value = p.warranty?.period ?? "";
+  document.getElementById("warrantyReturnPolicy").value = p.warranty?.returnPolicy ?? "";
+
+  // Origin & Project — ensure individual input fields exist
+  // if you have single input boxes, adapt names; prefer splitting origin into two fields: country & manufacturer
+  document.getElementById("productOriginCountry") && (document.getElementById("productOriginCountry").value = p.origin?.country || "");
+  document.getElementById("productOriginManufacturer") && (document.getElementById("productOriginManufacturer").value = p.origin?.manufacturer || "");
+  document.getElementById("productProjectId") && (document.getElementById("productProjectId").value = p.project?.projectId || "");
+  document.getElementById("productProjectName") && (document.getElementById("productProjectName").value = p.project?.projectName || "");
+
+  // Dimensions
+  document.getElementById("dimensionLength") && (document.getElementById("dimensionLength").value = p.dimensions?.length ?? "");
+  document.getElementById("dimensionWidth") && (document.getElementById("dimensionWidth").value = p.dimensions?.width ?? "");
+  document.getElementById("dimensionHeight") && (document.getElementById("dimensionHeight").value = p.dimensions?.height ?? "");
+  document.getElementById("productWeight") && (document.getElementById("productWeight").value = p.dimensions?.weight ?? "");
+
+  // Tags
+  document.getElementById("productTags") && (document.getElementById("productTags").value = Array.isArray(p.tags) ? p.tags.join(", ") : "");
+
+  // SEO
+  document.getElementById("productMetaTitle") && (document.getElementById("productMetaTitle").value = p.seo?.metaTitle || "");
+  document.getElementById("productMetaDescription") && (document.getElementById("productMetaDescription").value = p.seo?.metaDescription || "");
+  document.getElementById("productMetaKeywords") && (document.getElementById("productMetaKeywords").value = Array.isArray(p.seo?.keywords) ? p.seo.keywords.join(", ") : "");
+
+  // Payment plan global
+  if (p.paymentPlan) {
+    document.getElementById("paymentPlanEnabled") && (document.getElementById("paymentPlanEnabled").checked = !!p.paymentPlan.enabled);
+    document.getElementById("paymentPlanMinDown") && (document.getElementById("paymentPlanMinDown").value = p.paymentPlan.minDownPayment ?? "");
+    document.getElementById("paymentPlanMaxDown") && (document.getElementById("paymentPlanMaxDown").value = p.paymentPlan.maxDownPayment ?? "");
+    document.getElementById("paymentPlanInterest") && (document.getElementById("paymentPlanInterest").value = p.paymentPlan.interestRate ?? "");
+  }
+
+  // Plans (per-day) — clear then render
+  if (plansList) plansList.innerHTML = "";
+  if (Array.isArray(p.plans) && p.plans.length > 0) {
+    p.plans.forEach((pl, idx) => {
+      // create UI card (your existing markup probably similar) — adapt if you have helper
+      const card = document.createElement("div");
+      card.id = `plan-${idx}`;
+      card.className = "plan-card mb-2 p-2 border rounded";
+      card.innerHTML = `
+        <div class="row g-2 align-items-center">
+          <div class="col-auto">
+            <input data-plan-name class="form-control form-control-sm" placeholder="Plan name" value="${escapeHtml(pl.name || "")}" />
+          </div>
+          <div class="col-auto">
+            <input data-plan-days type="number" class="form-control form-control-sm" placeholder="Days" value="${Number(pl.days || 0)}" />
+          </div>
+          <div class="col-auto">
+            <input data-plan-amount type="number" class="form-control form-control-sm" placeholder="Per day amount" value="${Number(pl.perDayAmount || 0)}" />
+          </div>
+          <div class="col">
+            <input data-plan-description class="form-control form-control-sm" placeholder="Description" value="${escapeHtml(pl.description || "")}" />
+          </div>
+          <div class="col-auto">
+            <label class="form-check form-switch mb-0">
+              <input data-plan-recommended class="form-check-input" type="checkbox" ${pl.isRecommended ? "checked" : ""}>
+              <small>Recommended</small>
+            </label>
+          </div>
+        </div>
+      `;
+      plansList.appendChild(card);
+    });
+  }
+
+  // Variants — you likely have variant rendering helper; populate it
+  if (variantsList) {
+    variantsList.innerHTML = "";
+    if (Array.isArray(p.variants) && p.variants.length > 0) {
+      p.variants.forEach((v, idx) => {
+        // minimal render: adapt to your exact UI
+        const vcard = document.createElement("div");
+        vcard.className = "variant-card mb-2";
+        vcard.innerHTML = `
+          <input data-variant-color class="form-control form-control-sm mb-1" placeholder="Color" value="${escapeHtml(v.attributes?.color || "")}" />
+          <input data-variant-price type="number" class="form-control form-control-sm mb-1" placeholder="Price" value="${Number(v.price || 0)}" />
+          <input data-variant-sale-price type="number" class="form-control form-control-sm mb-1" placeholder="Sale price" value="${Number(v.salePrice || 0)}" />
+          <input data-variant-stock type="number" class="form-control form-control-sm mb-1" placeholder="Stock" value="${Number(v.stock || 0)}" />
+        `;
+        variantsList.appendChild(vcard);
+      });
+    }
+  }
+
+  // Regional pricing & availability — populate if table exists
+  if (Array.isArray(p.regionalPricing) && p.regionalPricing.length > 0 && typeof populateRegionalUI === "function") {
+    populateRegionalUI(p.regionalPricing, p.regionalAvailability || []);
+  }
+
+  // Images preview - adapt to your renderImagePreview method or reuse
+  categoryImages = Array.isArray(p.images) ? p.images.map(img => ({ url: img.url, altText: img.altText || "", isPrimary: !!img.isPrimary })) : [];
+  renderImagePreview();
+
+  console.log("✅ [PRODUCTS] populateProductForm done for", p.productId || p._id);
 }
+
 
 /* ========== RENDER FUNCTIONS ========== */
 /**
