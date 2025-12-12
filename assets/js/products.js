@@ -776,26 +776,32 @@ async function uploadVariantImages(
 
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
-      const variant = createdVariants && createdVariants[variantIndex];
+      const variant = createdVariants?.[variantIndex];
+
       if (!variant || !variant.variantId) {
+        console.warn("❌ No variantId for index:", variantIndex);
         failedCount++;
         continue;
       }
 
       const formData = new FormData();
       formData.append("images", file);
-      formData.append("altText", "Variant image");
+      formData.append("altText", `Variant ${variant.variantId} image`);
+
+      // optional — safe even if backend ignores it
+      formData.append("variantId", variant.variantId);
 
       try {
         const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
+
         const response = await fetch(url, {
           method: "PUT",
-          headers: {
-            Authorization: `Bearer ${AUTH.getToken()}`,
-          },
+          headers: { Authorization: `Bearer ${AUTH.getToken()}` },
           body: formData,
         });
+
         const result = await response.json();
+
         if (result.success) {
           uploadedCount++;
         } else {
@@ -1566,41 +1572,43 @@ function collectRegionalPayloadFromUI() {
 async function saveProduct() {
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
-  const description = document.getElementById("productDescription").value.trim();
+  const description = document
+    .getElementById("productDescription")
+    .value.trim();
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
 
   const price = parseFloat(document.getElementById("productPrice").value);
   const salePrice =
     parseFloat(document.getElementById("productSalePrice").value) || 0;
-  const stockRaw = document.getElementById("productStock").value;
-  const stock = stockRaw === "" || isNaN(stockRaw) ? NaN : parseInt(stockRaw);
 
-  const availabilityValue = document.getElementById("productAvailability").value;
+  const stockRaw = document.getElementById("productStock").value;
+  const stock = stockRaw === "" ? NaN : parseInt(stockRaw);
+
+  const availabilityValue = document.getElementById(
+    "productAvailability"
+  ).value;
   const status =
     document.querySelector('input[name="status"]:checked')?.value || "draft";
+
   let hasVariants = document.getElementById("hasVariants").checked;
 
-// Auto-disable variants if no variant rows exist
-if (hasVariants) {
-  const variantCards = document.querySelectorAll('[id^="variant-"]');
-
-  // If checkbox enabled but user added zero variants → backend rejects → fix
-  if (!variantCards || variantCards.length === 0) {
-    hasVariants = false; // silently force disable to satisfy backend
+  // Disable variants if user has not added any
+  if (hasVariants) {
+    const variantCards = document.querySelectorAll('[id^="variant-"]');
+    if (!variantCards || variantCards.length === 0) {
+      hasVariants = false;
+    }
   }
-}
 
-  // ---------------------------
-  // BASIC VALIDATIONS
-  // ---------------------------
+  // ---------------- VALIDATIONS ----------------
   if (!name) return alert("Product name is required");
   if (!categoryId) return alert("Category is required");
   if (isNaN(price) || price <= 0) return alert("Price must be greater than 0");
   if (!description) return alert("Description is required");
-  if (salePrice > price) return alert("Sale price cannot be greater than regular price");
+  if (salePrice > price)
+    return alert("Sale price cannot be greater than price");
 
-  // Stock validation only when NOT variants
   if (!hasVariants) {
     if (stockRaw === "") return alert("Stock is required");
     if (isNaN(stock) || stock < 0) return alert("Stock must be 0 or greater");
@@ -1617,9 +1625,7 @@ if (hasVariants) {
   const parentId = selectedOption.getAttribute("data-parent-id");
   const parentName = selectedOption.getAttribute("data-parent-name");
 
-  // ---------------------------
-  // BUILD PAYLOAD
-  // ---------------------------
+  // ---------------- BUILD PAYLOAD ----------------
   const payload = {
     name,
     brand,
@@ -1638,22 +1644,21 @@ if (hasVariants) {
     },
     availability: {
       isAvailable,
-      stockQuantity: hasVariants ? 0 : stock,
+      stockQuantity: stock,
       lowStockLevel: 5,
       stockStatus,
     },
     status,
-    hasVariants: hasVariants,
+    hasVariants,
     isFeatured: document.getElementById("isFeatured")?.checked || false,
     isPopular: document.getElementById("isPopular")?.checked || false,
     isBestSeller: document.getElementById("isBestSeller")?.checked || false,
     isTrending: document.getElementById("isTrending")?.checked || false,
   };
 
-  // ---------------------------
-  // WARRANTY
-  // ---------------------------
-  const warrantyPeriod = parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
+  // Warranty
+  const warrantyPeriod =
+    parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
   const warrantyReturnPolicy =
     parseInt(document.getElementById("warrantyReturnPolicy")?.value) || 0;
 
@@ -1664,26 +1669,20 @@ if (hasVariants) {
     };
   }
 
-  // ---------------------------
-  // ORIGIN (fixed)
-  // ---------------------------
+  // Origin
   payload.origin = {
     country: document.getElementById("productOrigin")?.value.trim() || "",
     manufacturer:
       document.getElementById("productOriginManufacturer")?.value.trim() || "",
   };
 
-  // ---------------------------
-  // PROJECT (fixed)
-  // ---------------------------
+  // Project
   payload.project = {
     projectId: document.getElementById("productProjectId")?.value.trim() || "",
     projectName: document.getElementById("productProject")?.value.trim() || "",
   };
 
-  // ---------------------------
-  // DIMENSIONS
-  // ---------------------------
+  // Dimensions
   const L = parseFloat(document.getElementById("dimensionLength")?.value) || 0;
   const W = parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
   const H = parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
@@ -1694,18 +1693,18 @@ if (hasVariants) {
     payload.dimensions = { length: L, width: W, height: H, weight };
   }
 
-  // ---------------------------
-  // TAGS
-  // ---------------------------
+  // Tags
   const rawTags = document.getElementById("productTags")?.value.trim() || "";
   payload.tags = rawTags
-    ? rawTags.split(",").map((t) => t.trim()).filter(Boolean)
+    ? rawTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
     : [];
 
-  // ---------------------------
   // SEO
-  // ---------------------------
-  const metaTitle = document.getElementById("productMetaTitle")?.value.trim() || "";
+  const metaTitle =
+    document.getElementById("productMetaTitle")?.value.trim() || "";
   const metaDescription =
     document.getElementById("productMetaDescription")?.value.trim() || "";
   const metaKeywordsRaw =
@@ -1715,13 +1714,14 @@ if (hasVariants) {
     metaTitle,
     metaDescription,
     keywords: metaKeywordsRaw
-      ? metaKeywordsRaw.split(",").map((k) => k.trim()).filter(Boolean)
+      ? metaKeywordsRaw
+          .split(",")
+          .map((k) => k.trim())
+          .filter(Boolean)
       : [],
   };
 
-  // ---------------------------
-  // REFERRAL BONUS
-  // ---------------------------
+  // Referral
   payload.referralBonus = {
     enabled: document.getElementById("referralEnabled")?.checked || false,
     type: document.getElementById("referralType")?.value || "percentage",
@@ -1730,9 +1730,7 @@ if (hasVariants) {
       parseFloat(document.getElementById("referralMinPurchase")?.value) || 0,
   };
 
-  // ---------------------------
-  // PAYMENT PLAN
-  // ---------------------------
+  // Global Payment Plan
   payload.paymentPlan = {
     enabled: document.getElementById("paymentPlanEnabled")?.checked || false,
     minDownPayment:
@@ -1743,9 +1741,7 @@ if (hasVariants) {
       parseFloat(document.getElementById("paymentPlanInterest")?.value) || 0,
   };
 
-  // ---------------------------
-  // PER-DAY PLANS
-  // ---------------------------
+  // Per-Day Plans
   payload.plans = [];
   document.querySelectorAll('[id^="plan-"]').forEach((card) => {
     const name = card.querySelector("[data-plan-name]")?.value.trim();
@@ -1769,9 +1765,7 @@ if (hasVariants) {
     }
   });
 
-  // // ---------------------------
-  // - VARIANTS (REQUIRED WHEN hasVariants = true)
-  // // ---------------------------
+  // ---------------- VARIANTS ----------------
   payload.variants = [];
 
   if (hasVariants) {
@@ -1779,33 +1773,37 @@ if (hasVariants) {
 
     variantCards.forEach((card) => {
       const color = card.querySelector("[data-variant-color]")?.value.trim();
-      const storage = card.querySelector("[data-variant-storage]")?.value.trim();
+      const storage = card
+        .querySelector("[data-variant-storage]")
+        ?.value.trim();
 
       const price =
         parseFloat(card.querySelector("[data-variant-price]")?.value) || 0;
-      const variantSalePrice =
+      const salePrice =
         parseFloat(card.querySelector("[data-variant-sale-price]")?.value) || 0;
-      const variantStock =
+      const stock =
         parseInt(card.querySelector("[data-variant-stock]")?.value) || 0;
 
       if (price > 0) {
+        const attributes = {};
+        if (color) attributes.color = color;
+        if (storage) attributes.storage = storage;
+
         payload.variants.push({
-          attributes: { color, storage },
+          attributes,
           price,
-          salePrice: variantSalePrice,
-          stock: variantStock,
+          salePrice,
+          stock,
         });
       }
     });
 
     if (payload.variants.length === 0) {
-  hasVariants = false; // fix backend requirement
-}
+      hasVariants = false;
+    }
   }
 
-  // ---------------------------
-  // REGIONAL SETTINGS
-  // ---------------------------
+  // ---------------- REGIONAL ----------------
   if (regionalSettingsTableBody) {
     const { regionalPricing, regionalAvailability } =
       collectRegionalPayloadFromUI();
@@ -1813,12 +1811,11 @@ if (hasVariants) {
     payload.regionalAvailability = regionalAvailability;
   }
 
-  // ---------------------------
-  // SAVE PRODUCT
-  // ---------------------------
+  // ---------------- SAVE PRODUCT ----------------
   try {
     showLoading(true);
 
+    // Save
     if (currentProductId) {
       await API.put("/products/:id", payload, { id: currentProductId });
       showNotification("Product updated successfully", "success");
@@ -1826,6 +1823,38 @@ if (hasVariants) {
       const res = await API.post("/products", payload);
       currentProductId = res?.data?.productId;
       showNotification("Product created successfully", "success");
+    }
+
+    // ---------------- FETCH PRODUCT AGAIN TO GET VARIANT IDs ----------------
+    const productResponse = await API.get("/products/:productId", {
+      productId: currentProductId,
+    });
+
+    const createdVariants = productResponse?.data?.variants || [];
+
+    // ---------------- UPLOAD PRODUCT IMAGES ----------------
+    if (selectedImageFiles && selectedImageFiles.length > 0) {
+      await uploadProductImages(currentProductId);
+    }
+
+    // ---------------- UPLOAD VARIANT IMAGES ----------------
+    const variantImageFiles = [];
+    document.querySelectorAll('[id^="variant-"]').forEach((card, index) => {
+      const fileInput = card.querySelector("[data-variant-image]");
+      if (fileInput?.files?.[0]) {
+        variantImageFiles.push({
+          variantIndex: index,
+          file: fileInput.files[0],
+        });
+      }
+    });
+
+    if (variantImageFiles.length > 0) {
+      await uploadVariantImages(
+        currentProductId,
+        variantImageFiles,
+        createdVariants
+      );
     }
 
     await loadProducts();
