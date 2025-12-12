@@ -108,6 +108,9 @@ function initializeDOMElements() {
   statusFilter = document.getElementById("filterStatus");
   variantsFilter = document.getElementById("filterVariants");
 
+  // ✅ NEW: Category filter element
+  categoryFilter = document.getElementById("productCategoryFilter");
+
   productsContainer = document.getElementById("productsContainer");
   productForm = document.getElementById("productForm");
 
@@ -179,8 +182,12 @@ function setupEventListeners() {
         ? window.utils.debounce(filterProducts, 300)
         : debounce(filterProducts, 300)
     );
+
   if (statusFilter) statusFilter.addEventListener("change", filterProducts);
   if (variantsFilter) variantsFilter.addEventListener("change", filterProducts);
+
+  // ✅ NEW — category filter listener
+  if (categoryFilter) categoryFilter.addEventListener("change", filterProducts);
 
   const addProductBtn = document.getElementById("addProductBtn");
   if (addProductBtn) {
@@ -226,12 +233,10 @@ function setupEventListeners() {
       if (this.checked) {
         regionalSettingsSection.classList.add("d-none");
         regionalSettingsSection.style.display = "none";
-
         buildRegionalRowsFromConfig(null, false, true);
       } else {
         regionalSettingsSection.classList.remove("d-none");
         regionalSettingsSection.style.display = "block";
-
         buildRegionalRowsFromConfig(null, true, false);
       }
     });
@@ -253,43 +258,75 @@ async function loadCategories() {
   try {
     const response = await API.get("/categories/dropdown/all", {}, {});
     const categorySelect = document.getElementById("productCategory");
-    if (!categorySelect) return;
+    const categoryFilter = document.getElementById("productCategoryFilter");
 
     let categories = [];
+
     if (response && response.success !== false) {
-      if (response.data && Array.isArray(response.data)) {
+      if (Array.isArray(response.data)) {
         categories = response.data;
       } else if (Array.isArray(response)) {
         categories = response;
       }
     }
 
-    categorySelect.innerHTML = '<option value="">Select Category</option>';
-    categories.forEach((cat) => {
-      const option = document.createElement("option");
-      option.value = cat._id || cat.id || cat.categoryId;
-      option.textContent = cat.name || cat.categoryName;
-      option.setAttribute("data-category-name", cat.name || cat.categoryName);
-      categorySelect.appendChild(option);
+    // ---------- RESET BOTH DROPDOWNS ----------
+    if (categorySelect)
+      categorySelect.innerHTML = '<option value="">Select Category</option>';
 
-      if (cat.subCategories && Array.isArray(cat.subCategories)) {
+    if (categoryFilter)
+      categoryFilter.innerHTML = '<option value="">All Categories</option>';
+
+    // ---------- POPULATE CATEGORY OPTIONS ----------
+    categories.forEach((cat) => {
+      const id = cat._id || cat.id || cat.categoryId;
+      const name = cat.name || cat.categoryName;
+
+      // MAIN CATEGORY for form
+      if (categorySelect) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = name;
+        option.setAttribute("data-category-name", name);
+        categorySelect.appendChild(option);
+      }
+
+      // MAIN CATEGORY for filter
+      if (categoryFilter) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = name;
+        option.setAttribute("data-category-name", name);
+        categoryFilter.appendChild(option);
+      }
+
+      // ---------- SUBCATEGORIES ----------
+      if (Array.isArray(cat.subCategories)) {
         cat.subCategories.forEach((subCat) => {
-          const subOption = document.createElement("option");
-          subOption.value = subCat._id || subCat.id || subCat.categoryId;
-          subOption.textContent = `  → ${subCat.name || subCat.categoryName}`;
-          subOption.setAttribute(
-            "data-category-name",
-            subCat.name || subCat.categoryName
-          );
-          subOption.setAttribute(
-            "data-parent-id",
-            cat._id || cat.id || cat.categoryId
-          );
-          subOption.setAttribute(
-            "data-parent-name",
-            cat.name || cat.categoryName
-          );
-          categorySelect.appendChild(subOption);
+          const subId = subCat._id || subCat.id || subCat.categoryId;
+          const subName = subCat.name || subCat.categoryName;
+
+          // FORM SUBCATEGORY
+          if (categorySelect) {
+            const subOption = document.createElement("option");
+            subOption.value = subId;
+            subOption.textContent = `→ ${subName}`;
+            subOption.setAttribute("data-category-name", subName);
+            subOption.setAttribute("data-parent-id", id);
+            subOption.setAttribute("data-parent-name", name);
+            categorySelect.appendChild(subOption);
+          }
+
+          // FILTER SUBCATEGORY (IMPORTANT: add parent info)
+          if (categoryFilter) {
+            const subOption = document.createElement("option");
+            subOption.value = subId;
+            subOption.textContent = `→ ${subName}`;
+            subOption.setAttribute("data-category-name", subName);
+            subOption.setAttribute("data-parent-id", id);
+            subOption.setAttribute("data-parent-name", name);
+            categoryFilter.appendChild(subOption);
+          }
         });
       }
     });
@@ -320,6 +357,20 @@ async function loadProducts() {
 
     if (variantsFilter && variantsFilter.value !== "") {
       queryParams.hasVariants = variantsFilter.value;
+    }
+
+    // CATEGORY FILTER FIX (main vs sub)
+    const categoryFilter = document.getElementById("productCategoryFilter");
+    if (categoryFilter && categoryFilter.value) {
+      const selectedOption =
+        categoryFilter.options[categoryFilter.selectedIndex];
+      const parentId = selectedOption.getAttribute("data-parent-id");
+
+      if (parentId) {
+        queryParams.subCategoryId = categoryFilter.value;
+      } else {
+        queryParams.mainCategoryId = categoryFilter.value;
+      }
     }
 
     const response = await API.get("/products/admin/all", {}, queryParams);
@@ -434,12 +485,12 @@ async function loadProducts() {
 function updateStats(totalOverride) {
   const total =
     typeof totalOverride === "number" ? totalOverride : products.length;
+
   const published = products.filter((p) => p.status === "published").length;
   const withVariants = products.filter((p) => p.hasVariants).length;
+
+  // ✅ FIX: Always use main availability stockQuantity
   const totalStock = products.reduce((sum, p) => {
-    if (p.hasVariants && p.variants.length > 0) {
-      return sum + p.variants.reduce((vsum, v) => vsum + (v.stock || 0), 0);
-    }
     return sum + (p.availability?.stockQuantity || 0);
   }, 0);
 
@@ -573,10 +624,8 @@ function renderProductCard(product) {
       ? `<span class="badge bg-warning me-2">${product.variants.length} variants</span>`
       : "";
 
-  const stock =
-    product.hasVariants && product.variants.length > 0
-      ? product.variants.reduce((sum, v) => sum + (v.stock || 0), 0)
-      : product.availability?.stockQuantity || 0;
+  // ✅ FIX: Always show main stock from availability
+  const stock = product.availability?.stockQuantity ?? 0;
 
   return `
         <div class="card mb-3 product-card">
@@ -625,6 +674,8 @@ function renderProductCard(product) {
                               product.pricing?.regularPrice ||
                               0
                             ).toFixed(2)}</div>
+
+                            <!-- ✅ FIXED STOCK DISPLAY -->
                             <small class="text-muted">Stock: <strong>${stock}</strong></small>
                         </div>
                         <small class="d-block text-muted mb-3">${
@@ -658,14 +709,18 @@ function renderProductCard(product) {
 
 /* ---------- Modal / CRUD / Image Upload ---------- */
 
-function handleImageSelect(e) {
+let isUploadingImages = false;
+
+async function handleImageSelect(e) {
   const files = e.target.files;
   selectedImageFiles = Array.from(files);
 
   if (!imagePreviewContainer) return;
 
+  // Clear preview
+  imagePreviewContainer.innerHTML = "";
+
   if (selectedImageFiles.length === 0) {
-    imagePreviewContainer.innerHTML = "";
     return;
   }
 
@@ -674,8 +729,7 @@ function handleImageSelect(e) {
     selectedImageFiles = selectedImageFiles.slice(0, 10);
   }
 
-  imagePreviewContainer.innerHTML = "";
-
+  // Show preview immediately
   selectedImageFiles.forEach((file, index) => {
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -684,7 +738,9 @@ function handleImageSelect(e) {
       col.innerHTML = `
         <div class="position-relative">
           <img src="${e.target.result}" class="img-thumbnail" alt="Preview">
-          <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removeImagePreview(${index})">
+          <button type="button" 
+                  class="btn btn-sm btn-danger position-absolute top-0 end-0" 
+                  onclick="removeImagePreview(${index})">
             <i class="bi bi-x"></i>
           </button>
           ${
@@ -698,6 +754,55 @@ function handleImageSelect(e) {
     };
     reader.readAsDataURL(file);
   });
+
+  // ---------------------------
+  //  START UPLOADING IMAGES
+  // ---------------------------
+  const saveBtn = document.getElementById("saveProductBtn");
+
+  isUploadingImages = true;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Uploading Images...";
+  }
+
+  try {
+    const formData = new FormData();
+    selectedImageFiles.forEach((file) => formData.append("images", file));
+
+    const uploadUrl = `${window.BASE_URL}/uploads/temp-images`;
+
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AUTH.getToken()}`,
+      },
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      showNotification("Image upload failed. Try again.", "error");
+    } else {
+      showNotification("Images uploaded successfully", "success");
+
+      // Store uploaded image URLs temporarily
+      window.tempUploadedImages = result.data || [];
+    }
+  } catch (err) {
+    console.error("Image upload error:", err);
+    showNotification("Image upload error", "error");
+  }
+
+  // ---------------------------
+  //  UPLOAD FINISHED
+  // ---------------------------
+  isUploadingImages = false;
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Product";
+  }
 }
 
 function removeImagePreview(index) {
@@ -894,65 +999,114 @@ function removePlanField(idx) {
   document.getElementById(`plan-${idx}`)?.remove();
 }
 
+/* ---------------- Existing Image Loader (GLOBAL) ---------------- */
+
+function loadExistingImages(images = []) {
+  if (!imagePreviewContainer) return;
+
+  // Reset preview
+  imagePreviewContainer.innerHTML = "";
+  selectedImageFiles = []; // <-- Important so new uploads don't mix with old ones
+
+  if (!Array.isArray(images) || images.length === 0) {
+    window.existingImages = [];
+    return;
+  }
+
+  window.existingImages = images;
+
+  images.forEach((img, index) => {
+    const col = document.createElement("div");
+    col.className = "col-md-2";
+
+    col.innerHTML = `
+      <div class="position-relative">
+        <img src="${img.url}" class="img-thumbnail" alt="Preview">
+
+        <button type="button"
+                class="btn btn-sm btn-danger position-absolute top-0 end-0"
+                onclick="removeExistingImage(${index})">
+          <i class="bi bi-x"></i>
+        </button>
+
+        ${
+          img.isPrimary
+            ? '<span class="badge bg-primary position-absolute bottom-0 start-0 m-1">Primary</span>'
+            : ""
+        }
+      </div>
+    `;
+
+    imagePreviewContainer.appendChild(col);
+  });
+}
+
+function removeExistingImage(index) {
+  if (!window.existingImages) return;
+
+  window.existingImages.splice(index, 1); // remove from array
+  loadExistingImages(window.existingImages); // rebuild preview
+}
+
 /* ---------- Modal Functions ---------- */
 
 function openAddProductModal() {
+  // -----------------------
+  // FIX: Prevent wipe when editing
+  // -----------------------
+  if (currentProductId) return;
+
   currentProductId = null;
   variantCount = 0;
   planCount = 0;
+
   selectedImageFiles = [];
+  window.existingImages = [];
 
   if (productForm) productForm.reset();
 
   const titleEl = document.getElementById("productModalLabel");
   if (titleEl) titleEl.textContent = "Add Product";
 
+  // Reset variants
   if (hasVariantsCheckbox) hasVariantsCheckbox.checked = false;
   if (variantsSection) {
     variantsSection.classList.add("d-none");
     variantsSection.style.display = "none";
   }
   if (variantsList) variantsList.innerHTML = "";
+
+  // Reset plans
   if (plansList) plansList.innerHTML = "";
+
+  // Reset image preview
   if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
   if (productImagesInput) productImagesInput.value = "";
 
-  const isFeaturedEl = document.getElementById("isFeatured");
-  const isPopularEl = document.getElementById("isPopular");
-  const isBestSellerEl = document.getElementById("isBestSeller");
-  const isTrendingEl = document.getElementById("isTrending");
+  // Flags
+  document.getElementById("isFeatured").checked = false;
+  document.getElementById("isPopular").checked = false;
+  document.getElementById("isBestSeller").checked = false;
+  document.getElementById("isTrending").checked = false;
 
-  if (isFeaturedEl) isFeaturedEl.checked = false;
-  if (isPopularEl) isPopularEl.checked = false;
-  if (isBestSellerEl) isBestSellerEl.checked = false;
-  if (isTrendingEl) isTrendingEl.checked = false;
+  // Meta
+  document.getElementById("productMetaTitle").value = "";
+  document.getElementById("productMetaDescription").value = "";
+  document.getElementById("productMetaKeywords").value = "";
 
-  const metaTitleEl = document.getElementById("productMetaTitle");
-  const metaDescEl = document.getElementById("productMetaDescription");
-  const metaKeywordsEl = document.getElementById("productMetaKeywords");
-  if (metaTitleEl) metaTitleEl.value = "";
-  if (metaDescEl) metaDescEl.value = "";
-  if (metaKeywordsEl) metaKeywordsEl.value = "";
+  // Referral
+  document.getElementById("referralEnabled").checked = false;
+  document.getElementById("referralType").value = "percentage";
+  document.getElementById("referralValue").value = "";
+  document.getElementById("referralMinPurchase").value = "";
 
-  const referralEnabledEl = document.getElementById("referralEnabled");
-  const referralTypeEl = document.getElementById("referralType");
-  const referralValueEl = document.getElementById("referralValue");
-  const referralMinPurchaseEl = document.getElementById("referralMinPurchase");
-  if (referralEnabledEl) referralEnabledEl.checked = false;
-  if (referralTypeEl) referralTypeEl.value = "percentage";
-  if (referralValueEl) referralValueEl.value = "";
-  if (referralMinPurchaseEl) referralMinPurchaseEl.value = "";
+  // Payment Plan
+  document.getElementById("paymentPlanEnabled").checked = false;
+  document.getElementById("paymentPlanMinDown").value = "";
+  document.getElementById("paymentPlanMaxDown").value = "";
+  document.getElementById("paymentPlanInterest").value = "";
 
-  const ppEnabledEl = document.getElementById("paymentPlanEnabled");
-  const ppMinEl = document.getElementById("paymentPlanMinDown");
-  const ppMaxEl = document.getElementById("paymentPlanMaxDown");
-  const ppInterestEl = document.getElementById("paymentPlanInterest");
-  if (ppEnabledEl) ppEnabledEl.checked = false;
-  if (ppMinEl) ppMinEl.value = "";
-  if (ppMaxEl) ppMaxEl.value = "";
-  if (ppInterestEl) ppInterestEl.value = "";
-
-  // Regional reset — only if UI exists
+  // Regional
   if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = true;
   if (regionalSettingsSection) {
     regionalSettingsSection.classList.add("d-none");
@@ -963,7 +1117,7 @@ function openAddProductModal() {
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
 
-  // rebuild regional rows with defaults if config present
+  // Rebuild regional defaults
   if (window.SUPPORTED_REGIONS && regionalSettingsTableBody) {
     buildRegionalRowsFromConfig();
   }
@@ -973,7 +1127,7 @@ async function editProduct(productId) {
   try {
     showLoading(true);
 
-    // 1️⃣ FETCH SINGLE PRODUCT FROM BACKEND
+    // 1️⃣ Fetch product
     const res = await API.get("/products/:productId", { productId });
     const product = res?.data;
 
@@ -985,11 +1139,10 @@ async function editProduct(productId) {
 
     currentProductId = product._id;
 
-    // 2️⃣ BASIC FIELDS
+    // 2️⃣ Basic fields
     document.getElementById("productName").value = product.name || "";
     document.getElementById("productBrand").value = product.brand || "";
 
-    // FIX: Handle description object
     const descValue =
       typeof product.description === "object"
         ? product.description?.short || product.description?.long || ""
@@ -998,12 +1151,13 @@ async function editProduct(productId) {
 
     document.getElementById("productCategory").value =
       product.category?.mainCategoryId || "";
-    document.getElementById("productSku").value = product.sku || "";
 
+    document.getElementById("productSku").value = product.sku || "";
     document.getElementById("productPrice").value =
       product.pricing?.regularPrice ?? "";
     document.getElementById("productSalePrice").value =
       product.pricing?.salePrice ?? "";
+
     document.getElementById("productStock").value =
       product.availability?.stockQuantity ?? "";
 
@@ -1014,10 +1168,11 @@ async function editProduct(productId) {
       );
     }
 
-    // 3️⃣ VARIANTS
+    // 3️⃣ Variants
     const hasVariantsEl = document.getElementById("hasVariants");
     if (hasVariantsEl) {
       hasVariantsEl.checked = !!product.hasVariants;
+
       if (variantsSection) {
         variantsSection.style.display = product.hasVariants ? "block" : "none";
         variantsSection.classList.toggle("d-none", !product.hasVariants);
@@ -1025,11 +1180,7 @@ async function editProduct(productId) {
     }
 
     if (variantsList) {
-      if (
-        product.hasVariants &&
-        Array.isArray(product.variants) &&
-        product.variants.length > 0
-      ) {
+      if (product.hasVariants && Array.isArray(product.variants)) {
         variantsList.innerHTML = product.variants
           .map((v, idx) => renderVariantField(v, idx))
           .join("");
@@ -1040,35 +1191,32 @@ async function editProduct(productId) {
       }
     }
 
-    // 4️⃣ FLAGS
+    // 4️⃣ Flags
     document.getElementById("isFeatured").checked = !!product.isFeatured;
     document.getElementById("isPopular").checked = !!product.isPopular;
     document.getElementById("isBestSeller").checked = !!product.isBestSeller;
     document.getElementById("isTrending").checked = !!product.isTrending;
 
-    // 5️⃣ WARRANTY
+    // 5️⃣ Warranty
     document.getElementById("warrantyPeriod").value =
       product.warranty?.period || "";
     document.getElementById("warrantyReturnPolicy").value =
       product.warranty?.returnPolicy || "";
 
-    // 6️⃣ ORIGIN (✅ FIXED - both fields)
+    // 6️⃣ Origin
     document.getElementById("productOrigin").value =
       product.origin?.country || "";
     const manufacturerEl = document.getElementById("productOriginManufacturer");
-    if (manufacturerEl) {
+    if (manufacturerEl)
       manufacturerEl.value = product.origin?.manufacturer || "";
-    }
 
-    // 7️⃣ PROJECT (✅ FIXED - both fields)
+    // 7️⃣ Project
     const projectIdEl = document.getElementById("productProjectId");
-    if (projectIdEl) {
-      projectIdEl.value = product.project?.projectId || "";
-    }
+    if (projectIdEl) projectIdEl.value = product.project?.projectId || "";
     document.getElementById("productProject").value =
       product.project?.projectName || "";
 
-    // 8️⃣ DIMENSIONS
+    // 8️⃣ Dimensions
     document.getElementById("dimensionLength").value =
       product.dimensions?.length || "";
     document.getElementById("dimensionWidth").value =
@@ -1078,7 +1226,7 @@ async function editProduct(productId) {
     document.getElementById("productWeight").value =
       product.dimensions?.weight || "";
 
-    // 9️⃣ TAGS
+    // 9️⃣ Tags
     document.getElementById("productTags").value = Array.isArray(product.tags)
       ? product.tags.join(", ")
       : "";
@@ -1094,7 +1242,7 @@ async function editProduct(productId) {
       ? product.seo.keywords.join(", ")
       : "";
 
-    // 1️⃣1️⃣ REFERRAL
+    // 1️⃣1️⃣ Referral
     document.getElementById("referralEnabled").checked =
       product.referralBonus?.enabled || false;
     document.getElementById("referralType").value =
@@ -1104,7 +1252,7 @@ async function editProduct(productId) {
     document.getElementById("referralMinPurchase").value =
       product.referralBonus?.minPurchaseAmount ?? "";
 
-    // 1️⃣2️⃣ GLOBAL PAYMENT PLAN
+    // 1️⃣2️⃣ Payment plan
     document.getElementById("paymentPlanEnabled").checked =
       product.paymentPlan?.enabled || false;
     document.getElementById("paymentPlanMinDown").value =
@@ -1114,13 +1262,13 @@ async function editProduct(productId) {
     document.getElementById("paymentPlanInterest").value =
       product.paymentPlan?.interestRate ?? "";
 
-    // 1️⃣3️⃣ STATUS RADIO
+    // 1️⃣3️⃣ Status
     const statusRadio = document.querySelector(
       `input[name="status"][value="${product.status}"]`
     );
     if (statusRadio) statusRadio.checked = true;
 
-    // 1️⃣4️⃣ PER-DAY PLANS (✅ FIXED - with event listeners)
+    // 1️⃣4️⃣ Per-day plans
     if (plansList) {
       plansList.innerHTML = "";
       planCount = 0;
@@ -1131,58 +1279,49 @@ async function editProduct(productId) {
           plansList.insertAdjacentHTML("beforeend", renderPlanField(plan, idx));
         });
 
-        // ✅ RE-BIND EVENT LISTENERS for auto-calculation
         product.plans.forEach((plan, idx) => {
-          const domIdx = idx + 1;
-          const card = document.getElementById(`plan-${domIdx}`);
-          if (card) {
-            const daysInput = card.querySelector("[data-plan-days]");
-            const amountInput = card.querySelector("[data-plan-amount]");
-            const totalInput = card.querySelector("[data-plan-total]");
+          const card = document.getElementById(`plan-${idx + 1}`);
+          if (!card) return;
 
-            const calculateTotal = () => {
-              const days = parseFloat(daysInput.value) || 0;
-              const amount = parseFloat(amountInput.value) || 0;
-              totalInput.value = (days * amount).toFixed(2);
-            };
+          const daysInput = card.querySelector("[data-plan-days]");
+          const amountInput = card.querySelector("[data-plan-amount]");
+          const totalInput = card.querySelector("[data-plan-total]");
 
-            if (daysInput && amountInput && totalInput) {
-              daysInput.addEventListener("input", calculateTotal);
-              amountInput.addEventListener("input", calculateTotal);
-            }
-          }
+          const calculateTotal = () => {
+            const d = parseFloat(daysInput.value) || 0;
+            const a = parseFloat(amountInput.value) || 0;
+            totalInput.value = (d * a).toFixed(2);
+          };
+
+          daysInput.addEventListener("input", calculateTotal);
+          amountInput.addEventListener("input", calculateTotal);
         });
       }
     }
 
-    // 1️⃣5️⃣ REGIONAL SETTINGS
+    // 1️⃣5️⃣ Regional settings
     if (window.SUPPORTED_REGIONS && regionalSettingsTableBody) {
       buildRegionalRowsFromConfig(product);
 
-      // Set global/regional toggle
-      if (isGlobalProductCheckbox) {
-        const hasRegionalData =
-          product.regionalAvailability &&
-          product.regionalAvailability.length > 0;
-        isGlobalProductCheckbox.checked = !hasRegionalData;
+      const hasRegionalData =
+        product.regionalAvailability && product.regionalAvailability.length > 0;
 
-        if (regionalSettingsSection) {
-          if (hasRegionalData) {
-            regionalSettingsSection.classList.remove("d-none");
-            regionalSettingsSection.style.display = "block";
-          } else {
-            regionalSettingsSection.classList.add("d-none");
-            regionalSettingsSection.style.display = "none";
-          }
-        }
+      if (isGlobalProductCheckbox) {
+        isGlobalProductCheckbox.checked = !hasRegionalData;
+        regionalSettingsSection.style.display = hasRegionalData
+          ? "block"
+          : "none";
       }
     }
 
-    // Update modal title
+    // 1️⃣6️⃣ Load product images into preview
+    loadExistingImages(product.images || []);
+
+    // 1️⃣7️⃣ Update modal title
     const titleEl = document.getElementById("productModalLabel");
     if (titleEl) titleEl.textContent = "Edit Product";
 
-    // Show modal
+    // 1️⃣8️⃣ Show modal
     const modalEl = document.getElementById("productModal");
     if (modalEl) new bootstrap.Modal(modalEl).show();
 
@@ -1190,7 +1329,7 @@ async function editProduct(productId) {
   } catch (err) {
     console.error("❌ Error in editProduct():", err);
     showLoading(false);
-    alert("Cannot load product for editing: " + (err.message || err));
+    alert("Cannot load product: " + (err.message || err));
   }
 }
 
@@ -1570,6 +1709,12 @@ function collectRegionalPayloadFromUI() {
 /* ---------- Save Product (create/update) ---------- */
 
 async function saveProduct() {
+  // ⛔ BLOCK SAVE IF IMAGES ARE STILL UPLOADING
+  if (window.isUploadingImages) {
+    alert("Please wait… Images are still uploading.");
+    return;
+  }
+
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
   const description = document
@@ -1593,7 +1738,6 @@ async function saveProduct() {
 
   let hasVariants = document.getElementById("hasVariants").checked;
 
-  // Disable variants if user has not added any
   if (hasVariants) {
     const variantCards = document.querySelectorAll('[id^="variant-"]');
     if (!variantCards || variantCards.length === 0) {
@@ -1703,22 +1847,17 @@ async function saveProduct() {
     : [];
 
   // SEO
-  const metaTitle =
-    document.getElementById("productMetaTitle")?.value.trim() || "";
-  const metaDescription =
-    document.getElementById("productMetaDescription")?.value.trim() || "";
-  const metaKeywordsRaw =
-    document.getElementById("productMetaKeywords")?.value.trim() || "";
-
   payload.seo = {
-    metaTitle,
-    metaDescription,
-    keywords: metaKeywordsRaw
-      ? metaKeywordsRaw
-          .split(",")
-          .map((k) => k.trim())
-          .filter(Boolean)
-      : [],
+    metaTitle: document.getElementById("productMetaTitle")?.value.trim() || "",
+    metaDescription:
+      document.getElementById("productMetaDescription")?.value.trim() || "",
+    keywords:
+      document
+        .getElementById("productMetaKeywords")
+        ?.value.trim()
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean) || [],
   };
 
   // Referral
@@ -1730,7 +1869,7 @@ async function saveProduct() {
       parseFloat(document.getElementById("referralMinPurchase")?.value) || 0,
   };
 
-  // Global Payment Plan
+  // Payment Plan
   payload.paymentPlan = {
     enabled: document.getElementById("paymentPlanEnabled")?.checked || false,
     minDownPayment:
@@ -1741,7 +1880,34 @@ async function saveProduct() {
       parseFloat(document.getElementById("paymentPlanInterest")?.value) || 0,
   };
 
-  // Per-Day Plans
+  // ---------------- PER-DAY PLAN VALIDATION (C FIX) ----------------
+  const effectiveSalePrice = salePrice > 0 ? salePrice : price;
+  let invalidPlan = null;
+
+  document.querySelectorAll('[id^="plan-"]').forEach((planCard, index) => {
+    const days =
+      parseFloat(planCard.querySelector("[data-plan-days]")?.value) || 0;
+    const perDay =
+      parseFloat(planCard.querySelector("[data-plan-amount]")?.value) || 0;
+    const total = days * perDay;
+
+    if (days > 0 && perDay > 0 && total !== effectiveSalePrice) {
+      invalidPlan = {
+        idx: index + 1,
+        got: total,
+        expected: effectiveSalePrice,
+      };
+    }
+  });
+
+  if (invalidPlan) {
+    return alert(
+      `Plan ${invalidPlan.idx} is invalid.\nTotal (${invalidPlan.got}) must equal Sale Price (${invalidPlan.expected}).`
+    );
+  }
+  // -----------------------------------------------------------------
+
+  // Per-Day Plans → Build Payload
   payload.plans = [];
   document.querySelectorAll('[id^="plan-"]').forEach((card) => {
     const name = card.querySelector("[data-plan-name]")?.value.trim();
@@ -1815,7 +1981,6 @@ async function saveProduct() {
   try {
     showLoading(true);
 
-    // Save
     if (currentProductId) {
       await API.put("/products/:id", payload, { id: currentProductId });
       showNotification("Product updated successfully", "success");
@@ -1825,19 +1990,16 @@ async function saveProduct() {
       showNotification("Product created successfully", "success");
     }
 
-    // ---------------- FETCH PRODUCT AGAIN TO GET VARIANT IDs ----------------
     const productResponse = await API.get("/products/:productId", {
       productId: currentProductId,
     });
 
     const createdVariants = productResponse?.data?.variants || [];
 
-    // ---------------- UPLOAD PRODUCT IMAGES ----------------
     if (selectedImageFiles && selectedImageFiles.length > 0) {
       await uploadProductImages(currentProductId);
     }
 
-    // ---------------- UPLOAD VARIANT IMAGES ----------------
     const variantImageFiles = [];
     document.querySelectorAll('[id^="variant-"]').forEach((card, index) => {
       const fileInput = card.querySelector("[data-variant-image]");
