@@ -936,15 +936,20 @@ async function uploadVariantImages(
 
 function addPlanField() {
   planCount++;
+
   const html = `
     <div class="card mb-2" id="plan-${planCount}">
       <div class="card-body">
+
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Plan ${planCount}</strong>
           <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
             <i class="bi bi-trash"></i>
           </button>
         </div>
+
+        <div class="text-danger small mb-2" data-plan-error style="display:none;"></div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Plan Name *</label>
@@ -952,51 +957,130 @@ function addPlanField() {
           </div>
           <div class="col-md-6">
             <label class="form-label">Days *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-days min="1" placeholder="e.g., 30" required />
+            <input type="number" class="form-control form-control-sm" data-plan-days min="5" placeholder="Minimum 5 days" required />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Per Day Amount (₹) *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-amount min="0" step="0.01" placeholder="e.g., 1500" required />
+            <input type="number" class="form-control form-control-sm" data-plan-amount min="50" step="0.01" placeholder="Min ₹50" required />
           </div>
           <div class="col-md-6">
             <label class="form-label">Total Amount (₹)</label>
             <input type="number" class="form-control form-control-sm" data-plan-total readonly placeholder="Auto-calculated" />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-12">
             <label class="form-label">Description (Optional)</label>
             <input type="text" class="form-control form-control-sm" data-plan-description placeholder="e.g., Pay in 30 days" />
           </div>
         </div>
+
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" data-plan-recommended />
+          <input class="form-check-input plan-recommended-checkbox" type="checkbox" data-plan-recommended />
           <label class="form-check-label">Recommended Plan</label>
         </div>
+
       </div>
     </div>
   `;
+
   plansList.insertAdjacentHTML("beforeend", html);
 
   const card = document.getElementById(`plan-${planCount}`);
   const daysInput = card.querySelector("[data-plan-days]");
   const amountInput = card.querySelector("[data-plan-amount]");
   const totalInput = card.querySelector("[data-plan-total]");
+  const errorBox = card.querySelector("[data-plan-error]");
+  const recommendedInput = card.querySelector("[data-plan-recommended]");
 
-  const calculateTotal = () => {
-    const days = parseFloat(daysInput.value) || 0;
-    const amount = parseFloat(amountInput.value) || 0;
-    totalInput.value = (days * amount).toFixed(2);
+  const getSalePrice = () => {
+    const sale = parseFloat(document.getElementById("productSalePrice")?.value);
+    const regular = parseFloat(document.getElementById("productPrice")?.value);
+    return !isNaN(sale) && sale > 0 ? sale : regular || 0;
   };
 
-  daysInput.addEventListener("input", calculateTotal);
-  amountInput.addEventListener("input", calculateTotal);
+  const recalc = () => {
+    const days = parseFloat(daysInput.value) || 0;
+    const perDay = parseFloat(amountInput.value) || 0;
+
+    // hide error by default
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+
+    // If incomplete, don't validate; clear total
+    if (days === 0 || perDay === 0) {
+      totalInput.value = "";
+      return;
+    }
+
+    // Rule checks
+    if (days < 5) {
+      errorBox.textContent = "Days cannot be less than 5.";
+      errorBox.style.display = "block";
+    }
+    if (perDay < 50) {
+      errorBox.textContent = "Per-day amount cannot be less than ₹50.";
+      errorBox.style.display = "block";
+    }
+
+    // Auto-calc total = days * perDay
+    totalInput.value = (days * perDay).toFixed(2);
+  };
+
+  daysInput.addEventListener("input", recalc);
+  amountInput.addEventListener("input", recalc);
+
+  // Only ONE recommended plan at a time
+  recommendedInput.addEventListener("change", () => {
+    if (recommendedInput.checked) {
+      document.querySelectorAll(".plan-recommended-checkbox").forEach((cb) => {
+        if (cb !== recommendedInput) cb.checked = false;
+      });
+    }
+  });
 }
 
 function removePlanField(idx) {
-  document.getElementById(`plan-${idx}`)?.remove();
+  const card = document.getElementById(`plan-${idx}`);
+  if (card) card.remove();
+
+  // Rebuild plan indexes
+  const allPlans = Array.from(document.querySelectorAll('[id^="plan-"]'));
+
+  planCount = allPlans.length; // update global count
+
+  allPlans.forEach((card, newIndex) => {
+    const oldId = card.id;
+    const newId = `plan-${newIndex + 1}`;
+
+    // Update ID
+    card.id = newId;
+
+    // Update title "Plan X"
+    const title = card.querySelector("strong");
+    if (title) title.textContent = `Plan ${newIndex + 1}`;
+
+    // Update delete button onclick
+    const btn = card.querySelector("button.btn-outline-danger");
+    if (btn) btn.setAttribute("onclick", `removePlanField(${newIndex + 1})`);
+  });
+
+  // Enforce rule: only 1 recommended plan allowed
+  const recommendedBoxes = document.querySelectorAll(
+    ".plan-recommended-checkbox"
+  );
+
+  let firstChecked = null;
+  recommendedBoxes.forEach((box) => {
+    if (box.checked) {
+      if (!firstChecked) firstChecked = box;
+      else box.checked = false; // uncheck others
+    }
+  });
 }
 
 /* ---------------- Existing Image Loader (GLOBAL) ---------------- */
@@ -1051,9 +1135,6 @@ function removeExistingImage(index) {
 /* ---------- Modal Functions ---------- */
 
 function openAddProductModal() {
-  // -----------------------
-  // FIX: Prevent wipe when editing
-  // -----------------------
   if (currentProductId) return;
 
   currentProductId = null;
@@ -1076,37 +1157,191 @@ function openAddProductModal() {
   }
   if (variantsList) variantsList.innerHTML = "";
 
-  // Reset plans
+  // Reset plans area
   if (plansList) plansList.innerHTML = "";
 
-  // Reset image preview
+  // -----------------------------------------
+  // AUTO-ADD DEFAULT 10 / 20 / 30 DAY PLANS (marked data-auto="true")
+  // -----------------------------------------
+  const defaultPlans = [10, 20, 30];
+
+  const getSalePrice = () => {
+    const sale = parseFloat(document.getElementById("productSalePrice")?.value);
+    const regular = parseFloat(document.getElementById("productPrice")?.value);
+    return !isNaN(sale) && sale > 0 ? sale : regular || 0;
+  };
+
+  defaultPlans.forEach((days) => {
+    planCount++;
+
+    // if sale/regular present, compute perDay else empty
+    const salePrice = getSalePrice();
+    const perDay = salePrice > 0 ? (salePrice / days).toFixed(2) : "";
+    const total = salePrice > 0 ? salePrice.toFixed(2) : "";
+
+    const html = `
+      <div class="card mb-2" id="plan-${planCount}" data-auto="true">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Plan ${planCount}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+
+          <div class="text-danger small mb-2" data-plan-error style="display:none;"></div>
+
+          <div class="row mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Plan Name *</label>
+              <input type="text" class="form-control form-control-sm" data-plan-name value="${days}-Day Plan" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Days *</label>
+              <input type="number" class="form-control form-control-sm" data-plan-days value="${days}" min="5" required />
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Per Day Amount (₹) *</label>
+              <input type="number" class="form-control form-control-sm" data-plan-amount value="${perDay}" min="50" step="0.01" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Total Amount (₹)</label>
+              <input type="number" class="form-control form-control-sm" data-plan-total value="${total}" readonly />
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-md-12">
+              <label class="form-label">Description (Optional)</label>
+              <input type="text" class="form-control form-control-sm" data-plan-description value="Pay over ${days} days" />
+            </div>
+          </div>
+
+          <div class="form-check">
+            <input class="form-check-input plan-recommended-checkbox" type="checkbox" data-plan-recommended />
+            <label class="form-check-label">Recommended Plan</label>
+          </div>
+        </div>
+      </div>
+    `;
+
+    plansList.insertAdjacentHTML("beforeend", html);
+
+    // attach listeners for this auto plan
+    const card = document.getElementById(`plan-${planCount}`);
+    const daysInput = card.querySelector("[data-plan-days]");
+    const amountInput = card.querySelector("[data-plan-amount]");
+    const totalInput = card.querySelector("[data-plan-total]");
+    const errorBox = card.querySelector("[data-plan-error]");
+    const recommendedInput = card.querySelector("[data-plan-recommended]");
+
+    const recalc = () => {
+      const daysVal = parseFloat(daysInput.value) || 0;
+      const perDayVal = parseFloat(amountInput.value) || 0;
+
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+
+      if (daysVal === 0 || perDayVal === 0) {
+        totalInput.value = "";
+        return;
+      }
+      if (daysVal < 5) {
+        errorBox.textContent = "Days cannot be less than 5.";
+        errorBox.style.display = "block";
+      }
+      if (perDayVal < 50) {
+        errorBox.textContent = "Per-day amount cannot be less than ₹50.";
+        errorBox.style.display = "block";
+      }
+
+      // total = days * perDay
+      totalInput.value = (daysVal * perDayVal).toFixed(2);
+    };
+
+    daysInput.addEventListener("input", recalc);
+    amountInput.addEventListener("input", recalc);
+
+    // recommended single-select
+    recommendedInput.addEventListener("change", () => {
+      if (recommendedInput.checked) {
+        document
+          .querySelectorAll(".plan-recommended-checkbox")
+          .forEach((cb) => {
+            if (cb !== recommendedInput) cb.checked = false;
+          });
+      }
+    });
+  });
+
+  // -----------------------------------------
+  // sync plans when sale/price changes
+  // -----------------------------------------
+  const saleEl = document.getElementById("productSalePrice");
+  const priceEl = document.getElementById("productPrice");
+  const updateAutoPlans = () => {
+    const sale = parseFloat(saleEl?.value);
+    const reg = parseFloat(priceEl?.value);
+    const effective = !isNaN(sale) && sale > 0 ? sale : reg || 0;
+
+    document
+      .querySelectorAll('[id^="plan-"][data-auto="true"]')
+      .forEach((card) => {
+        const daysInput = card.querySelector("[data-plan-days]");
+        const perDayInput = card.querySelector("[data-plan-amount]");
+        const totalInput = card.querySelector("[data-plan-total]");
+
+        const days = parseFloat(daysInput.value) || 0;
+        if (effective > 0 && days > 0) {
+          const perDay = (effective / days).toFixed(2);
+          perDayInput.value = perDay;
+          totalInput.value = effective.toFixed(2);
+        } else {
+          // clear when no effective price
+          perDayInput.value = "";
+          totalInput.value = "";
+        }
+      });
+  };
+
+  if (saleEl) {
+    saleEl.removeEventListener?.("input", updateAutoPlans);
+    saleEl.addEventListener("input", updateAutoPlans);
+  }
+  if (priceEl) {
+    priceEl.removeEventListener?.("input", updateAutoPlans);
+    priceEl.addEventListener("input", updateAutoPlans);
+  }
+
+  // initial sync
+  updateAutoPlans();
+
+  // -----------------------------------------
   if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
   if (productImagesInput) productImagesInput.value = "";
 
-  // Flags
   document.getElementById("isFeatured").checked = false;
   document.getElementById("isPopular").checked = false;
   document.getElementById("isBestSeller").checked = false;
   document.getElementById("isTrending").checked = false;
 
-  // Meta
   document.getElementById("productMetaTitle").value = "";
   document.getElementById("productMetaDescription").value = "";
   document.getElementById("productMetaKeywords").value = "";
 
-  // Referral
   document.getElementById("referralEnabled").checked = false;
   document.getElementById("referralType").value = "percentage";
   document.getElementById("referralValue").value = "";
   document.getElementById("referralMinPurchase").value = "";
 
-  // Payment Plan
   document.getElementById("paymentPlanEnabled").checked = false;
   document.getElementById("paymentPlanMinDown").value = "";
   document.getElementById("paymentPlanMaxDown").value = "";
   document.getElementById("paymentPlanInterest").value = "";
 
-  // Regional
   if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = true;
   if (regionalSettingsSection) {
     regionalSettingsSection.classList.add("d-none");
@@ -1117,7 +1352,6 @@ function openAddProductModal() {
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
 
-  // Rebuild regional defaults
   if (window.SUPPORTED_REGIONS && regionalSettingsTableBody) {
     buildRegionalRowsFromConfig();
   }
@@ -1273,6 +1507,7 @@ async function editProduct(productId) {
       plansList.innerHTML = "";
       planCount = 0;
 
+      // CASE 1: Product already has plans → Load normally
       if (Array.isArray(product.plans) && product.plans.length > 0) {
         product.plans.forEach((plan, idx) => {
           planCount++;
@@ -1283,6 +1518,81 @@ async function editProduct(productId) {
           const card = document.getElementById(`plan-${idx + 1}`);
           if (!card) return;
 
+          const daysInput = card.querySelector("[data-plan-days]");
+          const amountInput = card.querySelector("[data-plan-amount]");
+          const totalInput = card.querySelector("[data-plan-total]");
+
+          const calculateTotal = () => {
+            const d = parseFloat(daysInput.value) || 0;
+            const a = parseFloat(amountInput.value) || 0;
+            totalInput.value = (d * a).toFixed(2);
+          };
+
+          daysInput.addEventListener("input", calculateTotal);
+          amountInput.addEventListener("input", calculateTotal);
+        });
+      }
+
+      // CASE 2: No plans saved → Auto-load default 10/20/30 plans
+      else {
+        const defaultPlans = [10, 20, 30];
+
+        defaultPlans.forEach((days) => {
+          planCount++;
+          const planHtml = `
+        <div class="card mb-2" id="plan-${planCount}">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Plan ${planCount}</strong>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-md-6">
+                <label class="form-label">Plan Name *</label>
+                <input type="text" class="form-control form-control-sm" data-plan-name 
+                  value="${days}-Day Plan" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Days *</label>
+                <input type="number" class="form-control form-control-sm" data-plan-days 
+                  value="${days}" min="5" required />
+              </div>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-md-6">
+                <label class="form-label">Per Day Amount (₹) *</label>
+                <input type="number" class="form-control form-control-sm" data-plan-amount 
+                  placeholder="Enter per-day amount" min="50" step="0.01" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Total Amount (₹)</label>
+                <input type="number" class="form-control form-control-sm" data-plan-total readonly />
+              </div>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-md-12">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control form-control-sm" data-plan-description 
+                  value="Pay over ${days} days" />
+              </div>
+            </div>
+
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" data-plan-recommended checked />
+              <label class="form-check-label">Recommended Plan</label>
+            </div>
+          </div>
+        </div>
+      `;
+
+          plansList.insertAdjacentHTML("beforeend", planHtml);
+
+          const card = document.getElementById(`plan-${planCount}`);
           const daysInput = card.querySelector("[data-plan-days]");
           const amountInput = card.querySelector("[data-plan-amount]");
           const totalInput = card.querySelector("[data-plan-total]");
@@ -1336,10 +1646,23 @@ async function editProduct(productId) {
 /* ---------- Render Plan Field (for editing existing plans) ---------- */
 
 function renderPlanField(plan, idx) {
-  const domIdx = idx + 1; // Convert 0-based to 1-based for display
+  const domIdx = idx + 1;
+
+  // Prevent recommended auto-select unless plan explicitly has it
+  const isRecommended = plan.isRecommended === true ? "checked" : "";
+
+  // Safe values
+  const days = plan.days || "";
+  const perDay = plan.perDayAmount || "";
+  const total =
+    plan.totalAmount ||
+    (plan.days && plan.perDayAmount ? plan.days * plan.perDayAmount : "");
+
+  // If plan was saved as an "auto" plan on backend, plan.isAuto === true
+  const autoAttr = plan.isAuto ? 'data-auto="true"' : "";
 
   return `
-    <div class="card mb-2" id="plan-${domIdx}">
+    <div class="card mb-2" id="plan-${domIdx}" ${autoAttr}>
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Plan ${domIdx}</strong>
@@ -1347,46 +1670,49 @@ function renderPlanField(plan, idx) {
             <i class="bi bi-trash"></i>
           </button>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Plan Name *</label>
-            <input type="text" class="form-control form-control-sm" data-plan-name value="${escapeHtml(
-              plan.name || ""
-            )}" placeholder="e.g., Quick Plan" required />
+            <input type="text" class="form-control form-control-sm" data-plan-name 
+              value="${escapeHtml(
+                plan.name || ""
+              )}" placeholder="e.g., Quick Plan" required />
           </div>
+
           <div class="col-md-6">
             <label class="form-label">Days *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-days min="1" value="${
-              plan.days || ""
-            }" placeholder="e.g., 30" required />
+            <input type="number" class="form-control form-control-sm" data-plan-days 
+              min="5" value="${days}" placeholder="Minimum 5" required />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Per Day Amount (₹) *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-amount min="0" step="0.01" value="${
-              plan.perDayAmount || ""
-            }" placeholder="e.g., 1500" required />
+            <input type="number" class="form-control form-control-sm" data-plan-amount 
+              min="50" step="0.01" value="${perDay}" placeholder="Min ₹50" required />
           </div>
+
           <div class="col-md-6">
             <label class="form-label">Total Amount (₹)</label>
-            <input type="number" class="form-control form-control-sm" data-plan-total readonly value="${
-              plan.totalAmount || plan.days * plan.perDayAmount || ""
-            }" placeholder="Auto-calculated" />
+            <input type="number" class="form-control form-control-sm" data-plan-total readonly 
+              value="${total}" placeholder="Auto-calculated" />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-12">
             <label class="form-label">Description (Optional)</label>
-            <input type="text" class="form-control form-control-sm" data-plan-description value="${escapeHtml(
-              plan.description || ""
-            )}" placeholder="e.g., Pay in 30 days" />
+            <input type="text" class="form-control form-control-sm" data-plan-description 
+              value="${escapeHtml(
+                plan.description || ""
+              )}" placeholder="e.g., Pay over 30 days" />
           </div>
         </div>
+
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" data-plan-recommended ${
-            plan.isRecommended ? "checked" : ""
-          } />
+          <input class="form-check-input plan-recommended-checkbox" type="checkbox" data-plan-recommended ${isRecommended} />
           <label class="form-check-label">Recommended Plan</label>
         </div>
       </div>
@@ -1881,31 +2207,47 @@ async function saveProduct() {
   };
 
   // ---------------- PER-DAY PLAN VALIDATION (C FIX) ----------------
+
   const effectiveSalePrice = salePrice > 0 ? salePrice : price;
-  let invalidPlan = null;
+  let planError = null;
 
   document.querySelectorAll('[id^="plan-"]').forEach((planCard, index) => {
+    const idx = index + 1;
+
+    const name = planCard.querySelector("[data-plan-name]")?.value.trim();
     const days =
       parseFloat(planCard.querySelector("[data-plan-days]")?.value) || 0;
     const perDay =
       parseFloat(planCard.querySelector("[data-plan-amount]")?.value) || 0;
-    const total = days * perDay;
 
-    if (days > 0 && perDay > 0 && total !== effectiveSalePrice) {
-      invalidPlan = {
-        idx: index + 1,
-        got: total,
-        expected: effectiveSalePrice,
-      };
+    // 🔥 Skip validation if plan is not fully filled
+    if (!name || days === 0 || perDay === 0) {
+      return;
+    }
+
+    // Rule 1: Days >= 5
+    if (days < 5) {
+      planError = `Plan ${idx}: Days cannot be less than 5.`;
+      return;
+    }
+
+    // Rule 2: Per Day >= ₹50
+    if (perDay < 50) {
+      planError = `Plan ${idx}: Per-day amount cannot be less than ₹50.`;
+      return;
+    }
+
+    // Rule 3: Total must equal sale price
+    const total = days * perDay;
+    if (total !== effectiveSalePrice) {
+      planError = `Plan ${idx}: Total (${total}) must equal Sale Price (${effectiveSalePrice}).`;
+      return;
     }
   });
 
-  if (invalidPlan) {
-    return alert(
-      `Plan ${invalidPlan.idx} is invalid.\nTotal (${invalidPlan.got}) must equal Sale Price (${invalidPlan.expected}).`
-    );
+  if (planError) {
+    return alert(planError);
   }
-  // -----------------------------------------------------------------
 
   // Per-Day Plans → Build Payload
   payload.plans = [];
