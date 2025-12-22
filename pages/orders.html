@@ -29,28 +29,6 @@
   </head>
 
   <body>
-    <!-- ====================== -->
-    <!-- ADMIN AUTH VALIDATION -->
-    <!-- ====================== -->
-    <script>
-      (function () {
-        const token = localStorage.getItem("epi_admin_token");
-        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
-
-        if (!token) {
-          window.location.href = "login.html";
-          return;
-        }
-
-        if (user.role !== "admin") {
-          localStorage.removeItem("epi_admin_token");
-          localStorage.removeItem("epi_admin_user");
-          window.location.href = "login.html";
-          return;
-        }
-      })();
-    </script>
-
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
       <div class="container-fluid">
@@ -69,7 +47,9 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               <li><a class="dropdown-item" href="profile.html">Profile</a></li>
-              <li><a class="dropdown-item" href="settings.html">Settings</a></li>
+              <li>
+                <a class="dropdown-item" href="settings.html">Settings</a>
+              </li>
               <li><hr class="dropdown-divider" /></li>
               <li><a class="dropdown-item" id="logoutBtn">Logout</a></li>
             </ul>
@@ -90,24 +70,56 @@
           <h1 class="h2">Orders Management</h1>
         </div>
 
+        <!-- ========================= -->
+        <!-- SUMMARY CARDS -->
+        <!-- ========================= -->
+        <div class="row mb-3">
+          <div class="col-md-3">
+            <div class="card shadow-sm text-center">
+              <div class="card-body">
+                <h6 class="text-muted mb-1">Active Orders</h6>
+                <h2 id="activeOrdersCount">0</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Tabs -->
         <ul class="nav nav-tabs mb-3" id="ordersTabs">
           <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#completedOrders">
+            <button
+              class="nav-link active"
+              data-bs-toggle="tab"
+              data-bs-target="#completedOrders"
+            >
               Completed Orders
             </button>
           </li>
 
           <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#completingSoon">
+            <button
+              class="nav-link"
+              data-bs-toggle="tab"
+              data-bs-target="#completingSoon"
+            >
               Completing in 3 Days
+            </button>
+          </li>
+
+          <!-- ✅ NEW TAB -->
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              data-bs-toggle="tab"
+              data-bs-target="#activeOrders"
+            >
+              Active Orders
             </button>
           </li>
         </ul>
 
         <!-- TAB CONTENT -->
         <div class="tab-content">
-
           <!-- =========================== -->
           <!-- TAB 1: COMPLETED ORDERS -->
           <!-- =========================== -->
@@ -163,6 +175,32 @@
             </div>
           </div>
 
+          <!-- =========================== -->
+          <!-- TAB 3: ACTIVE ORDERS (NEW) -->
+          <!-- =========================== -->
+          <div class="tab-pane fade" id="activeOrders">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="mb-3">Active Orders</h5>
+
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>OrderID</th>
+                        <th>User</th>
+                        <th>Product</th>
+                        <th>Paid / Total Days</th>
+                        <th>Remaining Amount</th>
+                        <th>Last Payment</th>
+                      </tr>
+                    </thead>
+                    <tbody id="activeOrdersBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
