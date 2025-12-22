@@ -73,6 +73,23 @@ const NAV_CONFIG = {
       permission: "coupons",
     },
     {
+      id: "featured_lists",
+      label: "Featured Lists",
+      icon: "bi-star-fill",
+      href: "featured-lists.html",
+      hrefFromRoot: "pages/featured-lists.html",
+      permission: "featured_lists",
+    },
+    {
+      id: "hard-delete",
+      label: "Hard Delete",
+      icon: "bi-trash3-fill",
+      href: "hard-delete.html",
+      permission: "super_admin_only",
+      danger: true,
+    },
+
+    {
       id: "orders",
       label: "Orders",
       icon: "bi-cart3",
