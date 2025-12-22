@@ -25,7 +25,8 @@ const NAV_CONFIG = {
     { id: "settings", label: "Settings", icon: "bi-gear", href: "settings.html", hrefFromRoot: "pages/settings.html", permission: "settings" },
 
     // ⭐ Super Admin Only
-    { id: "admin_management", label: "Admin Management", icon: "bi-person-gear", href: "admin-management.html", hrefFromRoot: "pages/admin-management.html", permission: "admin_management", superAdminOnly: true }
+    { id: "admin_management", label: "Admin Management", icon: "bi-person-gear", href: "admin-management.html", hrefFromRoot: "pages/admin-management.html", permission: "admin_management", superAdminOnly: true },
+    { id: "hard_delete", label: "Hard Delete", icon: "bi-trash3", href: "hard-delete.html", hrefFromRoot: "pages/hard-delete.html", permission: "hard_delete", superAdminOnly: true }
   ]
 };
 
