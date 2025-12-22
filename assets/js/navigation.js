@@ -14,6 +14,7 @@ const NAV_CONFIG = {
     { id: "kyc", label: "KYC Verification", icon: "bi-shield-check", href: "kyc.html", hrefFromRoot: "pages/kyc.html", permission: "kyc" },
     { id: "categories", label: "Categories", icon: "bi-folder-fill", href: "categories.html", hrefFromRoot: "pages/categories.html", permission: "categories" },
     { id: "products", label: "Products", icon: "bi-box-seam", href: "products.html", hrefFromRoot: "pages/products.html", permission: "products" },
+    { id: "featured-lists", label: "Featured Lists", icon: "bi-star-fill", href: "featured-lists.html", hrefFromRoot: "pages/featured-lists.html", permission: "featured_lists", superAdminOnly: true },
     { id: "uploader", label: "Image Uploader", icon: "bi-image", href: "uploader.html", hrefFromRoot: "pages/uploader.html", permission: "uploader" },
     { id: "coupons", label: "Coupons", icon: "bi-ticket-perforated", href: "coupons.html", hrefFromRoot: "pages/coupons.html", permission: "coupons" },
     { id: "orders", label: "Orders", icon: "bi-cart3", href: "#orders", hrefFromRoot: "#orders", permission: "orders" },
