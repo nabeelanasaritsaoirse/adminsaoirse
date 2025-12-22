@@ -83,10 +83,10 @@ const NAV_CONFIG = {
     {
       id: "payments",
       label: "Payments",
-      icon: "bi-credit-card",
+      icon: "bi-cash-stack",
       href: "payments.html",
       hrefFromRoot: "pages/payments.html",
-      permission: "payments", // reuse orders permission (correct at prod level)
+      permission: "payments",
     },
     {
       id: "analytics",
