@@ -1,72 +1,110 @@
-// =========================
-// CONFIG
-// =========================
-const API_BASE = window.API_BASE_URL || "https://api.epielio.com"; // from config.js
+/*********************************
+ * ORDERS ADMIN — FINAL VERSION
+ * Uses ONLY: /api/installments/admin
+ *********************************/
 
-const token = localStorage.getItem("epi_admin_token");
+/* ===============================
+   AUTH + PERMISSION GUARD
+================================ */
+(function () {
+  const REQUIRED_PERMISSION = "orders";
 
-if (!token) {
-  window.location.href = "login.html";
-}
+  if (!window.AUTH || !AUTH.getToken() || !AUTH.isAuthenticated()) {
+    window.location.href = "login.html";
+    return;
+  }
 
-// =========================
-// FETCH HELPERS
-// =========================
-async function apiGet(url) {
+  if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+    alert("Access denied");
+    window.location.href = "dashboard.html";
+  }
+})();
+
+/* ===============================
+   CONFIG
+================================ */
+const API_BASE = window.BASE_URL || "https://api.epielio.com/api";
+const ADMIN_BASE = `${API_BASE}/installments/admin`;
+
+/* ===============================
+   FETCH HELPER
+================================ */
+async function apiGet(endpoint) {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${ADMIN_BASE}${endpoint}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${AUTH.getToken()}`,
         "Content-Type": "application/json",
       },
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Request failed");
+
+    if (!res.ok) {
+      throw new Error(data.message || "Request failed");
+    }
 
     return data;
   } catch (err) {
     console.error("API ERROR:", err);
-    alert("Error: " + err.message);
+    alert(err.message);
     return null;
   }
 }
 
-// =========================
-// RENDER COMPLETED ORDERS
-// =========================
+/* ===============================
+   LOAD COMPLETED ORDERS
+================================ */
 async function loadCompletedOrders() {
   const tbody = document.getElementById("completedOrdersBody");
+  if (!tbody) return;
+
   tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
 
-  const response = await apiGet(`${API_BASE}/api/admin/orders/completed`);
-  if (!response || !response.orders) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Failed to load orders</td></tr>`;
+  const response = await apiGet("/orders/completed");
+  if (!response || !response.data?.orders) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load orders</td></tr>`;
     return;
   }
 
-  const orders = response.orders;
+  const orders = response.data.orders;
 
   if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No completed orders</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No completed orders</td></tr>`;
     return;
   }
 
   tbody.innerHTML = "";
 
-  orders.forEach(order => {
-    const tr = document.createElement("tr");
+  orders.forEach((order) => {
+    const user = order.user || {};
 
+    const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${order.orderId}</td>
-      <td>${order.user?.name || "N/A"}<br><small>${order.user?.phoneNumber || "-"}</small></td>
-      <td>${order.productName}</td>
-      <td>₹${order.totalPaidAmount}</td>
-      <td>${new Date(order.completedAt).toLocaleDateString()}</td>
 
       <td>
-        <button class="btn btn-sm btn-outline-primary" onclick="downloadShippingLabel('${order.orderId}')">
-          <i class="bi bi-printer"></i> Label
+        ${user.name || "Deleted User"}
+        <br>
+        <small class="text-muted">${user.phoneNumber || "-"}</small>
+      </td>
+
+      <td>${order.productName || order.product?.name || "-"}</td>
+
+      <td>₹${order.totalPaidAmount || 0}</td>
+
+      <td>
+        ${
+          order.completedAt
+            ? new Date(order.completedAt).toLocaleDateString()
+            : "-"
+        }
+      </td>
+
+      <td>
+        <button class="btn btn-sm btn-outline-primary"
+          onclick="viewOrder('${order.orderId}')">
+          View
         </button>
       </td>
     `;
@@ -75,42 +113,70 @@ async function loadCompletedOrders() {
   });
 }
 
-// =========================
-// RENDER COMPLETING SOON ORDERS
-// =========================
+/* ===============================
+   LOAD COMPLETING SOON ORDERS
+================================ */
 async function loadCompletingSoonOrders() {
   const tbody = document.getElementById("completingSoonBody");
+  if (!tbody) return;
+
   tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3">Loading...</td></tr>`;
 
-  const response = await apiGet(`${API_BASE}/api/admin/orders/completing-soon`);
-  if (!response || !response.orders) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load orders</td></tr>`;
+  const response = await apiGet("/orders/all");
+  if (!response || !response.data?.orders) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">Failed to load orders</td></tr>`;
     return;
   }
 
-  const orders = response.orders;
+  const orders = response.data.orders.filter((order) => {
+    if (order.status !== "ACTIVE") return false;
+
+    const totalDays = order.totalDays || 0;
+    const paid = order.paidInstallments || 0;
+    const remaining = totalDays - paid;
+
+    return remaining > 0 && remaining <= 3;
+  });
 
   if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No orders completing soon</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-muted text-center">No orders completing soon</td></tr>`;
     return;
   }
 
   tbody.innerHTML = "";
 
-  orders.forEach(order => {
-    const tr = document.createElement("tr");
+  orders.forEach((order) => {
+    const user = order.user || {};
+    const lastSchedule = order.paymentSchedule?.slice(-1)[0];
 
+    const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${order.orderId}</td>
-      <td>${order.user?.name || "N/A"}<br><small>${order.user?.phoneNumber || "-"}</small></td>
-      <td>${order.productName}</td>
-      <td>${order.remainingInstallments}</td>
-      <td>${new Date(order.lastDueDate).toLocaleDateString()}</td>
-      <td>₹${order.remainingAmount}</td>
 
       <td>
-        <button class="btn btn-sm btn-success" onclick="prepareShipping('${order.orderId}')">
-          <i class="bi bi-box-arrow-up"></i> Prepare
+        ${user.name || "Deleted User"}
+        <br>
+        <small class="text-muted">${user.phoneNumber || "-"}</small>
+      </td>
+
+      <td>${order.productName || order.product?.name || "-"}</td>
+
+      <td>${(order.totalDays || 0) - (order.paidInstallments || 0)}</td>
+
+      <td>
+        ${
+          lastSchedule?.dueDate
+            ? new Date(lastSchedule.dueDate).toLocaleDateString()
+            : "-"
+        }
+      </td>
+
+      <td>₹${order.remainingAmount || 0}</td>
+
+      <td>
+        <button class="btn btn-sm btn-success"
+          onclick="viewOrder('${order.orderId}')">
+          Prepare
         </button>
       </td>
     `;
@@ -118,50 +184,69 @@ async function loadCompletingSoonOrders() {
     tbody.appendChild(tr);
   });
 }
+async function loadActiveOrders() {
+  const tbody = document.getElementById("activeOrdersBody");
+  const countBox = document.getElementById("activeOrdersCount");
 
-// =========================
-// DOWNLOAD SHIPPING LABEL
-// =========================
-async function downloadShippingLabel(orderId) {
-  const response = await apiGet(`${API_BASE}/api/admin/orders/${orderId}/shipping-label`);
+  if (!tbody) return;
 
-  if (!response || !response.label) {
-    alert("Failed to get label");
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
+
+  const response = await apiGet("/orders/all");
+  if (!response || !response.data?.orders) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load</td></tr>`;
     return;
   }
 
-  const label = response.label;
+  const activeOrders = response.data.orders.filter(
+    (order) => order.status === "ACTIVE" && order.paidInstallments > 0
+  );
 
-  let text =
-    `Order ID: ${label.orderId}\n` +
-    `Name: ${label.name}\n` +
-    `Phone: ${label.phone}\n` +
-    `Product: ${label.productName}\n` +
-    `Address:\n${label.address}\n\n` +
-    `Total Paid: ₹${label.amountPaid}`;
+  // Update card count
+  if (countBox) countBox.innerText = activeOrders.length;
 
-  const blob = new Blob([text], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
+  if (activeOrders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No active orders</td></tr>`;
+    return;
+  }
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ShippingLabel_${label.orderId}.txt`;
-  a.click();
+  tbody.innerHTML = "";
 
-  URL.revokeObjectURL(url);
+  activeOrders.forEach((order) => {
+    const user = order.user || {};
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${order.orderId}</td>
+      <td>${user.name || "Deleted User"}</td>
+      <td>${order.productName || "-"}</td>
+      <td>${order.paidInstallments}/${order.totalDays}</td>
+      <td>₹${order.remainingAmount}</td>
+      <td>
+        ${
+          order.lastPaymentDate
+            ? new Date(order.lastPaymentDate).toLocaleDateString()
+            : "-"
+        }
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
 }
 
-// =========================
-// PREPARE SHIPPING (placeholder)
-// =========================
-function prepareShipping(orderId) {
-  alert(`Shipping preparation for Order: ${orderId} (Feature to implement later)`);
+/* ===============================
+   VIEW ORDER
+================================ */
+function viewOrder(orderId) {
+  window.location.href = `order-details.html?orderId=${orderId}`;
 }
 
-// =========================
-// INITIAL LOAD
-// =========================
+/* ===============================
+   INIT
+================================ */
 document.addEventListener("DOMContentLoaded", () => {
   loadCompletedOrders();
   loadCompletingSoonOrders();
+  loadActiveOrders();
 });
