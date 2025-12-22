@@ -94,6 +94,22 @@ const API_CONFIG = {
       uploadImage: "/products/:productId/upload-image",
       deleteImage: "/products/:productId/image/:imageId",
     },
+    featuredLists: {
+      getAll: "/featured-lists/admin/lists",
+      getById: "/featured-lists/admin/lists/:listId",
+      create: "/featured-lists/admin/lists",
+      update: "/featured-lists/admin/lists/:listId",
+      delete: "/featured-lists/admin/lists/:listId",
+
+      addProduct: "/featured-lists/admin/lists/:listId/products",
+      removeProduct: "/featured-lists/admin/lists/:listId/products/:productId",
+
+      reorderProducts: "/featured-lists/admin/lists/:listId/reorder",
+
+      syncProduct:
+        "/featured-lists/admin/lists/:listId/products/:productId/sync",
+      syncAllProducts: "/featured-lists/admin/lists/:listId/sync-all",
+    },
 
     about: {
       getAll: "/about/admin/all",
