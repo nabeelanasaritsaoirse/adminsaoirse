@@ -160,6 +160,9 @@ async function loadProducts() {
       page: window.pagination.page,
       limit: window.pagination.limit,
       region: "global",
+
+      // 🔥 CRITICAL FIX
+      showDeleted: false, // force-hide deleted products in list
     };
 
     if (searchInput?.value.trim()) qp.search = searchInput.value.trim();
@@ -176,7 +179,9 @@ async function loadProducts() {
     const res = await API.get("/products/admin/all", {}, qp);
     const data = Array.isArray(res?.data) ? res.data : [];
 
-    window.products = data.map(normalizeProduct);
+    window.products = data
+      .filter((p) => p.isDeleted !== true)
+      .map(normalizeProduct);
 
     if (res?.pagination) {
       window.pagination.page = res.pagination.current || 1;

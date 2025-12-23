@@ -2,6 +2,31 @@
    product.form.js
    Product Add / Edit (PAGE ONLY — NO MODALS)
 ============================================================ */
+function showProductSuccess(message) {
+  const modalEl = document.getElementById("productSuccessModal");
+  const msgEl = document.getElementById("productSuccessMessage");
+  const okBtn = document.getElementById("productSuccessOkBtn");
+
+  if (!modalEl || !msgEl || !okBtn) {
+    alert(message); // fallback
+    window.location.href = "./products.html";
+    return;
+  }
+
+  msgEl.textContent = message;
+
+  const modal = new bootstrap.Modal(modalEl, {
+    backdrop: "static",
+    keyboard: false,
+  });
+
+  okBtn.onclick = () => {
+    modal.hide();
+    window.location.href = "./products.html";
+  };
+
+  modal.show();
+}
 
 /* ================= DOM REFERENCES ================= */
 
@@ -128,7 +153,10 @@ function initProductFormDOM() {
     isGlobalProductCheckbox.addEventListener("change", () => {
       if (isGlobalProductCheckbox.checked) {
         regionalSettingsSection.classList.add("d-none");
-        document.getElementById("regionalSettingsTableBody").innerHTML = "";
+        // ❌ DO NOT WIPE TABLE ON EDIT
+        if (!window.currentProductId) {
+          document.getElementById("regionalSettingsTableBody").innerHTML = "";
+        }
       } else {
         regionalSettingsSection.classList.remove("d-none");
         buildRegionalRowsFromConfig(
@@ -368,18 +396,44 @@ async function uploadTempImages() {
 }
 
 async function uploadPrimaryProductImages(productId) {
-  if (!window.selectedImageFiles || !window.selectedImageFiles.length) return;
+  // 🔒 No files selected → nothing to upload (safe exit)
+  if (
+    !window.selectedImageFiles ||
+    !Array.isArray(window.selectedImageFiles) ||
+    window.selectedImageFiles.length === 0
+  ) {
+    return;
+  }
 
   const formData = new FormData();
-  window.selectedImageFiles.forEach((f) => formData.append("images", f));
 
-  await fetch(`${window.BASE_URL}/products/${productId}/images`, {
+  window.selectedImageFiles.forEach((file) => {
+    formData.append("images", file);
+  });
+
+  const res = await fetch(`${window.BASE_URL}/products/${productId}/images`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${AUTH.getToken()}`,
+      // ❌ DO NOT set Content-Type (browser handles boundary)
     },
     body: formData,
   });
+
+  let json;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("Invalid response from image upload API");
+  }
+
+  if (!res.ok || json?.success === false) {
+    console.error("❌ Primary image upload failed:", json);
+    throw new Error(json?.message || "Primary product image upload failed");
+  }
+
+  // ✅ Upload succeeded — clear local selection
+  window.selectedImageFiles = [];
 }
 
 async function uploadVariantImages(productId, variantsFromBackend) {
@@ -630,9 +684,19 @@ async function editProduct(productId) {
       .querySelector(`input[name="status"][value="${product.status}"]`)
       ?.click();
 
-    ["isFeatured", "isPopular", "isBestSeller", "isTrending"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.checked = !!product[id];
+    /* ================= PRODUCT FLAGS (FIXED) ================= */
+
+    const flagBindings = [
+      { id: "isFeatured", value: product.isFeatured },
+      { id: "isPopular", value: product.isPopular },
+      { id: "isBestSeller", value: product.isBestSeller },
+      { id: "isTrending", value: product.isTrending },
+    ];
+
+    flagBindings.forEach(({ id, value }) => {
+      const checkbox = document.getElementById(id);
+      if (!checkbox) return;
+      checkbox.checked = Boolean(value);
     });
 
     /* ================= EXTRA ================= */
@@ -724,6 +788,29 @@ async function editProduct(productId) {
 
         // 1️⃣ Build rows from backend data
         buildRegionalRowsFromConfig(product);
+        /* ================= FORCE REGIONAL CHECKBOX SYNC ================= */
+
+        if (Array.isArray(product.regionalAvailability)) {
+          product.regionalAvailability.forEach((ra) => {
+            const row = [
+              ...document.querySelectorAll("#regionalSettingsTableBody tr"),
+            ].find((r) => {
+              const uiRegion = r
+                .querySelector(".regional-region")
+                ?.value?.toLowerCase();
+              const apiRegion = ra.region?.toLowerCase();
+              return uiRegion === apiRegion;
+            });
+
+            if (!row) return;
+
+            const checkbox = row.querySelector(".regional-available");
+            if (checkbox) {
+              checkbox.checked = ra.isAvailable === true;
+              checkbox.dispatchEvent(new Event("change"));
+            }
+          });
+        }
 
         // 2️⃣ Restore regional SEO
         if (Array.isArray(product.regionalSeo)) {
@@ -742,9 +829,6 @@ async function editProduct(productId) {
               seo.metaDescription || "";
           });
         }
-
-        // 3️⃣ Final UI sync
-        setRegionalUIState(false);
       }
     }
   } catch (err) {
@@ -851,8 +935,6 @@ function buildProductPayload() {
         }
       : { enabled: false },
 
-    plans: collectPlansFromDOM(),
-
     seo: {
       metaTitle: productMetaTitle.value.trim(),
       metaDescription: productMetaDescription.value.trim(),
@@ -868,13 +950,42 @@ function buildProductPayload() {
     isGlobalProduct: isGlobal,
   };
 
-  /* ================= VARIANTS (SAFE LOGIC) ================= */
+  /* ================= HARD VALIDATION ================= */
+
+  if (!payload.pricing.regularPrice || payload.pricing.regularPrice <= 0) {
+    throw new Error("Regular price is required");
+  }
+
+  /* ================= PRODUCT FLAGS ================= */
+
+  ["isFeatured", "isPopular", "isBestSeller", "isTrending"].forEach((flag) => {
+    const el = document.getElementById(flag);
+    payload[flag] = el ? el.checked === true : false;
+  });
+
+  /* ================= VARIANTS ================= */
 
   if (!window.currentProductId) {
     // CREATE → send variants
     payload.variants = collectVariantsFromDOM();
   }
-  // UPDATE (image-only) → DO NOT send variants
+
+  /* ================= PLANS ================= */
+
+  if (!window.currentProductId) {
+    // CREATE only
+    payload.plans = collectPlansFromDOM();
+  }
+
+  /* ================= IMAGES ================= */
+
+  // 🔥 Required for UPDATE flow
+  /* ================= PRODUCT IMAGES ================= */
+
+  payload.images = (window.tempUploadedImages || []).map((img) => ({
+    url: img.url || img.location || img.tempUrl,
+    key: img.key || img.filename || "",
+  }));
 
   /* ================= REGIONAL ================= */
 
@@ -1101,34 +1212,58 @@ async function saveProduct() {
   try {
     showLoading(true);
 
+    /* ================= FIX GLOBAL vs REGIONAL ================= */
+
+    // If any region is checked, product cannot be global
+    const anyRegionChecked = document.querySelector(
+      "#regionalSettingsTableBody .regional-available:checked"
+    );
+
+    if (anyRegionChecked && isGlobalProductCheckbox?.checked) {
+      isGlobalProductCheckbox.checked = false;
+    }
+
     let payload = buildProductPayload();
 
+    /* ================= 🔒 HARD SAFETY: PRODUCT FLAGS ================= */
+    // Never allow flags to be dropped or coerced incorrectly
+    ["isFeatured", "isPopular", "isBestSeller", "isTrending"].forEach(
+      (flag) => {
+        payload[flag] = payload[flag] === true;
+      }
+    );
+
     /* ================= UPDATE ================= */
+
     if (window.currentProductId) {
-      // 🔒 If only images were uploaded, never resend variants
       if (window.hasUploadedVariantImages) {
         delete payload.variants;
       }
 
-      // 1️⃣ Update product (metadata only)
+      // 1️⃣ Update product data (NO image mutation here)
       await API.put("/products/:productId", payload, {
         productId: window.currentProductId,
       });
 
-      // 2️⃣ 🔥 REFETCH PRODUCT (CRITICAL FIX)
+      // 2️⃣ Upload PRIMARY product images (🔥 MISSING STEP)
+      await uploadPrimaryProductImages(window.currentProductId);
+
+      // 3️⃣ Refetch product to get variantIds
       const fresh = await API.get("/products/:productId", {
         productId: window.currentProductId,
       });
 
-      showNotification("Product updated successfully", "success");
+      // 4️⃣ Upload VARIANT images
+      if (fresh?.data?.variants?.length) {
+        await uploadVariantImages(window.currentProductId, fresh.data.variants);
+      }
 
-      // 3️⃣ 🔥 Rebind UI with latest backend data (variant images included)
-      await editProduct(fresh.data.productId);
-
+      showProductSuccess("Product Updated Successfully");
       return;
     }
 
     /* ================= CREATE ================= */
+
     const res = await API.post("/products", payload);
     const createdProduct = res?.data;
 
@@ -1149,11 +1284,7 @@ async function saveProduct() {
       await uploadVariantImages(productId, fresh.data.variants);
     }
 
-    showNotification("Product created successfully", "success");
-
-    setTimeout(() => {
-      window.location.href = "./products.html";
-    }, 500);
+    showProductSuccess("Product Created Successfully");
   } catch (err) {
     console.error("Save failed:", err);
     showNotification(err.message || "Save failed", "error");
@@ -1165,6 +1296,9 @@ async function saveProduct() {
 /* ================= PAGE INIT ================= */
 
 function initAddProductPage() {
+  // ✅ ADD MODE
+  window.__IS_EDIT_MODE__ = false;
+
   // 🔥 FULL RESET — prevents duplicate SKU / ID bugs
   window.currentProductId = null;
   window.existingImages = [];
@@ -1179,6 +1313,7 @@ function initAddProductPage() {
 
   loadCategories();
   createDefaultPlans(true);
+
   const saveBtn = document.getElementById("saveProductBtn");
   if (saveBtn) {
     saveBtn.addEventListener("click", saveProduct);
@@ -1186,6 +1321,9 @@ function initAddProductPage() {
 }
 
 async function initEditProductPage() {
+  // ✅ EDIT MODE (CRITICAL)
+  window.__IS_EDIT_MODE__ = true;
+
   initProductFormDOM();
 
   const saveBtn = document.getElementById("saveProductBtn");
@@ -1195,6 +1333,7 @@ async function initEditProductPage() {
 
   const id = new URLSearchParams(location.search).get("id");
   if (!id) return alert("Missing product id");
+
   await editProduct(id);
 }
 
