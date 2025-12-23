@@ -108,6 +108,9 @@ function initializeDOMElements() {
   statusFilter = document.getElementById("filterStatus");
   variantsFilter = document.getElementById("filterVariants");
 
+  // ✅ NEW: Category filter element
+  categoryFilter = document.getElementById("productCategoryFilter");
+
   productsContainer = document.getElementById("productsContainer");
   productForm = document.getElementById("productForm");
 
@@ -179,8 +182,12 @@ function setupEventListeners() {
         ? window.utils.debounce(filterProducts, 300)
         : debounce(filterProducts, 300)
     );
+
   if (statusFilter) statusFilter.addEventListener("change", filterProducts);
   if (variantsFilter) variantsFilter.addEventListener("change", filterProducts);
+
+  // ✅ NEW — category filter listener
+  if (categoryFilter) categoryFilter.addEventListener("change", filterProducts);
 
   const addProductBtn = document.getElementById("addProductBtn");
   if (addProductBtn) {
@@ -226,12 +233,10 @@ function setupEventListeners() {
       if (this.checked) {
         regionalSettingsSection.classList.add("d-none");
         regionalSettingsSection.style.display = "none";
-
         buildRegionalRowsFromConfig(null, false, true);
       } else {
         regionalSettingsSection.classList.remove("d-none");
         regionalSettingsSection.style.display = "block";
-
         buildRegionalRowsFromConfig(null, true, false);
       }
     });
@@ -253,43 +258,75 @@ async function loadCategories() {
   try {
     const response = await API.get("/categories/dropdown/all", {}, {});
     const categorySelect = document.getElementById("productCategory");
-    if (!categorySelect) return;
+    const categoryFilter = document.getElementById("productCategoryFilter");
 
     let categories = [];
+
     if (response && response.success !== false) {
-      if (response.data && Array.isArray(response.data)) {
+      if (Array.isArray(response.data)) {
         categories = response.data;
       } else if (Array.isArray(response)) {
         categories = response;
       }
     }
 
-    categorySelect.innerHTML = '<option value="">Select Category</option>';
-    categories.forEach((cat) => {
-      const option = document.createElement("option");
-      option.value = cat._id || cat.id || cat.categoryId;
-      option.textContent = cat.name || cat.categoryName;
-      option.setAttribute("data-category-name", cat.name || cat.categoryName);
-      categorySelect.appendChild(option);
+    // ---------- RESET BOTH DROPDOWNS ----------
+    if (categorySelect)
+      categorySelect.innerHTML = '<option value="">Select Category</option>';
 
-      if (cat.subCategories && Array.isArray(cat.subCategories)) {
+    if (categoryFilter)
+      categoryFilter.innerHTML = '<option value="">All Categories</option>';
+
+    // ---------- POPULATE CATEGORY OPTIONS ----------
+    categories.forEach((cat) => {
+      const id = cat._id || cat.id || cat.categoryId;
+      const name = cat.name || cat.categoryName;
+
+      // MAIN CATEGORY for form
+      if (categorySelect) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = name;
+        option.setAttribute("data-category-name", name);
+        categorySelect.appendChild(option);
+      }
+
+      // MAIN CATEGORY for filter
+      if (categoryFilter) {
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = name;
+        option.setAttribute("data-category-name", name);
+        categoryFilter.appendChild(option);
+      }
+
+      // ---------- SUBCATEGORIES ----------
+      if (Array.isArray(cat.subCategories)) {
         cat.subCategories.forEach((subCat) => {
-          const subOption = document.createElement("option");
-          subOption.value = subCat._id || subCat.id || subCat.categoryId;
-          subOption.textContent = `  → ${subCat.name || subCat.categoryName}`;
-          subOption.setAttribute(
-            "data-category-name",
-            subCat.name || subCat.categoryName
-          );
-          subOption.setAttribute(
-            "data-parent-id",
-            cat._id || cat.id || cat.categoryId
-          );
-          subOption.setAttribute(
-            "data-parent-name",
-            cat.name || cat.categoryName
-          );
-          categorySelect.appendChild(subOption);
+          const subId = subCat._id || subCat.id || subCat.categoryId;
+          const subName = subCat.name || subCat.categoryName;
+
+          // FORM SUBCATEGORY
+          if (categorySelect) {
+            const subOption = document.createElement("option");
+            subOption.value = subId;
+            subOption.textContent = `→ ${subName}`;
+            subOption.setAttribute("data-category-name", subName);
+            subOption.setAttribute("data-parent-id", id);
+            subOption.setAttribute("data-parent-name", name);
+            categorySelect.appendChild(subOption);
+          }
+
+          // FILTER SUBCATEGORY (IMPORTANT: add parent info)
+          if (categoryFilter) {
+            const subOption = document.createElement("option");
+            subOption.value = subId;
+            subOption.textContent = `→ ${subName}`;
+            subOption.setAttribute("data-category-name", subName);
+            subOption.setAttribute("data-parent-id", id);
+            subOption.setAttribute("data-parent-name", name);
+            categoryFilter.appendChild(subOption);
+          }
         });
       }
     });
@@ -320,6 +357,20 @@ async function loadProducts() {
 
     if (variantsFilter && variantsFilter.value !== "") {
       queryParams.hasVariants = variantsFilter.value;
+    }
+
+    // CATEGORY FILTER FIX (main vs sub)
+    const categoryFilter = document.getElementById("productCategoryFilter");
+    if (categoryFilter && categoryFilter.value) {
+      const selectedOption =
+        categoryFilter.options[categoryFilter.selectedIndex];
+      const parentId = selectedOption.getAttribute("data-parent-id");
+
+      if (parentId) {
+        queryParams.subCategoryId = categoryFilter.value;
+      } else {
+        queryParams.mainCategoryId = categoryFilter.value;
+      }
     }
 
     const response = await API.get("/products/admin/all", {}, queryParams);
@@ -434,12 +485,12 @@ async function loadProducts() {
 function updateStats(totalOverride) {
   const total =
     typeof totalOverride === "number" ? totalOverride : products.length;
+
   const published = products.filter((p) => p.status === "published").length;
   const withVariants = products.filter((p) => p.hasVariants).length;
+
+  // ✅ FIX: Always use main availability stockQuantity
   const totalStock = products.reduce((sum, p) => {
-    if (p.hasVariants && p.variants.length > 0) {
-      return sum + p.variants.reduce((vsum, v) => vsum + (v.stock || 0), 0);
-    }
     return sum + (p.availability?.stockQuantity || 0);
   }, 0);
 
@@ -573,10 +624,8 @@ function renderProductCard(product) {
       ? `<span class="badge bg-warning me-2">${product.variants.length} variants</span>`
       : "";
 
-  const stock =
-    product.hasVariants && product.variants.length > 0
-      ? product.variants.reduce((sum, v) => sum + (v.stock || 0), 0)
-      : product.availability?.stockQuantity || 0;
+  // ✅ FIX: Always show main stock from availability
+  const stock = product.availability?.stockQuantity ?? 0;
 
   return `
         <div class="card mb-3 product-card">
@@ -625,6 +674,8 @@ function renderProductCard(product) {
                               product.pricing?.regularPrice ||
                               0
                             ).toFixed(2)}</div>
+
+                            <!-- ✅ FIXED STOCK DISPLAY -->
                             <small class="text-muted">Stock: <strong>${stock}</strong></small>
                         </div>
                         <small class="d-block text-muted mb-3">${
@@ -658,14 +709,18 @@ function renderProductCard(product) {
 
 /* ---------- Modal / CRUD / Image Upload ---------- */
 
-function handleImageSelect(e) {
+let isUploadingImages = false;
+
+async function handleImageSelect(e) {
   const files = e.target.files;
   selectedImageFiles = Array.from(files);
 
   if (!imagePreviewContainer) return;
 
+  // Clear preview
+  imagePreviewContainer.innerHTML = "";
+
   if (selectedImageFiles.length === 0) {
-    imagePreviewContainer.innerHTML = "";
     return;
   }
 
@@ -674,8 +729,7 @@ function handleImageSelect(e) {
     selectedImageFiles = selectedImageFiles.slice(0, 10);
   }
 
-  imagePreviewContainer.innerHTML = "";
-
+  // Show preview immediately
   selectedImageFiles.forEach((file, index) => {
     const reader = new FileReader();
     reader.onload = function (e) {
@@ -684,7 +738,9 @@ function handleImageSelect(e) {
       col.innerHTML = `
         <div class="position-relative">
           <img src="${e.target.result}" class="img-thumbnail" alt="Preview">
-          <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0" onclick="removeImagePreview(${index})">
+          <button type="button" 
+                  class="btn btn-sm btn-danger position-absolute top-0 end-0" 
+                  onclick="removeImagePreview(${index})">
             <i class="bi bi-x"></i>
           </button>
           ${
@@ -698,6 +754,55 @@ function handleImageSelect(e) {
     };
     reader.readAsDataURL(file);
   });
+
+  // ---------------------------
+  //  START UPLOADING IMAGES
+  // ---------------------------
+  const saveBtn = document.getElementById("saveProductBtn");
+
+  isUploadingImages = true;
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Uploading Images...";
+  }
+
+  try {
+    const formData = new FormData();
+    selectedImageFiles.forEach((file) => formData.append("images", file));
+
+    const uploadUrl = `${window.BASE_URL}/uploads/temp-images`;
+
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AUTH.getToken()}`,
+      },
+      body: formData,
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      showNotification("Image upload failed. Try again.", "error");
+    } else {
+      showNotification("Images uploaded successfully", "success");
+
+      // Store uploaded image URLs temporarily
+      window.tempUploadedImages = result.data || [];
+    }
+  } catch (err) {
+    console.error("Image upload error:", err);
+    showNotification("Image upload error", "error");
+  }
+
+  // ---------------------------
+  //  UPLOAD FINISHED
+  // ---------------------------
+  isUploadingImages = false;
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Product";
+  }
 }
 
 function removeImagePreview(index) {
@@ -776,26 +881,32 @@ async function uploadVariantImages(
 
     for (let i = 0; i < variantImageFiles.length; i++) {
       const { variantIndex, file } = variantImageFiles[i];
-      const variant = createdVariants && createdVariants[variantIndex];
+      const variant = createdVariants?.[variantIndex];
+
       if (!variant || !variant.variantId) {
+        console.warn("❌ No variantId for index:", variantIndex);
         failedCount++;
         continue;
       }
 
       const formData = new FormData();
       formData.append("images", file);
-      formData.append("altText", "Variant image");
+      formData.append("altText", `Variant ${variant.variantId} image`);
+
+      // optional — safe even if backend ignores it
+      formData.append("variantId", variant.variantId);
 
       try {
         const url = `${window.BASE_URL}/products/${productId}/variants/${variant.variantId}/images`;
+
         const response = await fetch(url, {
           method: "PUT",
-          headers: {
-            Authorization: `Bearer ${AUTH.getToken()}`,
-          },
+          headers: { Authorization: `Bearer ${AUTH.getToken()}` },
           body: formData,
         });
+
         const result = await response.json();
+
         if (result.success) {
           uploadedCount++;
         } else {
@@ -825,15 +936,20 @@ async function uploadVariantImages(
 
 function addPlanField() {
   planCount++;
+
   const html = `
     <div class="card mb-2" id="plan-${planCount}">
       <div class="card-body">
+
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Plan ${planCount}</strong>
           <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
             <i class="bi bi-trash"></i>
           </button>
         </div>
+
+        <div class="text-danger small mb-2" data-plan-error style="display:none;"></div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Plan Name *</label>
@@ -841,112 +957,391 @@ function addPlanField() {
           </div>
           <div class="col-md-6">
             <label class="form-label">Days *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-days min="1" placeholder="e.g., 30" required />
+            <input type="number" class="form-control form-control-sm" data-plan-days min="5" placeholder="Minimum 5 days" required />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Per Day Amount (₹) *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-amount min="0" step="0.01" placeholder="e.g., 1500" required />
+            <input type="number" class="form-control form-control-sm" data-plan-amount min="50" step="0.01" placeholder="Min ₹50" required />
           </div>
           <div class="col-md-6">
             <label class="form-label">Total Amount (₹)</label>
             <input type="number" class="form-control form-control-sm" data-plan-total readonly placeholder="Auto-calculated" />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-12">
             <label class="form-label">Description (Optional)</label>
             <input type="text" class="form-control form-control-sm" data-plan-description placeholder="e.g., Pay in 30 days" />
           </div>
         </div>
+
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" data-plan-recommended />
+          <input class="form-check-input plan-recommended-checkbox" type="checkbox" data-plan-recommended />
           <label class="form-check-label">Recommended Plan</label>
         </div>
+
       </div>
     </div>
   `;
+
   plansList.insertAdjacentHTML("beforeend", html);
 
   const card = document.getElementById(`plan-${planCount}`);
   const daysInput = card.querySelector("[data-plan-days]");
   const amountInput = card.querySelector("[data-plan-amount]");
   const totalInput = card.querySelector("[data-plan-total]");
+  const errorBox = card.querySelector("[data-plan-error]");
+  const recommendedInput = card.querySelector("[data-plan-recommended]");
 
-  const calculateTotal = () => {
-    const days = parseFloat(daysInput.value) || 0;
-    const amount = parseFloat(amountInput.value) || 0;
-    totalInput.value = (days * amount).toFixed(2);
+  const getSalePrice = () => {
+    const sale = parseFloat(document.getElementById("productSalePrice")?.value);
+    const regular = parseFloat(document.getElementById("productPrice")?.value);
+    return !isNaN(sale) && sale > 0 ? sale : regular || 0;
   };
 
-  daysInput.addEventListener("input", calculateTotal);
-  amountInput.addEventListener("input", calculateTotal);
+  const recalc = () => {
+    const days = parseFloat(daysInput.value) || 0;
+    const perDay = parseFloat(amountInput.value) || 0;
+
+    // hide error by default
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+
+    // If incomplete, don't validate; clear total
+    if (days === 0 || perDay === 0) {
+      totalInput.value = "";
+      return;
+    }
+
+    // Rule checks
+    if (days < 5) {
+      errorBox.textContent = "Days cannot be less than 5.";
+      errorBox.style.display = "block";
+    }
+    if (perDay < 50) {
+      errorBox.textContent = "Per-day amount cannot be less than ₹50.";
+      errorBox.style.display = "block";
+    }
+
+    // Auto-calc total = days * perDay
+    totalInput.value = (days * perDay).toFixed(2);
+  };
+
+  daysInput.addEventListener("input", recalc);
+  amountInput.addEventListener("input", recalc);
+
+  // Only ONE recommended plan at a time
+  recommendedInput.addEventListener("change", () => {
+    if (recommendedInput.checked) {
+      document.querySelectorAll(".plan-recommended-checkbox").forEach((cb) => {
+        if (cb !== recommendedInput) cb.checked = false;
+      });
+    }
+  });
 }
 
 function removePlanField(idx) {
-  document.getElementById(`plan-${idx}`)?.remove();
+  const card = document.getElementById(`plan-${idx}`);
+  if (card) card.remove();
+
+  // Rebuild plan indexes
+  const allPlans = Array.from(document.querySelectorAll('[id^="plan-"]'));
+
+  planCount = allPlans.length; // update global count
+
+  allPlans.forEach((card, newIndex) => {
+    const oldId = card.id;
+    const newId = `plan-${newIndex + 1}`;
+
+    // Update ID
+    card.id = newId;
+
+    // Update title "Plan X"
+    const title = card.querySelector("strong");
+    if (title) title.textContent = `Plan ${newIndex + 1}`;
+
+    // Update delete button onclick
+    const btn = card.querySelector("button.btn-outline-danger");
+    if (btn) btn.setAttribute("onclick", `removePlanField(${newIndex + 1})`);
+  });
+
+  // Enforce rule: only 1 recommended plan allowed
+  const recommendedBoxes = document.querySelectorAll(
+    ".plan-recommended-checkbox"
+  );
+
+  let firstChecked = null;
+  recommendedBoxes.forEach((box) => {
+    if (box.checked) {
+      if (!firstChecked) firstChecked = box;
+      else box.checked = false; // uncheck others
+    }
+  });
+}
+
+/* ---------------- Existing Image Loader (GLOBAL) ---------------- */
+
+function loadExistingImages(images = []) {
+  if (!imagePreviewContainer) return;
+
+  // Reset preview
+  imagePreviewContainer.innerHTML = "";
+  selectedImageFiles = []; // <-- Important so new uploads don't mix with old ones
+
+  if (!Array.isArray(images) || images.length === 0) {
+    window.existingImages = [];
+    return;
+  }
+
+  window.existingImages = images;
+
+  images.forEach((img, index) => {
+    const col = document.createElement("div");
+    col.className = "col-md-2";
+
+    col.innerHTML = `
+      <div class="position-relative">
+        <img src="${img.url}" class="img-thumbnail" alt="Preview">
+
+        <button type="button"
+                class="btn btn-sm btn-danger position-absolute top-0 end-0"
+                onclick="removeExistingImage(${index})">
+          <i class="bi bi-x"></i>
+        </button>
+
+        ${
+          img.isPrimary
+            ? '<span class="badge bg-primary position-absolute bottom-0 start-0 m-1">Primary</span>'
+            : ""
+        }
+      </div>
+    `;
+
+    imagePreviewContainer.appendChild(col);
+  });
+}
+
+function removeExistingImage(index) {
+  if (!window.existingImages) return;
+
+  window.existingImages.splice(index, 1); // remove from array
+  loadExistingImages(window.existingImages); // rebuild preview
 }
 
 /* ---------- Modal Functions ---------- */
 
 function openAddProductModal() {
+  if (currentProductId) return;
+
   currentProductId = null;
   variantCount = 0;
   planCount = 0;
+
   selectedImageFiles = [];
+  window.existingImages = [];
 
   if (productForm) productForm.reset();
 
   const titleEl = document.getElementById("productModalLabel");
   if (titleEl) titleEl.textContent = "Add Product";
 
+  // Reset variants
   if (hasVariantsCheckbox) hasVariantsCheckbox.checked = false;
   if (variantsSection) {
     variantsSection.classList.add("d-none");
     variantsSection.style.display = "none";
   }
   if (variantsList) variantsList.innerHTML = "";
+
+  // Reset plans area
   if (plansList) plansList.innerHTML = "";
+
+  // -----------------------------------------
+  // AUTO-ADD DEFAULT 10 / 20 / 30 DAY PLANS (marked data-auto="true")
+  // -----------------------------------------
+  const defaultPlans = [10, 20, 30];
+
+  const getSalePrice = () => {
+    const sale = parseFloat(document.getElementById("productSalePrice")?.value);
+    const regular = parseFloat(document.getElementById("productPrice")?.value);
+    return !isNaN(sale) && sale > 0 ? sale : regular || 0;
+  };
+
+  defaultPlans.forEach((days) => {
+    planCount++;
+
+    // if sale/regular present, compute perDay else empty
+    const salePrice = getSalePrice();
+    const perDay = salePrice > 0 ? (salePrice / days).toFixed(2) : "";
+    const total = salePrice > 0 ? salePrice.toFixed(2) : "";
+
+    const html = `
+      <div class="card mb-2" id="plan-${planCount}" data-auto="true">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Plan ${planCount}</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+
+          <div class="text-danger small mb-2" data-plan-error style="display:none;"></div>
+
+          <div class="row mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Plan Name *</label>
+              <input type="text" class="form-control form-control-sm" data-plan-name value="${days}-Day Plan" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Days *</label>
+              <input type="number" class="form-control form-control-sm" data-plan-days value="${days}" min="5" required />
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-md-6">
+              <label class="form-label">Per Day Amount (₹) *</label>
+              <input type="number" class="form-control form-control-sm" data-plan-amount value="${perDay}" min="50" step="0.01" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Total Amount (₹)</label>
+              <input type="number" class="form-control form-control-sm" data-plan-total value="${total}" readonly />
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-md-12">
+              <label class="form-label">Description (Optional)</label>
+              <input type="text" class="form-control form-control-sm" data-plan-description value="Pay over ${days} days" />
+            </div>
+          </div>
+
+          <div class="form-check">
+            <input class="form-check-input plan-recommended-checkbox" type="checkbox" data-plan-recommended />
+            <label class="form-check-label">Recommended Plan</label>
+          </div>
+        </div>
+      </div>
+    `;
+
+    plansList.insertAdjacentHTML("beforeend", html);
+
+    // attach listeners for this auto plan
+    const card = document.getElementById(`plan-${planCount}`);
+    const daysInput = card.querySelector("[data-plan-days]");
+    const amountInput = card.querySelector("[data-plan-amount]");
+    const totalInput = card.querySelector("[data-plan-total]");
+    const errorBox = card.querySelector("[data-plan-error]");
+    const recommendedInput = card.querySelector("[data-plan-recommended]");
+
+    const recalc = () => {
+      const daysVal = parseFloat(daysInput.value) || 0;
+      const perDayVal = parseFloat(amountInput.value) || 0;
+
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+
+      if (daysVal === 0 || perDayVal === 0) {
+        totalInput.value = "";
+        return;
+      }
+      if (daysVal < 5) {
+        errorBox.textContent = "Days cannot be less than 5.";
+        errorBox.style.display = "block";
+      }
+      if (perDayVal < 50) {
+        errorBox.textContent = "Per-day amount cannot be less than ₹50.";
+        errorBox.style.display = "block";
+      }
+
+      // total = days * perDay
+      totalInput.value = (daysVal * perDayVal).toFixed(2);
+    };
+
+    daysInput.addEventListener("input", recalc);
+    amountInput.addEventListener("input", recalc);
+
+    // recommended single-select
+    recommendedInput.addEventListener("change", () => {
+      if (recommendedInput.checked) {
+        document
+          .querySelectorAll(".plan-recommended-checkbox")
+          .forEach((cb) => {
+            if (cb !== recommendedInput) cb.checked = false;
+          });
+      }
+    });
+  });
+
+  // -----------------------------------------
+  // sync plans when sale/price changes
+  // -----------------------------------------
+  const saleEl = document.getElementById("productSalePrice");
+  const priceEl = document.getElementById("productPrice");
+  const updateAutoPlans = () => {
+    const sale = parseFloat(saleEl?.value);
+    const reg = parseFloat(priceEl?.value);
+    const effective = !isNaN(sale) && sale > 0 ? sale : reg || 0;
+
+    document
+      .querySelectorAll('[id^="plan-"][data-auto="true"]')
+      .forEach((card) => {
+        const daysInput = card.querySelector("[data-plan-days]");
+        const perDayInput = card.querySelector("[data-plan-amount]");
+        const totalInput = card.querySelector("[data-plan-total]");
+
+        const days = parseFloat(daysInput.value) || 0;
+        if (effective > 0 && days > 0) {
+          const perDay = (effective / days).toFixed(2);
+          perDayInput.value = perDay;
+          totalInput.value = effective.toFixed(2);
+        } else {
+          // clear when no effective price
+          perDayInput.value = "";
+          totalInput.value = "";
+        }
+      });
+  };
+
+  if (saleEl) {
+    saleEl.removeEventListener?.("input", updateAutoPlans);
+    saleEl.addEventListener("input", updateAutoPlans);
+  }
+  if (priceEl) {
+    priceEl.removeEventListener?.("input", updateAutoPlans);
+    priceEl.addEventListener("input", updateAutoPlans);
+  }
+
+  // initial sync
+  updateAutoPlans();
+
+  // -----------------------------------------
   if (imagePreviewContainer) imagePreviewContainer.innerHTML = "";
   if (productImagesInput) productImagesInput.value = "";
 
-  const isFeaturedEl = document.getElementById("isFeatured");
-  const isPopularEl = document.getElementById("isPopular");
-  const isBestSellerEl = document.getElementById("isBestSeller");
-  const isTrendingEl = document.getElementById("isTrending");
+  document.getElementById("isFeatured").checked = false;
+  document.getElementById("isPopular").checked = false;
+  document.getElementById("isBestSeller").checked = false;
+  document.getElementById("isTrending").checked = false;
 
-  if (isFeaturedEl) isFeaturedEl.checked = false;
-  if (isPopularEl) isPopularEl.checked = false;
-  if (isBestSellerEl) isBestSellerEl.checked = false;
-  if (isTrendingEl) isTrendingEl.checked = false;
+  document.getElementById("productMetaTitle").value = "";
+  document.getElementById("productMetaDescription").value = "";
+  document.getElementById("productMetaKeywords").value = "";
 
-  const metaTitleEl = document.getElementById("productMetaTitle");
-  const metaDescEl = document.getElementById("productMetaDescription");
-  const metaKeywordsEl = document.getElementById("productMetaKeywords");
-  if (metaTitleEl) metaTitleEl.value = "";
-  if (metaDescEl) metaDescEl.value = "";
-  if (metaKeywordsEl) metaKeywordsEl.value = "";
+  document.getElementById("referralEnabled").checked = false;
+  document.getElementById("referralType").value = "percentage";
+  document.getElementById("referralValue").value = "";
+  document.getElementById("referralMinPurchase").value = "";
 
-  const referralEnabledEl = document.getElementById("referralEnabled");
-  const referralTypeEl = document.getElementById("referralType");
-  const referralValueEl = document.getElementById("referralValue");
-  const referralMinPurchaseEl = document.getElementById("referralMinPurchase");
-  if (referralEnabledEl) referralEnabledEl.checked = false;
-  if (referralTypeEl) referralTypeEl.value = "percentage";
-  if (referralValueEl) referralValueEl.value = "";
-  if (referralMinPurchaseEl) referralMinPurchaseEl.value = "";
+  document.getElementById("paymentPlanEnabled").checked = false;
+  document.getElementById("paymentPlanMinDown").value = "";
+  document.getElementById("paymentPlanMaxDown").value = "";
+  document.getElementById("paymentPlanInterest").value = "";
 
-  const ppEnabledEl = document.getElementById("paymentPlanEnabled");
-  const ppMinEl = document.getElementById("paymentPlanMinDown");
-  const ppMaxEl = document.getElementById("paymentPlanMaxDown");
-  const ppInterestEl = document.getElementById("paymentPlanInterest");
-  if (ppEnabledEl) ppEnabledEl.checked = false;
-  if (ppMinEl) ppMinEl.value = "";
-  if (ppMaxEl) ppMaxEl.value = "";
-  if (ppInterestEl) ppInterestEl.value = "";
-
-  // Regional reset — only if UI exists
   if (isGlobalProductCheckbox) isGlobalProductCheckbox.checked = true;
   if (regionalSettingsSection) {
     regionalSettingsSection.classList.add("d-none");
@@ -957,7 +1352,6 @@ function openAddProductModal() {
   const modalEl = document.getElementById("productModal");
   if (modalEl) new bootstrap.Modal(modalEl).show();
 
-  // rebuild regional rows with defaults if config present
   if (window.SUPPORTED_REGIONS && regionalSettingsTableBody) {
     buildRegionalRowsFromConfig();
   }
@@ -967,7 +1361,7 @@ async function editProduct(productId) {
   try {
     showLoading(true);
 
-    // 1️⃣ FETCH SINGLE PRODUCT FROM BACKEND
+    // 1️⃣ Fetch product
     const res = await API.get("/products/:productId", { productId });
     const product = res?.data;
 
@@ -979,11 +1373,10 @@ async function editProduct(productId) {
 
     currentProductId = product._id;
 
-    // 2️⃣ BASIC FIELDS
+    // 2️⃣ Basic fields
     document.getElementById("productName").value = product.name || "";
     document.getElementById("productBrand").value = product.brand || "";
 
-    // FIX: Handle description object
     const descValue =
       typeof product.description === "object"
         ? product.description?.short || product.description?.long || ""
@@ -992,12 +1385,13 @@ async function editProduct(productId) {
 
     document.getElementById("productCategory").value =
       product.category?.mainCategoryId || "";
-    document.getElementById("productSku").value = product.sku || "";
 
+    document.getElementById("productSku").value = product.sku || "";
     document.getElementById("productPrice").value =
       product.pricing?.regularPrice ?? "";
     document.getElementById("productSalePrice").value =
       product.pricing?.salePrice ?? "";
+
     document.getElementById("productStock").value =
       product.availability?.stockQuantity ?? "";
 
@@ -1008,10 +1402,11 @@ async function editProduct(productId) {
       );
     }
 
-    // 3️⃣ VARIANTS
+    // 3️⃣ Variants
     const hasVariantsEl = document.getElementById("hasVariants");
     if (hasVariantsEl) {
       hasVariantsEl.checked = !!product.hasVariants;
+
       if (variantsSection) {
         variantsSection.style.display = product.hasVariants ? "block" : "none";
         variantsSection.classList.toggle("d-none", !product.hasVariants);
@@ -1019,11 +1414,7 @@ async function editProduct(productId) {
     }
 
     if (variantsList) {
-      if (
-        product.hasVariants &&
-        Array.isArray(product.variants) &&
-        product.variants.length > 0
-      ) {
+      if (product.hasVariants && Array.isArray(product.variants)) {
         variantsList.innerHTML = product.variants
           .map((v, idx) => renderVariantField(v, idx))
           .join("");
@@ -1034,35 +1425,32 @@ async function editProduct(productId) {
       }
     }
 
-    // 4️⃣ FLAGS
+    // 4️⃣ Flags
     document.getElementById("isFeatured").checked = !!product.isFeatured;
     document.getElementById("isPopular").checked = !!product.isPopular;
     document.getElementById("isBestSeller").checked = !!product.isBestSeller;
     document.getElementById("isTrending").checked = !!product.isTrending;
 
-    // 5️⃣ WARRANTY
+    // 5️⃣ Warranty
     document.getElementById("warrantyPeriod").value =
       product.warranty?.period || "";
     document.getElementById("warrantyReturnPolicy").value =
       product.warranty?.returnPolicy || "";
 
-    // 6️⃣ ORIGIN (✅ FIXED - both fields)
+    // 6️⃣ Origin
     document.getElementById("productOrigin").value =
       product.origin?.country || "";
     const manufacturerEl = document.getElementById("productOriginManufacturer");
-    if (manufacturerEl) {
+    if (manufacturerEl)
       manufacturerEl.value = product.origin?.manufacturer || "";
-    }
 
-    // 7️⃣ PROJECT (✅ FIXED - both fields)
+    // 7️⃣ Project
     const projectIdEl = document.getElementById("productProjectId");
-    if (projectIdEl) {
-      projectIdEl.value = product.project?.projectId || "";
-    }
+    if (projectIdEl) projectIdEl.value = product.project?.projectId || "";
     document.getElementById("productProject").value =
       product.project?.projectName || "";
 
-    // 8️⃣ DIMENSIONS
+    // 8️⃣ Dimensions
     document.getElementById("dimensionLength").value =
       product.dimensions?.length || "";
     document.getElementById("dimensionWidth").value =
@@ -1072,7 +1460,7 @@ async function editProduct(productId) {
     document.getElementById("productWeight").value =
       product.dimensions?.weight || "";
 
-    // 9️⃣ TAGS
+    // 9️⃣ Tags
     document.getElementById("productTags").value = Array.isArray(product.tags)
       ? product.tags.join(", ")
       : "";
@@ -1088,7 +1476,7 @@ async function editProduct(productId) {
       ? product.seo.keywords.join(", ")
       : "";
 
-    // 1️⃣1️⃣ REFERRAL
+    // 1️⃣1️⃣ Referral
     document.getElementById("referralEnabled").checked =
       product.referralBonus?.enabled || false;
     document.getElementById("referralType").value =
@@ -1098,7 +1486,7 @@ async function editProduct(productId) {
     document.getElementById("referralMinPurchase").value =
       product.referralBonus?.minPurchaseAmount ?? "";
 
-    // 1️⃣2️⃣ GLOBAL PAYMENT PLAN
+    // 1️⃣2️⃣ Payment plan
     document.getElementById("paymentPlanEnabled").checked =
       product.paymentPlan?.enabled || false;
     document.getElementById("paymentPlanMinDown").value =
@@ -1108,75 +1496,142 @@ async function editProduct(productId) {
     document.getElementById("paymentPlanInterest").value =
       product.paymentPlan?.interestRate ?? "";
 
-    // 1️⃣3️⃣ STATUS RADIO
+    // 1️⃣3️⃣ Status
     const statusRadio = document.querySelector(
       `input[name="status"][value="${product.status}"]`
     );
     if (statusRadio) statusRadio.checked = true;
 
-    // 1️⃣4️⃣ PER-DAY PLANS (✅ FIXED - with event listeners)
+    // 1️⃣4️⃣ Per-day plans
     if (plansList) {
       plansList.innerHTML = "";
       planCount = 0;
 
+      // CASE 1: Product already has plans → Load normally
       if (Array.isArray(product.plans) && product.plans.length > 0) {
         product.plans.forEach((plan, idx) => {
           planCount++;
           plansList.insertAdjacentHTML("beforeend", renderPlanField(plan, idx));
         });
 
-        // ✅ RE-BIND EVENT LISTENERS for auto-calculation
         product.plans.forEach((plan, idx) => {
-          const domIdx = idx + 1;
-          const card = document.getElementById(`plan-${domIdx}`);
-          if (card) {
-            const daysInput = card.querySelector("[data-plan-days]");
-            const amountInput = card.querySelector("[data-plan-amount]");
-            const totalInput = card.querySelector("[data-plan-total]");
+          const card = document.getElementById(`plan-${idx + 1}`);
+          if (!card) return;
 
-            const calculateTotal = () => {
-              const days = parseFloat(daysInput.value) || 0;
-              const amount = parseFloat(amountInput.value) || 0;
-              totalInput.value = (days * amount).toFixed(2);
-            };
+          const daysInput = card.querySelector("[data-plan-days]");
+          const amountInput = card.querySelector("[data-plan-amount]");
+          const totalInput = card.querySelector("[data-plan-total]");
 
-            if (daysInput && amountInput && totalInput) {
-              daysInput.addEventListener("input", calculateTotal);
-              amountInput.addEventListener("input", calculateTotal);
-            }
-          }
+          const calculateTotal = () => {
+            const d = parseFloat(daysInput.value) || 0;
+            const a = parseFloat(amountInput.value) || 0;
+            totalInput.value = (d * a).toFixed(2);
+          };
+
+          daysInput.addEventListener("input", calculateTotal);
+          amountInput.addEventListener("input", calculateTotal);
+        });
+      }
+
+      // CASE 2: No plans saved → Auto-load default 10/20/30 plans
+      else {
+        const defaultPlans = [10, 20, 30];
+
+        defaultPlans.forEach((days) => {
+          planCount++;
+          const planHtml = `
+        <div class="card mb-2" id="plan-${planCount}">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Plan ${planCount}</strong>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePlanField(${planCount})">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-md-6">
+                <label class="form-label">Plan Name *</label>
+                <input type="text" class="form-control form-control-sm" data-plan-name 
+                  value="${days}-Day Plan" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Days *</label>
+                <input type="number" class="form-control form-control-sm" data-plan-days 
+                  value="${days}" min="5" required />
+              </div>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-md-6">
+                <label class="form-label">Per Day Amount (₹) *</label>
+                <input type="number" class="form-control form-control-sm" data-plan-amount 
+                  placeholder="Enter per-day amount" min="50" step="0.01" required />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Total Amount (₹)</label>
+                <input type="number" class="form-control form-control-sm" data-plan-total readonly />
+              </div>
+            </div>
+
+            <div class="row mb-2">
+              <div class="col-md-12">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control form-control-sm" data-plan-description 
+                  value="Pay over ${days} days" />
+              </div>
+            </div>
+
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" data-plan-recommended checked />
+              <label class="form-check-label">Recommended Plan</label>
+            </div>
+          </div>
+        </div>
+      `;
+
+          plansList.insertAdjacentHTML("beforeend", planHtml);
+
+          const card = document.getElementById(`plan-${planCount}`);
+          const daysInput = card.querySelector("[data-plan-days]");
+          const amountInput = card.querySelector("[data-plan-amount]");
+          const totalInput = card.querySelector("[data-plan-total]");
+
+          const calculateTotal = () => {
+            const d = parseFloat(daysInput.value) || 0;
+            const a = parseFloat(amountInput.value) || 0;
+            totalInput.value = (d * a).toFixed(2);
+          };
+
+          daysInput.addEventListener("input", calculateTotal);
+          amountInput.addEventListener("input", calculateTotal);
         });
       }
     }
 
-    // 1️⃣5️⃣ REGIONAL SETTINGS
+    // 1️⃣5️⃣ Regional settings
     if (window.SUPPORTED_REGIONS && regionalSettingsTableBody) {
       buildRegionalRowsFromConfig(product);
 
-      // Set global/regional toggle
-      if (isGlobalProductCheckbox) {
-        const hasRegionalData =
-          product.regionalAvailability &&
-          product.regionalAvailability.length > 0;
-        isGlobalProductCheckbox.checked = !hasRegionalData;
+      const hasRegionalData =
+        product.regionalAvailability && product.regionalAvailability.length > 0;
 
-        if (regionalSettingsSection) {
-          if (hasRegionalData) {
-            regionalSettingsSection.classList.remove("d-none");
-            regionalSettingsSection.style.display = "block";
-          } else {
-            regionalSettingsSection.classList.add("d-none");
-            regionalSettingsSection.style.display = "none";
-          }
-        }
+      if (isGlobalProductCheckbox) {
+        isGlobalProductCheckbox.checked = !hasRegionalData;
+        regionalSettingsSection.style.display = hasRegionalData
+          ? "block"
+          : "none";
       }
     }
 
-    // Update modal title
+    // 1️⃣6️⃣ Load product images into preview
+    loadExistingImages(product.images || []);
+
+    // 1️⃣7️⃣ Update modal title
     const titleEl = document.getElementById("productModalLabel");
     if (titleEl) titleEl.textContent = "Edit Product";
 
-    // Show modal
+    // 1️⃣8️⃣ Show modal
     const modalEl = document.getElementById("productModal");
     if (modalEl) new bootstrap.Modal(modalEl).show();
 
@@ -1184,17 +1639,30 @@ async function editProduct(productId) {
   } catch (err) {
     console.error("❌ Error in editProduct():", err);
     showLoading(false);
-    alert("Cannot load product for editing: " + (err.message || err));
+    alert("Cannot load product: " + (err.message || err));
   }
 }
 
 /* ---------- Render Plan Field (for editing existing plans) ---------- */
 
 function renderPlanField(plan, idx) {
-  const domIdx = idx + 1; // Convert 0-based to 1-based for display
+  const domIdx = idx + 1;
+
+  // Prevent recommended auto-select unless plan explicitly has it
+  const isRecommended = plan.isRecommended === true ? "checked" : "";
+
+  // Safe values
+  const days = plan.days || "";
+  const perDay = plan.perDayAmount || "";
+  const total =
+    plan.totalAmount ||
+    (plan.days && plan.perDayAmount ? plan.days * plan.perDayAmount : "");
+
+  // If plan was saved as an "auto" plan on backend, plan.isAuto === true
+  const autoAttr = plan.isAuto ? 'data-auto="true"' : "";
 
   return `
-    <div class="card mb-2" id="plan-${domIdx}">
+    <div class="card mb-2" id="plan-${domIdx}" ${autoAttr}>
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <strong>Plan ${domIdx}</strong>
@@ -1202,46 +1670,49 @@ function renderPlanField(plan, idx) {
             <i class="bi bi-trash"></i>
           </button>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Plan Name *</label>
-            <input type="text" class="form-control form-control-sm" data-plan-name value="${escapeHtml(
-              plan.name || ""
-            )}" placeholder="e.g., Quick Plan" required />
+            <input type="text" class="form-control form-control-sm" data-plan-name 
+              value="${escapeHtml(
+                plan.name || ""
+              )}" placeholder="e.g., Quick Plan" required />
           </div>
+
           <div class="col-md-6">
             <label class="form-label">Days *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-days min="1" value="${
-              plan.days || ""
-            }" placeholder="e.g., 30" required />
+            <input type="number" class="form-control form-control-sm" data-plan-days 
+              min="5" value="${days}" placeholder="Minimum 5" required />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-6">
             <label class="form-label">Per Day Amount (₹) *</label>
-            <input type="number" class="form-control form-control-sm" data-plan-amount min="0" step="0.01" value="${
-              plan.perDayAmount || ""
-            }" placeholder="e.g., 1500" required />
+            <input type="number" class="form-control form-control-sm" data-plan-amount 
+              min="50" step="0.01" value="${perDay}" placeholder="Min ₹50" required />
           </div>
+
           <div class="col-md-6">
             <label class="form-label">Total Amount (₹)</label>
-            <input type="number" class="form-control form-control-sm" data-plan-total readonly value="${
-              plan.totalAmount || plan.days * plan.perDayAmount || ""
-            }" placeholder="Auto-calculated" />
+            <input type="number" class="form-control form-control-sm" data-plan-total readonly 
+              value="${total}" placeholder="Auto-calculated" />
           </div>
         </div>
+
         <div class="row mb-2">
           <div class="col-md-12">
             <label class="form-label">Description (Optional)</label>
-            <input type="text" class="form-control form-control-sm" data-plan-description value="${escapeHtml(
-              plan.description || ""
-            )}" placeholder="e.g., Pay in 30 days" />
+            <input type="text" class="form-control form-control-sm" data-plan-description 
+              value="${escapeHtml(
+                plan.description || ""
+              )}" placeholder="e.g., Pay over 30 days" />
           </div>
         </div>
+
         <div class="form-check">
-          <input class="form-check-input" type="checkbox" data-plan-recommended ${
-            plan.isRecommended ? "checked" : ""
-          } />
+          <input class="form-check-input plan-recommended-checkbox" type="checkbox" data-plan-recommended ${isRecommended} />
           <label class="form-check-label">Recommended Plan</label>
         </div>
       </div>
@@ -1564,43 +2035,50 @@ function collectRegionalPayloadFromUI() {
 /* ---------- Save Product (create/update) ---------- */
 
 async function saveProduct() {
+  // ⛔ BLOCK SAVE IF IMAGES ARE STILL UPLOADING
+  if (window.isUploadingImages) {
+    alert("Please wait… Images are still uploading.");
+    return;
+  }
+
   const name = document.getElementById("productName").value.trim();
   const brand = document.getElementById("productBrand").value.trim();
-  const description = document.getElementById("productDescription").value.trim();
+  const description = document
+    .getElementById("productDescription")
+    .value.trim();
   const categoryId = document.getElementById("productCategory").value.trim();
   const sku = document.getElementById("productSku").value.trim();
 
   const price = parseFloat(document.getElementById("productPrice").value);
   const salePrice =
     parseFloat(document.getElementById("productSalePrice").value) || 0;
-  const stockRaw = document.getElementById("productStock").value;
-  const stock = stockRaw === "" || isNaN(stockRaw) ? NaN : parseInt(stockRaw);
 
-  const availabilityValue = document.getElementById("productAvailability").value;
+  const stockRaw = document.getElementById("productStock").value;
+  const stock = stockRaw === "" ? NaN : parseInt(stockRaw);
+
+  const availabilityValue = document.getElementById(
+    "productAvailability"
+  ).value;
   const status =
     document.querySelector('input[name="status"]:checked')?.value || "draft";
+
   let hasVariants = document.getElementById("hasVariants").checked;
 
-// Auto-disable variants if no variant rows exist
-if (hasVariants) {
-  const variantCards = document.querySelectorAll('[id^="variant-"]');
-
-  // If checkbox enabled but user added zero variants → backend rejects → fix
-  if (!variantCards || variantCards.length === 0) {
-    hasVariants = false; // silently force disable to satisfy backend
+  if (hasVariants) {
+    const variantCards = document.querySelectorAll('[id^="variant-"]');
+    if (!variantCards || variantCards.length === 0) {
+      hasVariants = false;
+    }
   }
-}
 
-  // ---------------------------
-  // BASIC VALIDATIONS
-  // ---------------------------
+  // ---------------- VALIDATIONS ----------------
   if (!name) return alert("Product name is required");
   if (!categoryId) return alert("Category is required");
   if (isNaN(price) || price <= 0) return alert("Price must be greater than 0");
   if (!description) return alert("Description is required");
-  if (salePrice > price) return alert("Sale price cannot be greater than regular price");
+  if (salePrice > price)
+    return alert("Sale price cannot be greater than price");
 
-  // Stock validation only when NOT variants
   if (!hasVariants) {
     if (stockRaw === "") return alert("Stock is required");
     if (isNaN(stock) || stock < 0) return alert("Stock must be 0 or greater");
@@ -1617,9 +2095,7 @@ if (hasVariants) {
   const parentId = selectedOption.getAttribute("data-parent-id");
   const parentName = selectedOption.getAttribute("data-parent-name");
 
-  // ---------------------------
-  // BUILD PAYLOAD
-  // ---------------------------
+  // ---------------- BUILD PAYLOAD ----------------
   const payload = {
     name,
     brand,
@@ -1638,22 +2114,21 @@ if (hasVariants) {
     },
     availability: {
       isAvailable,
-      stockQuantity: hasVariants ? 0 : stock,
+      stockQuantity: stock,
       lowStockLevel: 5,
       stockStatus,
     },
     status,
-    hasVariants: hasVariants,
+    hasVariants,
     isFeatured: document.getElementById("isFeatured")?.checked || false,
     isPopular: document.getElementById("isPopular")?.checked || false,
     isBestSeller: document.getElementById("isBestSeller")?.checked || false,
     isTrending: document.getElementById("isTrending")?.checked || false,
   };
 
-  // ---------------------------
-  // WARRANTY
-  // ---------------------------
-  const warrantyPeriod = parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
+  // Warranty
+  const warrantyPeriod =
+    parseInt(document.getElementById("warrantyPeriod")?.value) || 0;
   const warrantyReturnPolicy =
     parseInt(document.getElementById("warrantyReturnPolicy")?.value) || 0;
 
@@ -1664,26 +2139,20 @@ if (hasVariants) {
     };
   }
 
-  // ---------------------------
-  // ORIGIN (fixed)
-  // ---------------------------
+  // Origin
   payload.origin = {
     country: document.getElementById("productOrigin")?.value.trim() || "",
     manufacturer:
       document.getElementById("productOriginManufacturer")?.value.trim() || "",
   };
 
-  // ---------------------------
-  // PROJECT (fixed)
-  // ---------------------------
+  // Project
   payload.project = {
     projectId: document.getElementById("productProjectId")?.value.trim() || "",
     projectName: document.getElementById("productProject")?.value.trim() || "",
   };
 
-  // ---------------------------
-  // DIMENSIONS
-  // ---------------------------
+  // Dimensions
   const L = parseFloat(document.getElementById("dimensionLength")?.value) || 0;
   const W = parseFloat(document.getElementById("dimensionWidth")?.value) || 0;
   const H = parseFloat(document.getElementById("dimensionHeight")?.value) || 0;
@@ -1694,34 +2163,30 @@ if (hasVariants) {
     payload.dimensions = { length: L, width: W, height: H, weight };
   }
 
-  // ---------------------------
-  // TAGS
-  // ---------------------------
+  // Tags
   const rawTags = document.getElementById("productTags")?.value.trim() || "";
   payload.tags = rawTags
-    ? rawTags.split(",").map((t) => t.trim()).filter(Boolean)
+    ? rawTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
     : [];
 
-  // ---------------------------
   // SEO
-  // ---------------------------
-  const metaTitle = document.getElementById("productMetaTitle")?.value.trim() || "";
-  const metaDescription =
-    document.getElementById("productMetaDescription")?.value.trim() || "";
-  const metaKeywordsRaw =
-    document.getElementById("productMetaKeywords")?.value.trim() || "";
-
   payload.seo = {
-    metaTitle,
-    metaDescription,
-    keywords: metaKeywordsRaw
-      ? metaKeywordsRaw.split(",").map((k) => k.trim()).filter(Boolean)
-      : [],
+    metaTitle: document.getElementById("productMetaTitle")?.value.trim() || "",
+    metaDescription:
+      document.getElementById("productMetaDescription")?.value.trim() || "",
+    keywords:
+      document
+        .getElementById("productMetaKeywords")
+        ?.value.trim()
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean) || [],
   };
 
-  // ---------------------------
-  // REFERRAL BONUS
-  // ---------------------------
+  // Referral
   payload.referralBonus = {
     enabled: document.getElementById("referralEnabled")?.checked || false,
     type: document.getElementById("referralType")?.value || "percentage",
@@ -1730,9 +2195,7 @@ if (hasVariants) {
       parseFloat(document.getElementById("referralMinPurchase")?.value) || 0,
   };
 
-  // ---------------------------
-  // PAYMENT PLAN
-  // ---------------------------
+  // Payment Plan
   payload.paymentPlan = {
     enabled: document.getElementById("paymentPlanEnabled")?.checked || false,
     minDownPayment:
@@ -1743,9 +2206,50 @@ if (hasVariants) {
       parseFloat(document.getElementById("paymentPlanInterest")?.value) || 0,
   };
 
-  // ---------------------------
-  // PER-DAY PLANS
-  // ---------------------------
+  // ---------------- PER-DAY PLAN VALIDATION (C FIX) ----------------
+
+  const effectiveSalePrice = salePrice > 0 ? salePrice : price;
+  let planError = null;
+
+  document.querySelectorAll('[id^="plan-"]').forEach((planCard, index) => {
+    const idx = index + 1;
+
+    const name = planCard.querySelector("[data-plan-name]")?.value.trim();
+    const days =
+      parseFloat(planCard.querySelector("[data-plan-days]")?.value) || 0;
+    const perDay =
+      parseFloat(planCard.querySelector("[data-plan-amount]")?.value) || 0;
+
+    // 🔥 Skip validation if plan is not fully filled
+    if (!name || days === 0 || perDay === 0) {
+      return;
+    }
+
+    // Rule 1: Days >= 5
+    if (days < 5) {
+      planError = `Plan ${idx}: Days cannot be less than 5.`;
+      return;
+    }
+
+    // Rule 2: Per Day >= ₹50
+    if (perDay < 50) {
+      planError = `Plan ${idx}: Per-day amount cannot be less than ₹50.`;
+      return;
+    }
+
+    // Rule 3: Total must equal sale price
+    const total = days * perDay;
+    if (total !== effectiveSalePrice) {
+      planError = `Plan ${idx}: Total (${total}) must equal Sale Price (${effectiveSalePrice}).`;
+      return;
+    }
+  });
+
+  if (planError) {
+    return alert(planError);
+  }
+
+  // Per-Day Plans → Build Payload
   payload.plans = [];
   document.querySelectorAll('[id^="plan-"]').forEach((card) => {
     const name = card.querySelector("[data-plan-name]")?.value.trim();
@@ -1769,9 +2273,7 @@ if (hasVariants) {
     }
   });
 
-  // // ---------------------------
-  // - VARIANTS (REQUIRED WHEN hasVariants = true)
-  // // ---------------------------
+  // ---------------- VARIANTS ----------------
   payload.variants = [];
 
   if (hasVariants) {
@@ -1779,33 +2281,37 @@ if (hasVariants) {
 
     variantCards.forEach((card) => {
       const color = card.querySelector("[data-variant-color]")?.value.trim();
-      const storage = card.querySelector("[data-variant-storage]")?.value.trim();
+      const storage = card
+        .querySelector("[data-variant-storage]")
+        ?.value.trim();
 
       const price =
         parseFloat(card.querySelector("[data-variant-price]")?.value) || 0;
-      const variantSalePrice =
+      const salePrice =
         parseFloat(card.querySelector("[data-variant-sale-price]")?.value) || 0;
-      const variantStock =
+      const stock =
         parseInt(card.querySelector("[data-variant-stock]")?.value) || 0;
 
       if (price > 0) {
+        const attributes = {};
+        if (color) attributes.color = color;
+        if (storage) attributes.storage = storage;
+
         payload.variants.push({
-          attributes: { color, storage },
+          attributes,
           price,
-          salePrice: variantSalePrice,
-          stock: variantStock,
+          salePrice,
+          stock,
         });
       }
     });
 
     if (payload.variants.length === 0) {
-  hasVariants = false; // fix backend requirement
-}
+      hasVariants = false;
+    }
   }
 
-  // ---------------------------
-  // REGIONAL SETTINGS
-  // ---------------------------
+  // ---------------- REGIONAL ----------------
   if (regionalSettingsTableBody) {
     const { regionalPricing, regionalAvailability } =
       collectRegionalPayloadFromUI();
@@ -1813,9 +2319,7 @@ if (hasVariants) {
     payload.regionalAvailability = regionalAvailability;
   }
 
-  // ---------------------------
-  // SAVE PRODUCT
-  // ---------------------------
+  // ---------------- SAVE PRODUCT ----------------
   try {
     showLoading(true);
 
@@ -1826,6 +2330,35 @@ if (hasVariants) {
       const res = await API.post("/products", payload);
       currentProductId = res?.data?.productId;
       showNotification("Product created successfully", "success");
+    }
+
+    const productResponse = await API.get("/products/:productId", {
+      productId: currentProductId,
+    });
+
+    const createdVariants = productResponse?.data?.variants || [];
+
+    if (selectedImageFiles && selectedImageFiles.length > 0) {
+      await uploadProductImages(currentProductId);
+    }
+
+    const variantImageFiles = [];
+    document.querySelectorAll('[id^="variant-"]').forEach((card, index) => {
+      const fileInput = card.querySelector("[data-variant-image]");
+      if (fileInput?.files?.[0]) {
+        variantImageFiles.push({
+          variantIndex: index,
+          file: fileInput.files[0],
+        });
+      }
+    });
+
+    if (variantImageFiles.length > 0) {
+      await uploadVariantImages(
+        currentProductId,
+        variantImageFiles,
+        createdVariants
+      );
     }
 
     await loadProducts();

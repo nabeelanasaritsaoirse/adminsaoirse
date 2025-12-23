@@ -70,6 +70,7 @@ const API_CONFIG = {
       create: "/categories",
       update: "/categories/:categoryId",
       delete: "/categories/:categoryId",
+      hardDelete: "/categories/:categoryId/hard",
       toggleStatus: "/categories/:categoryId",
       toggleFeatured: "/categories/:categoryId/toggle-featured",
       uploadImage: "/categories/:categoryId/upload-image",
@@ -87,10 +88,27 @@ const API_CONFIG = {
       create: "/products",
       update: "/products/:productId",
       delete: "/products/:productId",
+      hardDelete: "/products/:productId/hard",
       toggleStatus: "/products/:productId/toggle-status",
       search: "/products/search",
       uploadImage: "/products/:productId/upload-image",
       deleteImage: "/products/:productId/image/:imageId",
+    },
+    featuredLists: {
+      getAll: "/featured-lists/admin/lists",
+      getById: "/featured-lists/admin/lists/:listId",
+      create: "/featured-lists/admin/lists",
+      update: "/featured-lists/admin/lists/:listId",
+      delete: "/featured-lists/admin/lists/:listId",
+
+      addProduct: "/featured-lists/admin/lists/:listId/products",
+      removeProduct: "/featured-lists/admin/lists/:listId/products/:productId",
+
+      reorderProducts: "/featured-lists/admin/lists/:listId/reorder",
+
+      syncProduct:
+        "/featured-lists/admin/lists/:listId/products/:productId/sync",
+      syncAllProducts: "/featured-lists/admin/lists/:listId/sync-all",
     },
 
     about: {
