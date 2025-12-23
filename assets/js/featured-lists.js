@@ -383,26 +383,16 @@ async function saveList() {
       isActive,
     };
 
-    // Get current user for createdBy/updatedBy fields
-    const currentUser = AUTH.getCurrentUser();
-    if (!currentUser || !currentUser.userId) {
-      showNotification("Unable to get user information. Please login again.", "error");
-      showLoading(false);
-      return;
-    }
-
     let response;
     if (listId) {
-      // Update existing list - add updatedBy
-      data.updatedBy = currentUser.userId;
+      // Update existing list
       response = await API.put(
         API_CONFIG.endpoints.featuredLists.update,
         data,
         { listId }
       );
     } else {
-      // Create new list - add createdBy
-      data.createdBy = currentUser.userId;
+      // Create new list
       response = await API.post(API_CONFIG.endpoints.featuredLists.create, data);
     }
 
@@ -441,19 +431,10 @@ async function confirmDelete() {
   try {
     showLoading(true);
 
-    // Get current user for deletedBy field
-    const currentUser = AUTH.getCurrentUser();
-    if (!currentUser || !currentUser.userId) {
-      showNotification("Unable to get user information. Please login again.", "error");
-      showLoading(false);
-      return;
-    }
-
     if (currentDeleteTarget.type === "list") {
       const response = await API.delete(
         API_CONFIG.endpoints.featuredLists.delete,
-        { listId: currentDeleteTarget.listId },
-        { deletedBy: currentUser.userId } // Pass deletedBy as query param
+        { listId: currentDeleteTarget.listId }
       );
 
       if (response.success) {
@@ -468,8 +449,7 @@ async function confirmDelete() {
         {
           listId: currentDeleteTarget.listId,
           productId: currentDeleteTarget.productId,
-        },
-        { deletedBy: currentUser.userId } // Pass deletedBy as query param
+        }
       );
 
       if (response.success) {
@@ -525,20 +505,34 @@ async function searchProducts() {
     );
 
     if (response.success && response.data && response.data.length > 0) {
-      resultsContainer.innerHTML = response.data
+      // Filter out deleted products
+      const activeProducts = response.data.filter(product => !product.isDeleted);
+
+      if (activeProducts.length === 0) {
+        resultsContainer.innerHTML = '<div class="text-center p-3 text-muted">No active products found</div>';
+        return;
+      }
+
+      resultsContainer.innerHTML = activeProducts
         .map((product) => {
-          const imageUrl = product.images && product.images[0] ? product.images[0] : "https://via.placeholder.com/50";
-          const price = product.finalPrice || product.price || 0;
+          // Backend returns 'name', 'images', 'pricing'
+          const productName = product.name || product.productName || "Unknown Product";
+          const imageUrl = product.images && product.images[0]
+            ? (product.images[0].url || product.images[0])
+            : "https://via.placeholder.com/50";
+          const regularPrice = product.pricing?.regularPrice || product.price || 0;
+          const finalPrice = product.pricing?.finalPrice || product.finalPrice || regularPrice;
+          const stockQuantity = product.availability?.stockQuantity || product.stockQuantity || 0;
 
           return `
-            <div class="product-search-item" onclick="selectProduct('${escapeHtml(product.productId)}', '${escapeHtml(product.productName)}', '${escapeHtml(imageUrl)}', ${price})">
-              <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.productName)}" class="product-search-image" onerror="this.src='https://via.placeholder.com/50'" />
+            <div class="product-search-item" onclick="selectProduct('${escapeHtml(product.productId)}', '${escapeHtml(productName)}', '${escapeHtml(imageUrl)}', ${finalPrice})">
+              <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(productName)}" class="product-search-image" onerror="this.src='https://via.placeholder.com/50'" />
               <div class="product-search-details">
-                <div class="product-search-name">${escapeHtml(product.productName)}</div>
+                <div class="product-search-name">${escapeHtml(productName)}</div>
                 <div class="product-search-info">
                   <span>ID: ${escapeHtml(product.productId)}</span> |
-                  <span>Price: ₹${price.toLocaleString()}</span> |
-                  <span>Stock: ${product.stockQuantity || 0}</span>
+                  <span>Price: ₹${finalPrice.toLocaleString()}</span> |
+                  <span>Stock: ${stockQuantity}</span>
                 </div>
               </div>
             </div>
