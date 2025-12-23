@@ -342,13 +342,13 @@ function setRegionalUIState(isGlobal) {
       priceInput && (priceInput.disabled = true);
       salePriceInput && (salePriceInput.disabled = true);
     } else {
-      // REGIONAL → admin controls availability
-      availableCheckbox.checked = false;
+      // REGIONAL → DO NOT TOUCH checked state (backend decides)
       availableCheckbox.disabled = false;
 
-      stockInput && (stockInput.disabled = true);
-      priceInput && (priceInput.disabled = true);
-      salePriceInput && (salePriceInput.disabled = true);
+      const enabled = availableCheckbox.checked === true;
+      stockInput && (stockInput.disabled = !enabled);
+      priceInput && (priceInput.disabled = !enabled);
+      salePriceInput && (salePriceInput.disabled = !enabled);
     }
   });
 }

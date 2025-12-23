@@ -88,7 +88,6 @@ const NAV_CONFIG = {
       permission: "super_admin_only",
       danger: true,
     },
-
     {
       id: "orders",
       label: "Orders",
