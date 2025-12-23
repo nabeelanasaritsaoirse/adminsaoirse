@@ -169,6 +169,28 @@ const API_CONFIG = {
       getActive: "/success-stories/public/active",
       stats: "/success-stories/admin/stats",
     },
+
+    featuredLists: {
+      // Public endpoints
+      getAllPublic: "/featured-lists",
+      getBySlug: "/featured-lists/:slug",
+
+      // Admin endpoints
+      getAll: "/featured-lists/admin/lists",
+      getById: "/featured-lists/admin/lists/:listId",
+      create: "/featured-lists/admin/lists",
+      update: "/featured-lists/admin/lists/:listId",
+      delete: "/featured-lists/admin/lists/:listId",
+
+      // Product management
+      addProduct: "/featured-lists/admin/lists/:listId/products",
+      removeProduct: "/featured-lists/admin/lists/:listId/products/:productId",
+      reorderProducts: "/featured-lists/admin/lists/:listId/reorder",
+
+      // Sync endpoints
+      syncProduct: "/featured-lists/admin/lists/:listId/products/:productId/sync",
+      syncAllProducts: "/featured-lists/admin/lists/:listId/sync-all",
+    },
   },
 };
 
@@ -192,6 +214,7 @@ const PERMISSIONS = {
   CHAT_ANALYTICS: "chat-analytics",
   SETTINGS: "settings",
   ADMIN_MANAGEMENT: "admin_management",
+  FEATURED_LISTS: "featured_lists",
 };
 
 /*******************************

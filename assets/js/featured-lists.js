@@ -219,7 +219,6 @@ function renderLists(lists) {
               <i class="bi bi-chevron-down list-card-toggle" id="toggle-${escapeHtml(list.listId)}"></i>
             </div>
           </div>
-
           <div class="list-card-body" id="body-${escapeHtml(list.listId)}">
             <!-- List Info -->
             <div class="list-info">
@@ -239,7 +238,6 @@ function renderLists(lists) {
               </div>
               ${list.description ? `<p class="mb-0 mt-2 text-muted">${escapeHtml(list.description)}</p>` : ""}
             </div>
-
             <!-- Actions -->
             <div class="list-actions">
               <button class="btn btn-sm btn-primary btn-icon" onclick="openAddProductModal('${escapeHtml(list.listId)}')">
@@ -255,14 +253,12 @@ function renderLists(lists) {
                 <i class="bi bi-trash"></i> Delete
               </button>
             </div>
-
             <!-- Products Section -->
             <div class="products-section">
               <div class="products-header">
                 <h6 class="mb-0">Products in this List</h6>
                 <span class="products-count">${productCount} ${productCount === 1 ? "product" : "products"}</span>
               </div>
-
               <div id="products-${escapeHtml(list.listId)}">
                 ${productCount > 0 ? renderProducts(products, list.listId) : '<p class="text-muted">No products added yet</p>'}
               </div>
@@ -290,7 +286,6 @@ function renderProducts(products, listId) {
         <div class="product-item" data-product-id="${escapeHtml(product.productId)}">
           <div class="product-order">${product.order || index + 1}</div>
           <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product.productName)}" class="product-image" onerror="this.src='https://via.placeholder.com/60'" />
-
           <div class="product-details">
             <div class="product-name">${escapeHtml(product.productName)}</div>
             <div class="product-meta">
@@ -298,12 +293,10 @@ function renderProducts(products, listId) {
               ${product.lastSynced ? `<span><i class="bi bi-clock"></i> Synced ${formatDate(product.lastSynced)}</span>` : ""}
             </div>
           </div>
-
           <div class="product-price">
             ${showDiscount ? `<span class="price-regular">${regularPrice}</span>` : ""}
             <span class="price-final">${finalPrice}</span>
           </div>
-
           <div class="product-actions">
             <button class="btn btn-sm btn-outline-primary btn-order" onclick="moveProductUp('${escapeHtml(listId)}', '${escapeHtml(product.productId)}', ${product.order})" ${product.order === 1 ? "disabled" : ""}>
               <i class="bi bi-arrow-up"></i>
@@ -390,16 +383,26 @@ async function saveList() {
       isActive,
     };
 
+    // Get current user for createdBy/updatedBy fields
+    const currentUser = AUTH.getCurrentUser();
+    if (!currentUser || !currentUser.userId) {
+      showNotification("Unable to get user information. Please login again.", "error");
+      showLoading(false);
+      return;
+    }
+
     let response;
     if (listId) {
-      // Update existing list
+      // Update existing list - add updatedBy
+      data.updatedBy = currentUser.userId;
       response = await API.put(
         API_CONFIG.endpoints.featuredLists.update,
         data,
         { listId }
       );
     } else {
-      // Create new list
+      // Create new list - add createdBy
+      data.createdBy = currentUser.userId;
       response = await API.post(API_CONFIG.endpoints.featuredLists.create, data);
     }
 
@@ -438,10 +441,19 @@ async function confirmDelete() {
   try {
     showLoading(true);
 
+    // Get current user for deletedBy field
+    const currentUser = AUTH.getCurrentUser();
+    if (!currentUser || !currentUser.userId) {
+      showNotification("Unable to get user information. Please login again.", "error");
+      showLoading(false);
+      return;
+    }
+
     if (currentDeleteTarget.type === "list") {
       const response = await API.delete(
         API_CONFIG.endpoints.featuredLists.delete,
-        { listId: currentDeleteTarget.listId }
+        { listId: currentDeleteTarget.listId },
+        { deletedBy: currentUser.userId } // Pass deletedBy as query param
       );
 
       if (response.success) {
@@ -456,7 +468,8 @@ async function confirmDelete() {
         {
           listId: currentDeleteTarget.listId,
           productId: currentDeleteTarget.productId,
-        }
+        },
+        { deletedBy: currentUser.userId } // Pass deletedBy as query param
       );
 
       if (response.success) {
