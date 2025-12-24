@@ -14,7 +14,7 @@ const NAV_CONFIG = {
       icon: "bi-speedometer2",
       href: "dashboard.html",
       hrefFromRoot: "pages/dashboard.html",
-      permission: "dashboard",
+      superAdminOnly: true,
     },
     {
       id: "users",
@@ -202,7 +202,12 @@ function getActiveNavItem() {
   const currentPath = window.location.pathname.toLowerCase();
   const currentFile = currentPath.split("/").pop();
 
-  // 🔥 PRODUCT CHILD PAGES → KEEP PRODUCTS ACTIVE
+  // ✅ Welcome page → no active sidebar item
+  if (currentFile === "welcome.html") {
+    return null;
+  }
+
+  // 🔥 Product child pages → keep Products active
   if (
     currentFile === "product-add.html" ||
     currentFile === "product-edit.html"
@@ -210,7 +215,7 @@ function getActiveNavItem() {
     return "products";
   }
 
-  // Normal matching
+  // 🔎 Normal matching against nav config
   const match = NAV_CONFIG.items.find((item) => {
     const file1 = (item.href || "").toLowerCase();
     const file2 = (item.hrefFromRoot || "").split("/").pop().toLowerCase();
@@ -218,7 +223,8 @@ function getActiveNavItem() {
     return currentFile === file1 || currentFile === file2;
   });
 
-  return match ? match.id : "dashboard";
+  // ✅ Do NOT default to dashboard
+  return match ? match.id : null;
 }
 
 // ===============================
@@ -240,7 +246,7 @@ function renderNavigation(containerId = "sidebar") {
                   return `
                         <li class="nav-item">
                             <a class="nav-link ${
-                              item.id === active ? "active" : ""
+                              active && item.id === active ? "active" : ""
                             }"
                                data-nav-id="${item.id}"
                                href="${href}">
