@@ -128,7 +128,8 @@ async function searchProducts() {
     });
 
     if (response.success && response.data) {
-      state.products = response.data.products || [];
+      // The API returns products directly in data array, not data.products
+      state.products = Array.isArray(response.data) ? response.data : (response.data.products || []);
       renderProductResults();
     } else {
       throw new Error(response.message || "Failed to search products");
@@ -182,7 +183,7 @@ function renderProductResults() {
             </p>
             <div class="d-flex gap-2 flex-wrap">
               <span class="badge bg-secondary">
-                <i class="bi bi-tag"></i> ${escapeHtml(product.category?.name || "No Category")}
+                <i class="bi bi-tag"></i> ${escapeHtml(product.category?.mainCategoryName || product.category?.name || "No Category")}
               </span>
               <span class="badge bg-info">
                 <i class="bi bi-layers"></i> ${variantsCount} Variant${variantsCount !== 1 ? "s" : ""}

@@ -137,6 +137,13 @@
   padding-top: 1rem;
 }
 
+.products-section > div:last-child {
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+}
+
 .products-header {
   display: flex;
   justify-content: space-between;
@@ -478,5 +485,24 @@
 }
 
 .product-search-results::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Products List Scrollbar */
+.products-section > div:last-child::-webkit-scrollbar {
+  width: 8px;
+}
+
+.products-section > div:last-child::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.products-section > div:last-child::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.products-section > div:last-child::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
