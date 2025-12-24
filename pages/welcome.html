@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome – EPI Admin Panel</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+
+    <!-- Existing Admin Styles -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
+
+  <body>
+    <script>
+      document.body.classList.add("welcome-page");
+    </script>
+    <!-- AUTH GUARD -->
+    <script src="../assets/js/config.js"></script>
+    <script>
+      (function () {
+        if (!AUTH.isAuthenticated()) {
+          window.location.href = "login.html";
+          return;
+        }
+
+        // Super admins should NOT land here
+        if (AUTH.isSuperAdmin()) {
+          window.location.href = "dashboard.html";
+        }
+      })();
+    </script>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <a class="navbar-brand ms-3" href="#">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
+
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i>
+              <span id="navUsername">Admin</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" id="logout">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar"></div>
+
+    <!-- MAIN CONTENT -->
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <!-- HERO -->
+        <div class="welcome-hero mt-3">
+          <h1 class="mb-2">Welcome to EPI Admin Panel 👋</h1>
+          <p class="mb-0">
+            You are logged in as a <strong>Sub Admin</strong>. Here’s what you
+            can manage today.
+          </p>
+        </div>
+
+        <!-- ACCESS HEADER -->
+        <div class="mb-3">
+          <h4 class="mb-1">Your Available Modules</h4>
+          <p class="text-muted mb-0">
+            Click on a module below to start managing it.
+          </p>
+        </div>
+
+        <!-- ACCESS CARDS -->
+        <div class="row g-4 mb-4" id="accessCards">
+          <!-- Cards injected by welcome.js -->
+        </div>
+
+        <!-- INFO / NOTES -->
+        <div class="info-box">
+          <h6 class="mb-2"><i class="bi bi-shield-lock"></i> Access Notes</h6>
+          <ul class="mb-0 small">
+            <li>You can only see modules assigned to your role</li>
+            <li>Some actions may require Super Admin approval</li>
+            <li>Contact admin if additional access is required</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Existing Admin Scripts -->
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/main.js"></script>
+
+    <!-- Page Script -->
+    <script src="../assets/js/welcome.js"></script>
+  </body>
+</html>
