@@ -50,7 +50,7 @@ async function apiGet(endpoint) {
    LOAD PAYMENTS
 ================================ */
 async function loadPayments() {
-  const res = await apiGet("/payments/all");
+  const res = await apiGet("/payments/all?status=COMPLETED");
   ALL_PAYMENTS = res.data.payments || [];
   applyFilters();
 }
@@ -63,7 +63,7 @@ function applyFilters() {
   const now = new Date();
 
   let filtered = ALL_PAYMENTS.filter((p) => {
-    const date = new Date(p.createdAt);
+    const date = new Date(p.completedAt);
 
     if (filter === "today") {
       return date.toDateString() === now.toDateString();
@@ -105,7 +105,7 @@ function renderTable(payments) {
 
     tbody.innerHTML += `
       <tr>
-        <td>${p._id}</td>
+        <td>${p.paymentId || "-"}</td>
         <td>${p.user?.name || "Deleted User"}</td>
         <td>${p.order?.orderId || "-"}</td>
         <td>${p.order?.productName || "-"}</td>
@@ -113,7 +113,9 @@ function renderTable(payments) {
         <td>${p.paymentMethod}</td>
         <td>#${p.installmentNumber}</td>
         <td><span class="badge bg-${badge}">${p.status}</span></td>
-        <td>${new Date(p.createdAt).toLocaleDateString()}</td>
+        <td>
+  ${p.completedAt ? new Date(p.completedAt).toLocaleDateString() : "-"}
+</td>
       </tr>
     `;
   });
@@ -135,9 +137,14 @@ function renderTotals(payments) {
     if (p.paymentMethod === "RAZORPAY") razorpay += p.amount;
   });
 
-  document.getElementById("totalAmount").innerText = `₹${total}`;
-  document.getElementById("walletTotal").innerText = `₹${wallet}`;
-  document.getElementById("razorpayTotal").innerText = `₹${razorpay}`;
+  const totalEl = document.getElementById("totalAmount");
+  if (totalEl) totalEl.innerText = `₹${total}`;
+
+  const walletEl = document.getElementById("walletTotal");
+  if (walletEl) walletEl.innerText = `₹${wallet}`;
+
+  const razorpayEl = document.getElementById("razorpayTotal");
+  if (razorpayEl) razorpayEl.innerText = `₹${razorpay}`;
 }
 
 /* ===============================
@@ -160,7 +167,7 @@ function exportCSV() {
 
   ALL_PAYMENTS.forEach((p) => {
     rows.push([
-      p._id,
+      p.paymentId || "",
       p.user?.name || "Deleted User",
       p.order?.orderId || "",
       p.order?.productName || "",
@@ -168,7 +175,7 @@ function exportCSV() {
       p.paymentMethod,
       p.installmentNumber,
       p.status,
-      new Date(p.createdAt).toLocaleDateString(),
+      p.completedAt ? new Date(p.completedAt).toLocaleDateString() : "",
     ]);
   });
 
@@ -181,9 +188,54 @@ function exportCSV() {
   a.download = "payments.csv";
   a.click();
 }
+/* ===============================
+   LOAD PAYMENT STATS (API #19)
+================================ */
+async function loadPaymentStats() {
+  try {
+    const res = await fetch(`${ADMIN_BASE}/orders/dashboard/stats`, {
+      headers: {
+        Authorization: `Bearer ${AUTH.getToken()}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const result = await res.json();
+    if (!result?.success) return;
+
+    // ✅ CORRECT RESPONSE PATH
+    const stats = result.data || {};
+    const payments = stats.payments || {};
+    const revenue = stats.revenue || {};
+
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = value;
+    };
+
+    /* ===============================
+       PAYMENTS SUMMARY
+    =============================== */
+    set("totalPaymentsCount", payments.total ?? 0);
+    set("totalPaymentAmount", `₹${payments.totalAmount ?? 0}`);
+    set("paymentsTodayAmount", `₹${payments.todayAmount ?? 0}`);
+
+    /* ===============================
+       REVENUE SUMMARY
+    =============================== */
+    set("totalRevenueAmount", `₹${revenue.total ?? 0}`);
+    set("revenueThisMonthAmount", `₹${revenue.thisMonth ?? 0}`);
+    set("revenueThisWeekAmount", `₹${revenue.thisWeek ?? 0}`);
+  } catch (err) {
+    console.error("Payment stats error:", err);
+  }
+}
 
 /* ===============================
    INIT
 ================================ */
 document.getElementById("dateFilter").addEventListener("change", applyFilters);
-document.addEventListener("DOMContentLoaded", loadPayments);
+document.addEventListener("DOMContentLoaded", () => {
+  loadPaymentStats(); // ✅ summary cards
+  loadPayments(); // existing table logic
+});
