@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel - Analytics</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
+
+  <body>
+    <!-- AUTH + PERMISSION GUARD -->
+    <script src="../assets/js/config.js"></script>
+    <script>
+      (function () {
+        const REQUIRED_PERMISSION = "analytics";
+
+        if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
+          alert("Please login first");
+          window.location.href = "login.html";
+          return;
+        }
+
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+          alert("Access Denied!");
+          window.location.href = "dashboard.html";
+        }
+      })();
+    </script>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
+
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item" id="logoutBtn">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <!-- PAGE HEADER -->
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Analytics Dashboard</h1>
+
+          <select id="periodFilter" class="form-select w-auto">
+            <option value="all">All Time</option>
+            <option value="month">This Month</option>
+            <option value="week">This Week</option>
+          </select>
+        </div>
+
+        <!-- USER ANALYTICS -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title">User Analytics</h5>
+            <div class="chart-box" style="height: 260px">
+              <canvas id="userPaymentsChart"></canvas>
+            </div>
+            <div id="userSummary" class="row mt-3"></div>
+
+            <hr />
+
+            <div class="table-responsive">
+              <table class="table table-hover table-sm">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Total Paid</th>
+                    <th>Payments</th>
+                  </tr>
+                </thead>
+                <tbody id="topUsersTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRODUCT ANALYTICS -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Product Performance</h5>
+            <div class="chart-box" style="height: 260px">
+              <canvas id="productRevenueChart"></canvas>
+            </div>
+            <div id="productSummary" class="row mt-3"></div>
+
+            <hr />
+
+            <div class="table-responsive">
+              <table class="table table-hover table-sm">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Orders</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody id="topProductsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAYMENT METHODS -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Payment Methods</h5>
+            <div
+              class="chart-box"
+              style="height: 220px; max-width: 300px; margin: auto"
+            >
+              <canvas id="paymentMethodsChart"></canvas>
+            </div>
+            <div id="paymentStats" class="row mt-3"></div>
+          </div>
+        </div>
+
+        <!-- OVERDUE -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title">Overdue Analysis</h5>
+            <div class="chart-box" style="height: 240px">
+              <canvas id="overdueChart"></canvas>
+            </div>
+            <div id="overdueSummary" class="row mt-3"></div>
+          </div>
+        </div>
+
+        <!-- FORECAST -->
+        <div class="card shadow-sm mb-5">
+          <div class="card-body">
+            <h5 class="card-title">Revenue Forecast</h5>
+            <div class="chart-box" style="height: 260px">
+              <canvas id="forecastChart"></canvas>
+            </div>
+            <div id="forecastSummary" class="row mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../assets/js/chart.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/user_analytics.js"></script>
+
+    <script>
+      document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "login.html";
+      });
+    </script>
+  </body>
+</html>

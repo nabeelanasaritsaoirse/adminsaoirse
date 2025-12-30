@@ -24,6 +24,14 @@ const NAV_CONFIG = {
       hrefFromRoot: "pages/users.html",
       permission: "users",
     },
+     {
+      id: "users_analytics",
+      label: "Users Analytics",
+      icon: "bi-graph-up",
+      href: "user_analytics.html",
+      hrefFromRoot: "pages/user_analytics.html",
+      permission: "users_analytics",
+    },
     {
       id: "wallet",
       label: "User Wallets",

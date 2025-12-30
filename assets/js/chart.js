@@ -1,252 +1,197 @@
 /**
- * Chart.js Configuration
- * Dashboard charts and visualizations
+ * Chart.js Utilities
+ * Shared chart helpers for Admin Dashboard
+ * SAFE for dynamic API-driven analytics
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    initializeCharts();
-});
+/* =========================
+   INTERNAL HELPERS
+========================= */
 
 /**
- * Initialize all charts
+ * Destroy existing chart on canvas (prevents duplicates)
  */
-function initializeCharts() {
-    createSalesChart();
-    createRevenueChart();
+function destroyIfExists(ctx) {
+  if (ctx && ctx._chartInstance) {
+    ctx._chartInstance.destroy();
+    ctx._chartInstance = null;
+  }
 }
 
+/* =========================
+   BAR / HORIZONTAL BAR
+========================= */
+
 /**
- * Create sales overview chart
+ * Create or replace a bar chart
+ * @param {string} canvasId
+ * @param {object} config
  */
-function createSalesChart() {
-    const ctx = document.getElementById('salesChart');
+function createBarChart(canvasId, config) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
 
-    if (!ctx) return;
+  destroyIfExists(ctx);
 
-    const salesChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Sales 2024',
-                data: [12, 19, 15, 25, 22, 30, 28, 35, 32, 38, 42, 45],
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                borderColor: 'rgba(102, 126, 234, 1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: 'rgba(102, 126, 234, 1)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }, {
-                label: 'Sales 2023',
-                data: [8, 15, 12, 20, 18, 25, 22, 28, 25, 30, 35, 38],
-                backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                borderColor: 'rgba(118, 75, 162, 1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                pointBackgroundColor: 'rgba(118, 75, 162, 1)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }]
+  const chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: config.labels || [],
+      datasets: [
+        {
+          label: config.label || "",
+          data: config.values || [],
+          backgroundColor: config.backgroundColor || "#4dabf7",
+          borderRadius: 6,
+          barThickness: config.barThickness || 18,
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: {
-                            size: 12
-                        }
-                    }
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: {
-                        size: 14
-                    },
-                    bodyFont: {
-                        size: 13
-                    },
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += '$' + context.parsed.y + 'k';
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return '$' + value + 'k';
-                        }
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            }
-        }
-    });
-}
-
-/**
- * Create revenue sources pie chart
- */
-function createRevenueChart() {
-    const ctx = document.getElementById('revenueChart');
-
-    if (!ctx) return;
-
-    const revenueChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Online Sales', 'Retail Store', 'Partners', 'Others'],
-            datasets: [{
-                data: [45, 25, 20, 10],
-                backgroundColor: [
-                    'rgba(102, 126, 234, 0.8)',
-                    'rgba(118, 75, 162, 0.8)',
-                    'rgba(54, 185, 204, 0.8)',
-                    'rgba(246, 194, 62, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(102, 126, 234, 1)',
-                    'rgba(118, 75, 162, 1)',
-                    'rgba(54, 185, 204, 1)',
-                    'rgba(246, 194, 62, 1)'
-                ],
-                borderWidth: 2,
-                hoverOffset: 10
-            }]
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: config.horizontal ? "y" : "x",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: config.tooltipTitle || undefined,
+            label: (ctx) => `₹${ctx.raw}`,
+          },
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 15,
-                        font: {
-                            size: 11
-                        }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: {
-                        size: 14
-                    },
-                    bodyFont: {
-                        size: 13
-                    },
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            label += context.parsed + '%';
-                            return label;
-                        }
-                    }
-                }
-            },
-            cutout: '60%'
-        }
-    });
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { display: false }, beginAtZero: true },
+      },
+    },
+  });
+
+  ctx._chartInstance = chart;
+  return chart;
 }
 
+/* =========================
+   LINE CHART
+========================= */
+
 /**
- * Create bar chart (example for other pages)
- * @param {string} canvasId - Canvas element ID
- * @param {object} data - Chart data
+ * Create or replace a line chart
  */
-function createBarChart(canvasId, data) {
-    const ctx = document.getElementById(canvasId);
+function createLineChart(canvasId, config) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
 
-    if (!ctx) return;
+  destroyIfExists(ctx);
 
-    const barChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: data.labels,
-            datasets: [{
-                label: data.label,
-                data: data.values,
-                backgroundColor: 'rgba(102, 126, 234, 0.6)',
-                borderColor: 'rgba(102, 126, 234, 1)',
-                borderWidth: 1
-            }]
+  const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: config.labels || [],
+      datasets: [
+        {
+          label: config.label || "",
+          data: config.values || [],
+          borderColor: config.color || "#339af0",
+          backgroundColor: config.fill
+            ? "rgba(51,154,240,0.15)"
+            : "transparent",
+          tension: 0.35,
+          fill: !!config.fill,
+          pointRadius: 3,
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          grid: { color: "#f1f3f5" },
+          ticks: {
+            callback: (v) => `₹${v}`,
+          },
+        },
+      },
+    },
+  });
 
-    return barChart;
+  ctx._chartInstance = chart;
+  return chart;
 }
+
+/* =========================
+   PIE / DOUGHNUT
+========================= */
 
 /**
- * Update chart data dynamically
- * @param {object} chart - Chart instance
- * @param {array} newData - New data array
+ * Create or replace a pie / doughnut chart
  */
-function updateChartData(chart, newData) {
-    chart.data.datasets[0].data = newData;
-    chart.update();
+function createPieChart(canvasId, config) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return null;
+
+  destroyIfExists(ctx);
+
+  const chart = new Chart(ctx, {
+    type: config.type || "pie",
+    data: {
+      labels: config.labels || [],
+      datasets: [
+        {
+          data: config.values || [],
+          backgroundColor: config.colors || ["#339af0", "#ff6b6b", "#51cf66"],
+          borderWidth: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: config.type === "doughnut" ? "60%" : undefined,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { usePointStyle: true },
+        },
+      },
+    },
+  });
+
+  ctx._chartInstance = chart;
+  return chart;
 }
 
-// Export chart functions
-window.chartFunctions = {
-    createBarChart,
-    updateChartData,
-    initializeCharts
+/* =========================
+   UPDATE EXISTING CHART
+========================= */
+
+/**
+ * Update chart data safely
+ */
+function updateChart(chart, values, labels = null) {
+  if (!chart) return;
+
+  if (labels) {
+    chart.data.labels = labels;
+  }
+
+  chart.data.datasets[0].data = values;
+  chart.update();
+}
+
+/* =========================
+   EXPORT GLOBAL
+========================= */
+
+window.ChartUtils = {
+  createBarChart,
+  createLineChart,
+  createPieChart,
+  updateChart,
 };
