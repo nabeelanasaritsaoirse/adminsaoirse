@@ -217,43 +217,6 @@ function getDateRange(filter, custom = null) {
   };
 }
 
-async function loadPaymentStats(filter = "today", customRange = null) {
-  try {
-    const range = getDateRange(filter, customRange);
-    const startDate = range.startDate;
-    const endDate = range.endDate;
-
-    const res = await fetch(
-      `${ADMIN_BASE}/analytics/revenue?startDate=${startDate}&endDate=${endDate}&groupBy=day`,
-      {
-        headers: {
-          Authorization: `Bearer ${AUTH.getToken()}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const result = await res.json();
-    if (!result?.success || !result.data) return;
-
-    const data = result.data;
-
-    const set = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.innerText = value;
-    };
-
-    set("totalPaymentsCount", data.totalPayments ?? 0);
-    set("totalPaymentAmount", `₹${data.totalRevenue ?? 0}`);
-    set("paymentsTodayAmount", `₹${data.totalRevenue ?? 0}`);
-    set("totalRevenueAmount", `₹${data.totalRevenue ?? 0}`);
-    set("revenueThisMonthAmount", `₹${data.totalRevenue ?? 0}`);
-    set("revenueThisWeekAmount", `₹${data.totalRevenue ?? 0}`);
-  } catch (err) {
-    console.error("Payment stats error:", err);
-  }
-}
-
 dateFilterEl.addEventListener("change", () => {
   CURRENT_FILTER = dateFilterEl.value;
   CUSTOM_RANGE = null;
@@ -286,8 +249,24 @@ applyBtn.addEventListener("click", () => {
 
   refreshPaymentsUI();
 });
+function updateSummaryLabels(filter) {
+  const labelMap = {
+    today: "Payments Today",
+    "7d": "Payments (Last 7 Days)",
+    "1m": "Payments (Last 1 Month)",
+    "3m": "Payments (Last 3 Months)",
+    "6m": "Payments (Last 6 Months)",
+    custom: "Payments (Custom Range)",
+  };
+
+  const label = labelMap[filter] || "Payments";
+
+  const labelEl = document.getElementById("paymentsSummaryLabel");
+  if (labelEl) labelEl.innerText = label;
+}
+
 async function refreshPaymentsUI() {
-  await loadPaymentStats(CURRENT_FILTER, CUSTOM_RANGE);
+  updateSummaryLabels(CURRENT_FILTER);
   await loadPayments(CURRENT_FILTER, CUSTOM_RANGE);
 }
 

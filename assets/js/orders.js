@@ -189,40 +189,42 @@ async function loadActiveOrders() {
 
   tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
 
-  const response = await apiGet("/admin/orders/all?status=ACTIVE");
+  // ✅ USE ANALYTICS API (single source of truth)
+  const response = await apiGet(
+    "/admin/analytics/orders?status=ACTIVE&limit=100"
+  );
+
   if (!response || !response.data?.orders) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load</td></tr>`;
     return;
   }
 
-  const activeOrders = response.data.orders || [];
+  const orders = response.data.orders;
 
-  // Update card count
-  if (countBox) countBox.innerText = activeOrders.length;
+  if (countBox) countBox.innerText = orders.length;
 
-  if (activeOrders.length === 0) {
+  if (orders.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No active orders</td></tr>`;
     return;
   }
 
   tbody.innerHTML = "";
 
-  activeOrders.forEach((order) => {
+  orders.forEach((order) => {
     const user = order.user || {};
-    const tr = document.createElement("tr");
+    const meta = order.metadata || {};
 
+    const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${order.orderId}</td>
       <td>${user.name || "Deleted User"}</td>
       <td>${order.productName || "-"}</td>
-     <td>
-  ${order.paidInstallments}/${order.totalDays ?? "-"}
-</td>
-      <td>₹${order.remainingAmount}</td>
+      <td>${meta.paidInstallments}/${meta.totalInstallments}</td>
+      <td>₹${meta.remainingAmount ?? 0}</td>
       <td>
         ${
-          order.lastPaymentDate
-            ? new Date(order.lastPaymentDate).toLocaleDateString()
+          meta.lastDueDate
+            ? new Date(meta.lastDueDate).toLocaleDateString()
             : "-"
         }
       </td>
@@ -231,6 +233,7 @@ async function loadActiveOrders() {
     tbody.appendChild(tr);
   });
 }
+
 /* ===============================
    LOAD ORDER STATS (DASHBOARD API)
    Uses API #19
