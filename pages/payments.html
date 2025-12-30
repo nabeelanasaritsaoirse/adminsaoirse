@@ -41,14 +41,29 @@
         <h2 class="mb-3">Payments</h2>
 
         <!-- FILTERS -->
-        <div class="d-flex gap-2 mb-3">
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
           <select id="dateFilter" class="form-select w-auto">
-            <option value="all">All</option>
             <option value="today">Today</option>
-            <option value="month">This Month</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="1m">Last 1 Month</option>
+            <option value="3m">Last 3 Months</option>
+            <option value="6m">Last 6 Months</option>
+            <option value="custom">Custom Range</option>
           </select>
 
-          <button class="btn btn-outline-success" onclick="exportCSV()">
+          <input
+            type="date"
+            id="startDate"
+            class="form-control w-auto d-none"
+          />
+
+          <input type="date" id="endDate" class="form-control w-auto d-none" />
+
+          <button id="applyCustomFilter" class="btn btn-primary d-none">
+            Apply
+          </button>
+
+          <button class="btn btn-outline-success ms-auto" onclick="exportCSV()">
             <i class="bi bi-download"></i> Export CSV
           </button>
         </div>

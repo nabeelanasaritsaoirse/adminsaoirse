@@ -20,18 +20,18 @@
   }
 })();
 
-/* ===============================
-   CONFIG
-================================ */
-const API_BASE = window.BASE_URL || "https://api.epielio.com/api";
-const ADMIN_BASE = `${API_BASE}/installments/admin`;
+// /* ===============================
+//    CONFIG
+// ================================ */
+// const API_BASE = window.BASE_URL || "https://api.epielio.com/api";
+// const INSTALLMENTS_BASE = `${API_BASE}/installments`;
 
 /* ===============================
    FETCH HELPER
 ================================ */
 async function apiGet(endpoint) {
   try {
-    const res = await fetch(`${ADMIN_BASE}${endpoint}`, {
+    const res = await fetch(`${INSTALLMENTS_BASE}${endpoint}`, {
       headers: {
         Authorization: `Bearer ${AUTH.getToken()}`,
         "Content-Type": "application/json",
@@ -61,7 +61,7 @@ async function loadCompletedOrders() {
 
   tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
 
-  const response = await apiGet("/orders/completed");
+  const response = await apiGet("/admin/orders/completed");
   if (!response || !response.data?.orders) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load orders</td></tr>`;
     return;
@@ -115,6 +115,7 @@ async function loadCompletedOrders() {
 
 /* ===============================
    LOAD COMPLETING SOON ORDERS
+   (USES ANALYTICS API — CORRECT)
 ================================ */
 async function loadCompletingSoonOrders() {
   const tbody = document.getElementById("completingSoonBody");
@@ -122,21 +123,17 @@ async function loadCompletingSoonOrders() {
 
   tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3">Loading...</td></tr>`;
 
-  const response = await apiGet("/orders/all?status=ACTIVE");
+  // 🔥 Correct API
+  const response = await apiGet(
+    "/admin/analytics/orders?status=ACTIVE&completionBucket=1-7-days&limit=50"
+  );
+
   if (!response || !response.data?.orders) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">Failed to load orders</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">Failed to load</td></tr>`;
     return;
   }
 
-  const orders = response.data.orders.filter((order) => {
-    if (order.status !== "ACTIVE") return false;
-
-    const total = order.totalInstallments || 0;
-    const paid = order.paidInstallments || 0;
-    const remaining = total - paid;
-
-    return remaining > 0 && remaining <= 3;
-  });
+  const orders = response.data.orders;
 
   if (orders.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="text-muted text-center">No orders completing soon</td></tr>`;
@@ -147,6 +144,7 @@ async function loadCompletingSoonOrders() {
 
   orders.forEach((order) => {
     const user = order.user || {};
+    const meta = order.metadata || {};
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -155,33 +153,34 @@ async function loadCompletingSoonOrders() {
       <td>
         ${user.name || "Deleted User"}
         <br>
-        <small class="text-muted">${user.phone || "-"}</small>
+        <small class="text-muted">${user.phoneNumber || "-"}</small>
       </td>
 
-      <td>${order.productName || order.product?.name || "-"}</td>
+      <td>${order.productName || "-"}</td>
 
-      <td>${(order.totalInstallments || 0) - (order.paidInstallments || 0)}</td>
-      <td>
-  ${
-    order.lastPaymentDate
-      ? new Date(order.lastPaymentDate).toLocaleDateString()
-      : "-"
-  }
-</td>
-
-      <td>₹${order.remainingAmount || 0}</td>
+      <td>${meta.remainingInstallments ?? "-"}</td>
 
       <td>
-        <button class="btn btn-sm btn-success"
-          onclick="viewOrder('${order.orderId}')">
-          Prepare
-        </button>
+        ${
+          meta.lastDueDate
+            ? new Date(meta.lastDueDate).toLocaleDateString()
+            : "-"
+        }
+      </td>
+
+      <td>₹${meta.remainingAmount ?? 0}</td>
+
+      <td>
+        <span class="badge bg-warning">
+          ${meta.daysToComplete} days
+        </span>
       </td>
     `;
 
     tbody.appendChild(tr);
   });
 }
+
 async function loadActiveOrders() {
   const tbody = document.getElementById("activeOrdersBody");
   const countBox = document.getElementById("activeOrdersCount");
@@ -190,7 +189,7 @@ async function loadActiveOrders() {
 
   tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
 
-  const response = await apiGet("/orders/all?status=ACTIVE");
+  const response = await apiGet("/admin/orders/all?status=ACTIVE");
   if (!response || !response.data?.orders) {
     tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load</td></tr>`;
     return;
@@ -216,10 +215,9 @@ async function loadActiveOrders() {
       <td>${order.orderId}</td>
       <td>${user.name || "Deleted User"}</td>
       <td>${order.productName || "-"}</td>
-      <td>
-  ${order.paidInstallments}/${
-      order.totalInstallments || order.totalDays || "-"
-    }</td>
+     <td>
+  ${order.paidInstallments}/${order.totalDays ?? "-"}
+</td>
       <td>₹${order.remainingAmount}</td>
       <td>
         ${
@@ -239,12 +237,15 @@ async function loadActiveOrders() {
 ================================ */
 async function loadOrderStats() {
   try {
-    const res = await fetch(`${ADMIN_BASE}/orders/dashboard/stats`, {
-      headers: {
-        Authorization: `Bearer ${AUTH.getToken()}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `${INSTALLMENTS_ADMIN_BASE}/orders/dashboard/stats`,
+      {
+        headers: {
+          Authorization: `Bearer ${AUTH.getToken()}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const result = await res.json();
     if (!result?.success) return;

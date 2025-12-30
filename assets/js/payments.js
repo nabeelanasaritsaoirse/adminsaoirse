@@ -1,8 +1,3 @@
-/*********************************
- * PAYMENTS ADMIN — FINAL VERSION
- * Uses ONLY: /api/installments/admin
- *********************************/
-
 /* ===============================
    AUTH + PERMISSION GUARD
 ================================ */
@@ -22,12 +17,16 @@
   }
 })();
 
-/*********************************
- * PAYMENTS ADMIN — ADVANCED
- *********************************/
+let CURRENT_FILTER = "today";
+let CUSTOM_RANGE = null;
 
-const API_BASE = window.BASE_URL || "https://api.epielio.com/api";
-const ADMIN_BASE = `${API_BASE}/installments/admin`;
+const dateFilterEl = document.getElementById("dateFilter");
+const startDateEl = document.getElementById("startDate");
+const endDateEl = document.getElementById("endDate");
+const applyBtn = document.getElementById("applyCustomFilter");
+
+// ✅ Use globals from config.js
+const ADMIN_BASE = `${window.BASE_URL}/installments/admin`;
 
 let ALL_PAYMENTS = [];
 
@@ -49,38 +48,24 @@ async function apiGet(endpoint) {
 /* ===============================
    LOAD PAYMENTS
 ================================ */
-async function loadPayments() {
-  const res = await apiGet("/payments/all?status=COMPLETED");
-  ALL_PAYMENTS = res.data.payments || [];
-  applyFilters();
-}
+async function loadPayments(filter = "today", customRange = null) {
+  const range = getDateRange(filter, customRange);
+  const startDate = range.startDate;
+  const endDate = range.endDate;
 
-/* ===============================
-   FILTER LOGIC
-================================ */
-function applyFilters() {
-  const filter = document.getElementById("dateFilter").value;
-  const now = new Date();
+  const res = await apiGet(
+    `/payments/all?status=COMPLETED&startDate=${startDate}&endDate=${endDate}`
+  );
 
-  let filtered = ALL_PAYMENTS.filter((p) => {
-    const date = new Date(p.completedAt);
+  ALL_PAYMENTS = (res.data.payments || []).filter(
+    (p) =>
+      p.completedAt &&
+      new Date(p.completedAt) >= new Date(startDate) &&
+      new Date(p.completedAt) <= new Date(endDate)
+  );
 
-    if (filter === "today") {
-      return date.toDateString() === now.toDateString();
-    }
-
-    if (filter === "month") {
-      return (
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
-      );
-    }
-
-    return true;
-  });
-
-  renderTable(filtered);
-  renderTotals(filtered);
+  renderTable(ALL_PAYMENTS);
+  renderTotals(ALL_PAYMENTS);
 }
 
 /* ===============================
@@ -188,54 +173,128 @@ function exportCSV() {
   a.download = "payments.csv";
   a.click();
 }
-/* ===============================
-   LOAD PAYMENT STATS (API #19)
-================================ */
-async function loadPaymentStats() {
+function getDateRange(filter, custom = null) {
+  let start, end;
+
+  if (filter === "custom" && custom) {
+    return {
+      startDate: custom.startDate,
+      endDate: custom.endDate,
+    };
+  }
+
+  end = new Date();
+  start = new Date();
+
+  // 🔥 VERY IMPORTANT
+  end.setHours(23, 59, 59, 999);
+  start.setHours(0, 0, 0, 0);
+
+  switch (filter) {
+    case "today":
+      break;
+
+    case "7d":
+      start.setDate(end.getDate() - 6);
+      break;
+
+    case "1m":
+      start.setMonth(end.getMonth() - 1);
+      break;
+
+    case "3m":
+      start.setMonth(end.getMonth() - 3);
+      break;
+
+    case "6m":
+      start.setMonth(end.getMonth() - 6);
+      break;
+  }
+
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  };
+}
+
+async function loadPaymentStats(filter = "today", customRange = null) {
   try {
-    const res = await fetch(`${ADMIN_BASE}/orders/dashboard/stats`, {
-      headers: {
-        Authorization: `Bearer ${AUTH.getToken()}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const range = getDateRange(filter, customRange);
+    const startDate = range.startDate;
+    const endDate = range.endDate;
+
+    const res = await fetch(
+      `${ADMIN_BASE}/analytics/revenue?startDate=${startDate}&endDate=${endDate}&groupBy=day`,
+      {
+        headers: {
+          Authorization: `Bearer ${AUTH.getToken()}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const result = await res.json();
-    if (!result?.success) return;
+    if (!result?.success || !result.data) return;
 
-    // ✅ CORRECT RESPONSE PATH
-    const stats = result.data || {};
-    const payments = stats.payments || {};
-    const revenue = stats.revenue || {};
+    const data = result.data;
 
     const set = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.innerText = value;
     };
 
-    /* ===============================
-       PAYMENTS SUMMARY
-    =============================== */
-    set("totalPaymentsCount", payments.total ?? 0);
-    set("totalPaymentAmount", `₹${payments.totalAmount ?? 0}`);
-    set("paymentsTodayAmount", `₹${payments.todayAmount ?? 0}`);
-
-    /* ===============================
-       REVENUE SUMMARY
-    =============================== */
-    set("totalRevenueAmount", `₹${revenue.total ?? 0}`);
-    set("revenueThisMonthAmount", `₹${revenue.thisMonth ?? 0}`);
-    set("revenueThisWeekAmount", `₹${revenue.thisWeek ?? 0}`);
+    set("totalPaymentsCount", data.totalPayments ?? 0);
+    set("totalPaymentAmount", `₹${data.totalRevenue ?? 0}`);
+    set("paymentsTodayAmount", `₹${data.totalRevenue ?? 0}`);
+    set("totalRevenueAmount", `₹${data.totalRevenue ?? 0}`);
+    set("revenueThisMonthAmount", `₹${data.totalRevenue ?? 0}`);
+    set("revenueThisWeekAmount", `₹${data.totalRevenue ?? 0}`);
   } catch (err) {
     console.error("Payment stats error:", err);
   }
 }
 
+dateFilterEl.addEventListener("change", () => {
+  CURRENT_FILTER = dateFilterEl.value;
+  CUSTOM_RANGE = null;
+
+  if (CURRENT_FILTER === "custom") {
+    startDateEl.classList.remove("d-none");
+    endDateEl.classList.remove("d-none");
+    applyBtn.classList.remove("d-none");
+    return;
+  }
+
+  startDateEl.classList.add("d-none");
+  endDateEl.classList.add("d-none");
+  applyBtn.classList.add("d-none");
+
+  refreshPaymentsUI();
+});
+
+applyBtn.addEventListener("click", () => {
+  if (!startDateEl.value || !endDateEl.value) {
+    alert("Select both start and end dates");
+    return;
+  }
+
+  CURRENT_FILTER = "custom";
+  CUSTOM_RANGE = {
+    startDate: startDateEl.value,
+    endDate: endDateEl.value,
+  };
+
+  refreshPaymentsUI();
+});
+async function refreshPaymentsUI() {
+  await loadPaymentStats(CURRENT_FILTER, CUSTOM_RANGE);
+  await loadPayments(CURRENT_FILTER, CUSTOM_RANGE);
+}
+
 /* ===============================
    INIT
 ================================ */
-document.getElementById("dateFilter").addEventListener("change", applyFilters);
 document.addEventListener("DOMContentLoaded", () => {
-  loadPaymentStats(); // ✅ summary cards
-  loadPayments(); // existing table logic
+  CURRENT_FILTER = dateFilterEl.value || "today";
+  refreshPaymentsUI();
 });
