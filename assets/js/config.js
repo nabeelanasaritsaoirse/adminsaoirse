@@ -1,21 +1,15 @@
 /*******************************
- * BASE URL (AUTO ENV DETECTION)
+ * BASE URL (GLOBAL)
  *******************************/
-let BASE_URL;
+window.BASE_URL = "https://api.epielio.com/api";
 
-// DEV ENVIRONMENTS
-const DEV_HOSTS = [
-  "dev-admin.epielio.com",
-  "admin-dashboard-site-dev.s3-website.ap-south-1.amazonaws.com",
-  "localhost",
-  "127.0.0.1",
-];
+// ✅ SINGLE SOURCE OF TRUTH
+const API_BASE = window.BASE_URL;
 
-BASE_URL = "https://api.epielio.com/api";
-// if
-// (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
-//   BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
-// }
+// ✅ Installments
+const INSTALLMENTS_BASE = `${API_BASE}/installments`;
+const INSTALLMENTS_ADMIN_BASE = `${INSTALLMENTS_BASE}/admin`;
+
 
 // ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
 // This MUST happen before any script tries to use it
@@ -188,7 +182,8 @@ const API_CONFIG = {
       reorderProducts: "/featured-lists/admin/lists/:listId/reorder",
 
       // Sync endpoints
-      syncProduct: "/featured-lists/admin/lists/:listId/products/:productId/sync",
+      syncProduct:
+        "/featured-lists/admin/lists/:listId/products/:productId/sync",
       syncAllProducts: "/featured-lists/admin/lists/:listId/sync-all",
     },
   },
