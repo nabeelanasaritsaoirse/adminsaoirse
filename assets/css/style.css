@@ -422,20 +422,43 @@ body {
   padding: 1.25rem;
   margin-top: 2rem;
 }
-/* =========================================================
-   WELCOME PAGE – SIDEBAR COLLAPSED BY DEFAULT
-========================================================= */
-
-/* body.welcome-page #sidebar {
-  width: 0;
-  overflow: hidden;
-}
-
-body.welcome-page .main-content {
-  margin-left: 0;
-} */
-
-/* Optional: smoother experience */
 body.welcome-page #sidebar {
   transition: width 0.3s ease;
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #eee 25%,
+    #ddd 37%,
+    #eee 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.skeleton-box {
+  height: 80px;
+  margin-bottom: 10px;
+}
+/* Chart containers */
+.chart-box {
+  position: relative;
+  height: 260px;       /* 👈 perfect dashboard height */
+  width: 100%;
+  margin-top: 15px;
+}
+
+.chart-box.small {
+  height: 220px;       /* 👈 pie chart should be smaller */
+}
+
+/* Prevent canvas from blowing up */
+.chart-box canvas {
+  max-height: 100% !important;
 }
