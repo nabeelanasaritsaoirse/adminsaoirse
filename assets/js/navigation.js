@@ -121,6 +121,14 @@ const NAV_CONFIG = {
       permission: "analytics",
     },
     {
+      id: "faq_management",
+      label: "FAQ Management",
+      icon: "bi-question-circle",
+      href: "global-faqs.html",
+      hrefFromRoot: "pages/global-faqs.html",
+      permission: "faq_management",
+    },
+    {
       id: "notifications",
       label: "Notifications",
       icon: "bi-bell",
