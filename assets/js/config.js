@@ -1,21 +1,20 @@
 /*******************************
- * BASE URL (AUTO ENV DETECTION)
+ * BASE URL (GLOBAL)
  *******************************/
-let BASE_URL;
+window.BASE_URL = "https://api.epielio.com/api";
 
-// DEV ENVIRONMENTS
-const DEV_HOSTS = [
-  "dev-admin.epielio.com",
-  "admin-dashboard-site-dev.s3-website.ap-south-1.amazonaws.com",
-  "localhost",
-  "127.0.0.1",
-];
+// ✅ SINGLE SOURCE OF TRUTH
+const API_BASE = window.BASE_URL;
 
-if (DEV_HOSTS.some((h) => window.location.hostname.includes(h))) {
-  BASE_URL = "https://api.epielio.com/api"; // DEV BACKEND
- } 
-else {
-  BASE_URL = "https://api.epielio.com/api"; // PROD BACKEND
+// ✅ Installments
+const INSTALLMENTS_BASE = `${API_BASE}/installments`;
+const INSTALLMENTS_ADMIN_BASE = `${INSTALLMENTS_BASE}/admin`;
+
+
+// ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
+// This MUST happen before any script tries to use it
+if (!window.BASE_URL) {
+  window.BASE_URL = BASE_URL;
 }
 
 /*******************************
@@ -39,9 +38,16 @@ const API_CONFIG = {
 
   endpoints: {
     auth: {
-      adminLogin: "/auth/admin-login",
+      adminLogin: "/admin-auth/login", // ✅ New unified endpoint
+      legacyLogin: "/auth/admin-login", // Old endpoint for reference
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
+    },
+
+    adminManagement: {
+      subAdmins: "/admin-mgmt/sub-admins",
+      subAdminById: "/admin-mgmt/sub-admins/:adminId",
+      resetPassword: "/admin-mgmt/sub-admins/:adminId/reset-password",
     },
 
     users: {
@@ -58,6 +64,7 @@ const API_CONFIG = {
       create: "/categories",
       update: "/categories/:categoryId",
       delete: "/categories/:categoryId",
+      hardDelete: "/categories/:categoryId/hard",
       toggleStatus: "/categories/:categoryId",
       toggleFeatured: "/categories/:categoryId/toggle-featured",
       uploadImage: "/categories/:categoryId/upload-image",
@@ -75,10 +82,27 @@ const API_CONFIG = {
       create: "/products",
       update: "/products/:productId",
       delete: "/products/:productId",
+      hardDelete: "/products/:productId/hard",
       toggleStatus: "/products/:productId/toggle-status",
       search: "/products/search",
       uploadImage: "/products/:productId/upload-image",
       deleteImage: "/products/:productId/image/:imageId",
+    },
+    featuredLists: {
+      getAll: "/featured-lists/admin/lists",
+      getById: "/featured-lists/admin/lists/:listId",
+      create: "/featured-lists/admin/lists",
+      update: "/featured-lists/admin/lists/:listId",
+      delete: "/featured-lists/admin/lists/:listId",
+
+      addProduct: "/featured-lists/admin/lists/:listId/products",
+      removeProduct: "/featured-lists/admin/lists/:listId/products/:productId",
+
+      reorderProducts: "/featured-lists/admin/lists/:listId/reorder",
+
+      syncProduct:
+        "/featured-lists/admin/lists/:listId/products/:productId/sync",
+      syncAllProducts: "/featured-lists/admin/lists/:listId/sync-all",
     },
 
     about: {
@@ -139,11 +163,57 @@ const API_CONFIG = {
       getActive: "/success-stories/public/active",
       stats: "/success-stories/admin/stats",
     },
+
+    featuredLists: {
+      // Public endpoints
+      getAllPublic: "/featured-lists",
+      getBySlug: "/featured-lists/:slug",
+
+      // Admin endpoints
+      getAll: "/featured-lists/admin/lists",
+      getById: "/featured-lists/admin/lists/:listId",
+      create: "/featured-lists/admin/lists",
+      update: "/featured-lists/admin/lists/:listId",
+      delete: "/featured-lists/admin/lists/:listId",
+
+      // Product management
+      addProduct: "/featured-lists/admin/lists/:listId/products",
+      removeProduct: "/featured-lists/admin/lists/:listId/products/:productId",
+      reorderProducts: "/featured-lists/admin/lists/:listId/reorder",
+
+      // Sync endpoints
+      syncProduct:
+        "/featured-lists/admin/lists/:listId/products/:productId/sync",
+      syncAllProducts: "/featured-lists/admin/lists/:listId/sync-all",
+    },
   },
 };
 
 /*******************************
- * AUTH HANDLER (FIXED)
+ * RBAC PERMISSIONS CONFIGURATION
+ *******************************/
+const PERMISSIONS = {
+  DASHBOARD: "dashboard",
+  USERS: "users",
+  WALLET: "wallet",
+  KYC: "kyc",
+  CATEGORIES: "categories",
+  PRODUCTS: "products",
+  UPLOADER: "uploader",
+  COUPONS: "coupons",
+  ORDERS: "orders",
+  ANALYTICS: "analytics",
+  NOTIFICATIONS: "notifications",
+  CHAT: "chat",
+  CHAT_REPORTS: "chat-reports",
+  CHAT_ANALYTICS: "chat-analytics",
+  SETTINGS: "settings",
+  ADMIN_MANAGEMENT: "admin_management",
+  FEATURED_LISTS: "featured_lists",
+};
+
+/*******************************
+ * AUTH HANDLER (ENHANCED WITH RBAC)
  *******************************/
 const AUTH = {
   getToken() {
@@ -163,11 +233,104 @@ const AUTH = {
   removeToken() {
     localStorage.removeItem("epi_admin_token");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("epi_admin_user");
+    localStorage.removeItem("epi_admin_username");
+    localStorage.removeItem("epi_refresh_token");
   },
 
   getAuthHeaders() {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
+  },
+
+  // ===== RBAC FUNCTIONS =====
+
+  // Get current user data from localStorage
+  getCurrentUser() {
+    const userData = localStorage.getItem("epi_admin_user");
+    return userData ? JSON.parse(userData) : null;
+  },
+
+  // Get username from localStorage
+  getUsername() {
+    return localStorage.getItem("epi_admin_username") || null;
+  },
+
+  // Get user's accessible modules/permissions
+  getUserModules() {
+    const user = this.getCurrentUser();
+    if (!user) return [];
+
+    // If user is super admin, return empty array (means ALL access)
+    if (user.isSuperAdmin === true) {
+      return [];
+    }
+
+    // Return user's specific modules array
+    return user.modules || [];
+  },
+
+  // Check if user has access to a specific module
+  hasModule(moduleName) {
+    const user = this.getCurrentUser();
+    if (!user) return false;
+
+    // Super admin has access to ALL modules
+    if (user.isSuperAdmin === true) {
+      return true;
+    }
+
+    // Sub-admin only has assigned modules
+    const modules = user.modules || [];
+    return modules.includes(moduleName);
+  },
+
+  // Check if user is super admin
+  isSuperAdmin() {
+    const user = this.getCurrentUser();
+    return user && user.isSuperAdmin === true;
+  },
+
+  // Check if user is authenticated
+  isAuthenticated() {
+    return !!this.getToken() && !!this.getCurrentUser();
+  },
+
+  // Save user data after login
+  saveUserData(userData) {
+    if (!userData) return;
+
+    // Save complete user object
+    localStorage.setItem(
+      "epi_admin_user",
+      JSON.stringify({
+        userId: userData.userId,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        profilePicture: userData.profilePicture || "",
+        isSuperAdmin: userData.isSuperAdmin,
+        modules: userData.modules || [],
+      })
+    );
+
+    // Save username separately for easy access
+    localStorage.setItem("epi_admin_username", userData.name);
+
+    // Save tokens
+    if (userData.accessToken) {
+      this.setToken(userData.accessToken);
+    }
+
+    if (userData.refreshToken) {
+      localStorage.setItem("epi_refresh_token", userData.refreshToken);
+    }
+  },
+
+  // Logout and clear all data
+  logout() {
+    this.removeToken();
+    window.location.href = "../pages/login.html";
   },
 };
 
@@ -243,8 +406,14 @@ const API = {
     });
   },
 
-  delete(endpoint, params = {}) {
-    const url = this.buildURL(endpoint, params);
+  delete(endpoint, pathParams = {}, queryParams = {}) {
+    let url = this.buildURL(endpoint, pathParams);
+
+    // Attach query params like ?force=true
+    if (Object.keys(queryParams).length > 0) {
+      url += "?" + new URLSearchParams(queryParams).toString();
+    }
+
     return this.request(url, { method: "DELETE" });
   },
 
@@ -260,8 +429,9 @@ const API = {
 /*******************************
  * EXPORT GLOBAL
  *******************************/
-window.BASE_URL = BASE_URL;
+// window.BASE_URL already set at line 22 (no duplication needed)
 window.API_CONFIG = API_CONFIG;
 window.APP_CONFIG = APP_CONFIG;
 window.AUTH = AUTH;
 window.API = API;
+window.PERMISSIONS = PERMISSIONS;

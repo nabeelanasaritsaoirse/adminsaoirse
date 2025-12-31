@@ -37,20 +37,27 @@
   </head>
 
   <body>
+
+    <!-- FIXED RBAC PAGE GUARD -->
+    <script src="../assets/js/config.js"></script>
     <script>
       (function () {
-        const token = localStorage.getItem("epi_admin_token");
-        const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+        const REQUIRED_PERMISSION = "uploader";
 
-        if (!token) {
-          window.location.href = "pages/login.html";
+        if (!AUTH.isAuthenticated()) {
+          window.location.href = "login.html";
           return;
         }
 
-        if (user.role !== "admin") {
-          localStorage.removeItem("epi_admin_token");
-          localStorage.removeItem("epi_admin_user");
-          window.location.href = "pages/login.html";
+        const user = AUTH.getCurrentUser();
+
+        // Super admin always allowed
+        if (user.isSuperAdmin === true) return;
+
+        // Sub-admin must have uploader permission
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+          alert("Access Denied! You do not have permission to access Image Uploader.");
+          window.location.href = "dashboard.html";
           return;
         }
       })();
@@ -100,14 +107,14 @@
     <!-- MAIN CONTENT -->
     <div class="main-content">
       <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
           <h1 class="h2">Image Uploader</h1>
         </div>
 
         <div class="row g-3 mb-4">
-          <!-- =======================
-               BANNERS
-          ======================= -->
+          <!-- BANNERS -->
           <div class="col-md-6">
             <div class="card shadow-sm">
               <div class="card-header">
@@ -122,7 +129,11 @@
 
                   <div class="mb-2">
                     <label class="form-label">Description</label>
-                    <textarea id="bannerDescription" class="form-control" rows="2"></textarea>
+                    <textarea
+                      id="bannerDescription"
+                      class="form-control"
+                      rows="2"
+                    ></textarea>
                   </div>
 
                   <div class="mb-2 row">
@@ -136,7 +147,12 @@
                     </div>
                     <div class="col">
                       <label class="form-label">Display Order</label>
-                      <input id="bannerOrder" type="number" class="form-control" value="0" />
+                      <input
+                        id="bannerOrder"
+                        type="number"
+                        class="form-control"
+                        value="0"
+                      />
                     </div>
                   </div>
 
@@ -157,14 +173,26 @@
 
                   <div class="mb-2">
                     <label class="form-label">Redirect Value</label>
-                    <input id="bannerRedirectValue" class="form-control" placeholder="Enter productId/categoryId/URL" />
+                    <input
+                      id="bannerRedirectValue"
+                      class="form-control"
+                      placeholder="Enter productId/categoryId/URL"
+                    />
                   </div>
 
-                  <!-- IMAGE + PREVIEW -->
+                  <!-- IMAGE -->
                   <div class="mb-2">
                     <label class="form-label">Image</label>
-                    <input id="bannerImage" type="file" accept="image/*" class="form-control" />
-                    <img id="bannerPreview" style="display:none;width:150px;margin-top:10px;border:1px solid #ccc;border-radius:6px;" />
+                    <input
+                      id="bannerImage"
+                      type="file"
+                      accept="image/*"
+                      class="form-control"
+                    />
+                    <img
+                      id="bannerPreview"
+                      style="display:none;width:150px;margin-top:10px;border:1px solid #ccc;border-radius:6px;"
+                    />
                   </div>
 
                   <div class="d-flex gap-2">
@@ -176,9 +204,7 @@
             </div>
           </div>
 
-          <!-- =======================
-               SUCCESS STORIES
-          ======================= -->
+          <!-- SUCCESS STORIES -->
           <div class="col-md-6">
             <div class="card shadow-sm">
               <div class="card-header">
@@ -193,7 +219,11 @@
 
                   <div class="mb-2">
                     <label class="form-label">Description</label>
-                    <textarea id="storyDescription" class="form-control" rows="2"></textarea>
+                    <textarea
+                      id="storyDescription"
+                      class="form-control"
+                      rows="2"
+                    ></textarea>
                   </div>
 
                   <div class="mb-2 row">
@@ -207,15 +237,28 @@
                     </div>
                     <div class="col">
                       <label class="form-label">Display Order</label>
-                      <input id="storyOrder" type="number" class="form-control" value="0" />
+                      <input
+                        id="storyOrder"
+                        type="number"
+                        class="form-control"
+                        value="0"
+                      />
                     </div>
                   </div>
 
-                  <!-- IMAGE + PREVIEW -->
+                  <!-- IMAGE -->
                   <div class="mb-2">
                     <label class="form-label">Image</label>
-                    <input id="storyImage" type="file" accept="image/*" class="form-control" />
-                    <img id="storyPreview" style="display:none;width:150px;margin-top:10px;border:1px solid #ccc;border-radius:6px;" />
+                    <input
+                      id="storyImage"
+                      type="file"
+                      accept="image/*"
+                      class="form-control"
+                    />
+                    <img
+                      id="storyPreview"
+                      style="display:none;width:150px;margin-top:10px;border:1px solid #ccc;border-radius:6px;"
+                    />
                   </div>
 
                   <div class="d-flex gap-2">
@@ -230,6 +273,7 @@
 
         <!-- TABLES -->
         <div class="row g-3">
+          <!-- BANNERS TABLE -->
           <div class="col-12">
             <div class="card shadow-sm">
               <div class="card-header d-flex justify-content-between align-items-center">
@@ -256,7 +300,9 @@
                       </tr>
                     </thead>
                     <tbody id="bannersTableBody">
-                      <tr><td colspan="8" class="text-center">Loading...</td></tr>
+                      <tr>
+                        <td colspan="8" class="text-center">Loading...</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -264,6 +310,7 @@
             </div>
           </div>
 
+          <!-- STORIES TABLE -->
           <div class="col-12">
             <div class="card shadow-sm">
               <div class="card-header d-flex justify-content-between align-items-center">
@@ -290,7 +337,9 @@
                       </tr>
                     </thead>
                     <tbody id="storiesTableBody">
-                      <tr><td colspan="8" class="text-center">Loading...</td></tr>
+                      <tr>
+                        <td colspan="8" class="text-center">Loading...</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -298,7 +347,6 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -309,8 +357,6 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script src="../assets/js/config.js"></script>
     <script src="../assets/js/navigation.js"></script>
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/image-uploader.js"></script>

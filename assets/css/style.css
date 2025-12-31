@@ -77,6 +77,8 @@ body {
     box-shadow: 2px 0 5px rgba(0,0,0,0.1);
     transition: all 0.3s ease-in-out;
     background: #ffffff;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .sidebar.collapsed {
@@ -336,4 +338,127 @@ body {
     .main-content.expanded {
         margin-left: 0;
     }
+}
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-overlay.show {
+  display: flex;
+}
+.submenu {
+  display: none;
+}
+
+.submenu.show {
+  display: block;
+}
+
+.submenu .nav-link {
+  font-size: 0.9rem;
+  padding-left: 1.75rem;
+}
+/* =========================================================
+   WELCOME PAGE – SUB ADMIN LANDING
+========================================================= */
+
+.welcome-hero {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 14px;
+  padding: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.access-card {
+  border-radius: 14px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  transition: all 0.25s ease;
+  height: 100%;
+  cursor: pointer;
+}
+
+.access-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.access-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(111, 66, 193, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #6f42c1;
+  margin-bottom: 12px;
+}
+
+.access-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.access-desc {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.info-box {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-top: 2rem;
+}
+body.welcome-page #sidebar {
+  transition: width 0.3s ease;
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #eee 25%,
+    #ddd 37%,
+    #eee 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.skeleton-box {
+  height: 80px;
+  margin-bottom: 10px;
+}
+/* Chart containers */
+.chart-box {
+  position: relative;
+  height: 260px;       /* 👈 perfect dashboard height */
+  width: 100%;
+  margin-top: 15px;
+}
+
+.chart-box.small {
+  height: 220px;       /* 👈 pie chart should be smaller */
+}
+
+/* Prevent canvas from blowing up */
+.chart-box canvas {
+  max-height: 100% !important;
 }

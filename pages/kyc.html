@@ -18,21 +18,133 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="../assets/css/style.css" />
   <link rel="stylesheet" href="../assets/css/responsive.css" />
+
+  <style>
+    /* KYC-specific styles */
+    .kyc-row-expand {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .kyc-row-expand:hover {
+      background-color: #f8f9fa;
+    }
+
+    .kyc-detail-row {
+      display: none;
+    }
+
+    .kyc-detail-row.show {
+      display: table-row;
+    }
+
+    .kyc-detail-content {
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-top: 1px solid #dee2e6;
+    }
+
+    .kyc-doc-group {
+      margin-bottom: 20px;
+    }
+
+    .kyc-doc-group-title {
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+
+    .kyc-doc-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .kyc-doc-link {
+      display: inline-block;
+      padding: 6px 12px;
+      background-color: #e7f3ff;
+      border: 1px solid #0d6efd;
+      border-radius: 4px;
+      color: #0d6efd;
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: background-color 0.2s;
+    }
+
+    .kyc-doc-link:hover {
+      background-color: #0d6efd;
+      color: white;
+      text-decoration: none;
+    }
+
+    .kyc-toggle-icon {
+      transition: transform 0.3s ease;
+      display: inline-block;
+    }
+
+    .kyc-toggle-icon.rotated {
+      transform: rotate(180deg);
+    }
+
+    .kyc-action-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .modal-document-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .modal-document-item {
+      text-align: center;
+    }
+
+    .modal-document-item img {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-document-label {
+      margin-top: 10px;
+      font-weight: 600;
+      color: #495057;
+      font-size: 0.9rem;
+    }
+  </style>
 </head>
 
 <body>
 
-  <!-- ADMIN AUTH CHECK -->
+  <!-- Load config for AUTH helper -->
+  <script src="../assets/js/config.js"></script>
   <script>
+    // Permission Guard - Check if user has access to KYC module
+    console.log('[KYC] 🔐 Auth Guard - Checking permissions...');
     (function () {
-      const token = localStorage.getItem("epi_admin_token");
-      const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+      const REQUIRED_PERMISSION = 'kyc';
 
-      if (!token || user.role !== "admin") {
-        localStorage.clear();
+      if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
+        console.error('[KYC] ❌ Not authenticated');
+        alert('Please login first');
         window.location.href = "login.html";
         return;
       }
+
+      if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+        console.error('[KYC] ❌ No permission for KYC module');
+        alert('Access Denied! You do not have permission to access KYC Verification module.');
+        window.location.href = "dashboard.html";
+        return;
+      }
+
+      console.log('[KYC] ✅ Auth check passed');
     })();
   </script>
 
@@ -54,7 +166,9 @@
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="profile.html">Profile</a></li>
             <li><a class="dropdown-item" href="settings.html">Settings</a></li>
-            <li><hr class="dropdown-divider"></li>
+            <li>
+              <hr class="dropdown-divider">
+            </li>
             <li><a class="dropdown-item" id="logoutBtn">Logout</a></li>
           </ul>
         </li>
@@ -103,7 +217,6 @@
               <thead>
                 <tr>
                   <th>User</th>
-                  <th>Documents</th>
                   <th>Status</th>
                   <th>Submitted</th>
                   <th>Auto-Approve In</th>
@@ -144,13 +257,34 @@
         </div>
       </div>
 
+      <!-- DOCUMENT VIEWER MODAL -->
+      <div class="modal fade" id="documentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+
+            <div class="modal-header">
+              <h5 class="modal-title">KYC Documents</h5>
+              <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+              <div id="documentModalContent"></div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <!-- COMMON JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../assets/js/utils.js"></script>
-  <script src="../assets/js/config.js"></script>
   <script src="../assets/js/navigation.js"></script>
 
   <!-- KYC JS -->
@@ -164,4 +298,5 @@
   </script>
 
 </body>
+
 </html>

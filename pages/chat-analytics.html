@@ -63,26 +63,25 @@
     </style>
 </head>
 <body>
+    <!-- Load config for AUTH helper -->
+    <script src="../assets/js/config.js"></script>
     <script>
-        console.log('[ANALYTICS] 🔐 Auth Guard - Checking admin credentials...');
+        // Permission Guard - Check if user has access to chat-analytics module
+        console.log('[ANALYTICS] 🔐 Auth Guard - Checking permissions...');
         (function () {
-            const token = localStorage.getItem("epi_admin_token");
-            const user = JSON.parse(localStorage.getItem("epi_admin_user") || "{}");
+            const REQUIRED_PERMISSION = 'chat-analytics';
 
-            console.log('[ANALYTICS] Token exists:', !!token);
-            console.log('[ANALYTICS] User role:', user.role);
-
-            if (!token) {
-                console.error('[ANALYTICS] ❌ No token found - Redirecting to login');
+            if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
+                console.error('[ANALYTICS] ❌ Not authenticated');
+                alert('Please login first');
                 window.location.href = "login.html";
                 return;
             }
 
-            if (user.role !== "admin") {
-                console.error('[ANALYTICS] ❌ User is not admin - Redirecting to login');
-                localStorage.removeItem("epi_admin_token");
-                localStorage.removeItem("epi_admin_user");
-                window.location.href = "login.html";
+            if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+                console.error('[ANALYTICS] ❌ No permission for chat-analytics module');
+                alert('Access Denied! You do not have permission to access Chat Analytics module.');
+                window.location.href = "dashboard.html";
                 return;
             }
 
@@ -308,7 +307,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="../assets/js/config.js"></script>
     <script src="../assets/js/utils.js"></script>
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/navigation.js"></script>
