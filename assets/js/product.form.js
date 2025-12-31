@@ -51,6 +51,11 @@ let productForm,
 
 let variantEventsBound = false;
 
+/* ================= PRODUCT FAQ STATE ================= */
+
+let productFaqs = []; // current working FAQs
+let originalFaqIds = []; // used only in EDIT mode
+
 /* ================= INIT DOM ================= */
 /* ================= REFERRAL HELPERS ================= */
 
@@ -831,6 +836,27 @@ async function editProduct(productId) {
         }
       }
     }
+    /* ================= LOAD PRODUCT FAQs ================= */
+
+    try {
+      const faqRes = await API.get(`/faqs/product/${product._id}`);
+
+      productFaqs = (faqRes?.data || []).map((faq) => ({
+        _id: faq._id,
+        question: faq.question,
+        answer: faq.answer,
+        isActive: faq.isActive,
+      }));
+
+      originalFaqIds = productFaqs.map((f) => f._id);
+
+      renderFaqs();
+    } catch (err) {
+      console.error("Failed to load FAQs", err);
+      productFaqs = [];
+      originalFaqIds = [];
+      renderFaqs();
+    }
   } catch (err) {
     console.error("❌ editProduct failed:", err);
     alert("Failed to load product");
@@ -1201,6 +1227,86 @@ document
   .getElementById("productSalePrice")
   ?.addEventListener("input", recalcAutoPlans);
 
+function renderFaqItem(faq = {}, index) {
+  return `
+    <div class="border rounded p-3 mb-2 faq-item" data-faq-index="${index}">
+      <div class="mb-2">
+        <label class="form-label">Question</label>
+        <input type="text" class="form-control faq-question"
+               value="${escapeHtml(faq.question || "")}">
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">Answer</label>
+        <textarea class="form-control faq-answer" rows="3">${escapeHtml(
+          faq.answer || ""
+        )}</textarea>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center">
+        <label>
+          <input type="checkbox" class="faq-active"
+            ${faq.isActive !== false ? "checked" : ""}>
+          Active
+        </label>
+
+        <button type="button"
+          class="btn btn-sm btn-outline-danger"
+          onclick="removeFaq(${index})">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderFaqs() {
+  const container = document.getElementById("productFaqsSection");
+  if (!container) return;
+
+  container.innerHTML = "";
+  productFaqs.forEach((faq, i) => {
+    container.insertAdjacentHTML("beforeend", renderFaqItem(faq, i));
+  });
+}
+
+function addFaq() {
+  productFaqs.push({ question: "", answer: "", isActive: true });
+  renderFaqs();
+}
+
+function removeFaq(index) {
+  productFaqs.splice(index, 1);
+  renderFaqs();
+}
+
+function collectFaqsFromDOM() {
+  const items = document.querySelectorAll(".faq-item");
+  const faqs = [];
+
+  items.forEach((item) => {
+    const index = Number(item.dataset.faqIndex);
+    const original = productFaqs[index];
+
+    const question = item.querySelector(".faq-question")?.value.trim();
+    const answer = item.querySelector(".faq-answer")?.value.trim();
+    const isActive = item.querySelector(".faq-active")?.checked === true;
+
+    if (!question || !answer) return;
+
+    faqs.push({
+      _id: original?._id,
+      question,
+      answer,
+      isActive,
+    });
+  });
+
+  return faqs;
+}
+
+window.removeFaq = removeFaq;
+
 /* ================= SAVE ================= */
 
 async function saveProduct() {
@@ -1244,6 +1350,31 @@ async function saveProduct() {
       await API.put("/products/:productId", payload, {
         productId: window.currentProductId,
       });
+      /* ================= UPDATE PRODUCT FAQs ================= */
+
+      const currentFaqs = collectFaqsFromDOM();
+
+      // 1️⃣ UPDATE or CREATE
+      for (const faq of currentFaqs) {
+        if (faq._id) {
+          // Existing FAQ → update
+          await API.put(`/faqs/admin/${faq._id}`, faq);
+        } else {
+          // New FAQ → create
+          await API.post(`/faqs/admin/product/${window.currentProductId}`, faq);
+        }
+      }
+
+      // 2️⃣ DELETE removed FAQs
+      const currentIds = currentFaqs.map((f) => f._id).filter(Boolean);
+
+      const deletedIds = originalFaqIds.filter(
+        (oldId) => !currentIds.includes(oldId)
+      );
+
+      for (const faqId of deletedIds) {
+        await API.delete(`/faqs/admin/${faqId}`);
+      }
 
       // 2️⃣ Upload PRIMARY product images (🔥 MISSING STEP)
       await uploadPrimaryProductImages(window.currentProductId);
@@ -1272,6 +1403,15 @@ async function saveProduct() {
     }
 
     const productId = createdProduct.productId;
+    const mongoProductId = createdProduct._id;
+
+    /* ================= SAVE PRODUCT FAQs ================= */
+
+    const faqsToSave = collectFaqsFromDOM();
+
+    for (const faq of faqsToSave) {
+      await API.post(`/faqs/admin/product/${mongoProductId}`, faq);
+    }
 
     // 1️⃣ Upload primary product images
     await uploadPrimaryProductImages(productId);
@@ -1307,6 +1447,12 @@ function initAddProductPage() {
   window.planCount = 0;
 
   initProductFormDOM();
+  /* ================= FAQ INIT ================= */
+
+  const addFaqBtn = document.getElementById("addFaqBtn");
+  if (addFaqBtn) {
+    addFaqBtn.addEventListener("click", addFaq);
+  }
 
   // Clear form explicitly
   document.getElementById("productForm")?.reset();
@@ -1325,6 +1471,14 @@ async function initEditProductPage() {
   window.__IS_EDIT_MODE__ = true;
 
   initProductFormDOM();
+  productFaqs = [];
+  renderFaqs();
+  originalFaqIds = [];
+
+  const addFaqBtn = document.getElementById("addFaqBtn");
+  if (addFaqBtn) {
+    addFaqBtn.addEventListener("click", addFaq);
+  }
 
   const saveBtn = document.getElementById("saveProductBtn");
   if (saveBtn) {
