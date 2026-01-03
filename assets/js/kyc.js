@@ -196,8 +196,9 @@ function renderDetailRow(item) {
           ${documentsHtml}
           <div class="mt-3">
             <button class="btn btn-sm btn-primary" onclick="openDocumentModal(${JSON.stringify(
-              item.documents || []
-            ).replace(/"/g, "&quot;")})">
+              item
+            ).replace(/"/g, "&quot;")})"
+">
               <i class="bi bi-eye"></i> View Documents
             </button>
           </div>
@@ -329,24 +330,31 @@ function renderDocumentGroups(documents) {
 
 // Open modal and show grouped documents in a clean grid layout
 // Accepts either an array (direct call) or a JSON string (defensive)
-function openDocumentModal(documents) {
-  let docs = documents;
+function openDocumentModal(kyc) {
+  let data = kyc;
 
-  // Defensive: if a JSON string was passed, parse it
-  if (typeof documents === "string") {
+  if (typeof kyc === "string") {
     try {
-      docs = JSON.parse(documents);
+      data = JSON.parse(kyc);
     } catch (err) {
-      // If parse fails, log and abort
-      console.error("openDocumentModal: failed to parse documents JSON", err);
+      console.error("openDocumentModal: failed to parse KYC JSON", err);
       return;
     }
   }
 
-  const grouped = groupDocuments(Array.isArray(docs) ? docs : []);
+  const { aadhaarNumber, panNumber, documents } = data;
+
+  const grouped = groupDocuments(Array.isArray(documents) ? documents : []);
 
   // Build modal grid HTML — selfie first, then Aadhaar, then PAN
-  let html = `<div class="modal-document-grid">`;
+  let html = `
+  <div class="mb-3 p-3 border rounded bg-light">
+    <h6 class="fw-bold mb-2">KYC Numbers</h6>
+    <p class="mb-1"><strong>Aadhaar Number:</strong> ${aadhaarNumber || "-"}</p>
+    <p class="mb-0"><strong>PAN Number:</strong> ${panNumber || "-"}</p>
+  </div>
+  <div class="modal-document-grid">
+`;
 
   // SELFIE (single large preview)
   if (grouped.selfie && grouped.selfie.frontUrl) {
@@ -391,14 +399,14 @@ function openDocumentModal(documents) {
         </div>
       `;
     }
-    if (grouped.pan.backUrl) {
-      html += `
-        <div class="modal-document-item">
-          <img src="${grouped.pan.backUrl}" alt="PAN Back" loading="lazy">
-          <div class="modal-document-label">PAN (Back)</div>
-        </div>
-      `;
-    }
+    // if (grouped.pan.backUrl) {
+    //   html += `
+    //     <div class="modal-document-item">
+    //       <img src="${grouped.pan.backUrl}" alt="PAN Back" loading="lazy">
+    //       <div class="modal-document-label">PAN (Back)</div>
+    //     </div>
+    //   `;
+    // }
   }
 
   html += `</div>`;
