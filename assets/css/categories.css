@@ -185,3 +185,146 @@
         gap: 6px;
     }
 }
+/* =========================================================
+   NEW CATEGORY IMAGE EDITOR UI (SAFE – NON BREAKING)
+   Used ONLY in category add/edit pages
+   ========================================================= */
+
+/* Wrapper */
+.category-images-section {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 24px;
+}
+
+/* Section title */
+.category-images-section h6 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: #0d6efd;
+}
+
+/* ---------------------------------------------------------
+   IMAGE PREVIEW GRID
+----------------------------------------------------------*/
+
+#categoryImagesPreview {
+  margin-bottom: 20px;
+}
+
+#categoryImagesPreview .row {
+  row-gap: 14px;
+}
+
+#categoryImagesPreview .image-preview-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 10px;
+  height: 100%;
+  transition: all 0.2s ease;
+}
+
+#categoryImagesPreview .image-preview-card:hover {
+  border-color: #0d6efd;
+  background: #f8fafc;
+}
+
+#categoryImagesPreview img {
+  max-height: 90px;
+  object-fit: contain;
+}
+
+#categoryImagesPreview .image-type-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #6c757d;
+  color: #fff;
+  text-transform: capitalize;
+}
+
+/* ---------------------------------------------------------
+   IMAGE INPUT CARD
+----------------------------------------------------------*/
+
+.category-image-card {
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 14px;
+  background: #fafafa;
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
+}
+
+.category-image-card.has-image {
+  border-style: solid;
+  background: #ffffff;
+}
+
+.category-image-card:hover {
+  border-color: #0d6efd;
+  background: #f8fafc;
+}
+
+/* Image label */
+.category-image-card .image-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #111827;
+}
+
+/* ---------------------------------------------------------
+   INPUT ROW (FILE + ALT)
+----------------------------------------------------------*/
+
+.category-image-input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.category-image-input-row input[type="file"] {
+  font-size: 13px;
+  padding: 6px;
+  height: 36px;
+}
+
+.category-image-input-row input[type="text"] {
+  height: 36px;
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------
+   EMPTY STATE
+----------------------------------------------------------*/
+
+.category-image-card.empty {
+  opacity: 0.85;
+}
+
+.category-image-card.empty .image-title {
+  color: #374151;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+----------------------------------------------------------*/
+
+@media (max-width: 768px) {
+  .category-image-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  #categoryImagesPreview img {
+    max-height: 70px;
+  }
+}

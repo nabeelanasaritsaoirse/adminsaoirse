@@ -40,7 +40,11 @@ window.adminPanel = window.adminPanel || {
 window.CategoryStore = {
   categories: [],
   currentCategoryId: null,
-  categoryImages: [],
+
+  // 🔥 NOTE:
+  // We no longer store editable images here.
+  // Typed images come directly from backend (categoryImages).
+
   selectedRegions: [],
   isGlobalCategory: true,
   regionalMetaMap: {},
@@ -103,7 +107,7 @@ window.updateStats = function () {
 };
 
 /* =========================
-   🌍 REGIONAL AVAILABILITY (FULL FIX)
+   🌍 REGIONAL AVAILABILITY
    ========================= */
 
 window.initializeRegionalCheckboxes = function () {
@@ -151,10 +155,10 @@ window.initializeRegionalCheckboxes = function () {
       </div>
 
       <div
-  class="regional-meta-editor mt-2 p-2 border rounded d-none"
-  id="regional-meta-${escapeHtml(code)}"
-  style="background:#fafafa;"
->
+        class="regional-meta-editor mt-2 p-2 border rounded d-none"
+        id="regional-meta-${escapeHtml(code)}"
+        style="background:#fafafa;"
+      >
         <div class="mb-2">
           <label class="form-label small">Meta Title</label>
           <input
@@ -184,7 +188,7 @@ window.initializeRegionalCheckboxes = function () {
     list.appendChild(col);
   });
 
-  /* ---------- Checkbox toggle ---------- */
+  /* Checkbox toggle */
   list.querySelectorAll(".regional-checkbox").forEach((cb) => {
     cb.addEventListener("change", function () {
       const code = this.dataset.region;
@@ -201,17 +205,15 @@ window.initializeRegionalCheckboxes = function () {
     });
   });
 
-  /* ---------- Edit meta toggle ---------- */
+  /* Edit meta toggle */
   list.querySelectorAll(".regional-meta-edit").forEach((btn) => {
     btn.addEventListener("click", function () {
       const parent = this.closest(".col-md-6");
-      if (!parent) return;
-
       const editor = parent.querySelector(".regional-meta-editor");
       const code = this.dataset.region;
       if (!editor || !code) return;
-      const isOpen = !editor.classList.contains("d-none");
 
+      const isOpen = !editor.classList.contains("d-none");
       if (isOpen) {
         editor.classList.add("d-none");
         saveRegionalEditorValues(code, parent);
@@ -221,7 +223,7 @@ window.initializeRegionalCheckboxes = function () {
     });
   });
 
-  /* ---------- Save on blur/change ---------- */
+  /* Save on change */
   list.querySelectorAll(".regional-meta-editor").forEach((editor) => {
     editor.addEventListener("change", () => {
       const parent = editor.closest(".col-md-6");
@@ -294,7 +296,10 @@ async function loadCategories() {
       showInMenu: c.showInMenu !== false,
       productCount: c.productCount || 0,
       displayOrder: Number(c.displayOrder || 0),
-      images: Array.isArray(c.images) ? c.images : [],
+
+      // 🔥 IMPORTANT
+      categoryImages: Array.isArray(c.categoryImages) ? c.categoryImages : [],
+
       meta: c.meta || {},
       availableInRegions: c.availableInRegions || [],
       regionalMeta: c.regionalMeta || [],
