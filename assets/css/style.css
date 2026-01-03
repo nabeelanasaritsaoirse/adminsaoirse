@@ -559,3 +559,7 @@ body.welcome-page #sidebar {
       color: #495057;
       font-size: 0.9rem;
     }
+    
+    #categoryImagesPreview .border {
+  background: #fafafa;
+}

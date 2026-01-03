@@ -63,10 +63,9 @@ function fillFormForEdit(id) {
   metaDescription.value = cat.meta?.description || "";
   metaKeywords.value = cat.meta?.keywords?.join(", ") || "";
 
-  CategoryStore.categoryImages = cat.images || [];
-  renderImagePreview();
+  renderTypedImagePreview(cat.categoryImages || []);
 
-  /* 🔥 RESTORE REGIONAL STATE */
+  /* 🌍 REGIONAL STATE */
   const globalCheckbox = document.getElementById("isGlobalCategory");
   const regionalSection = document.getElementById("regionalCheckboxesSection");
 
@@ -95,39 +94,70 @@ function fillFormForEdit(id) {
 }
 
 /* =========================
-   IMAGES
+   TYPED IMAGE PREVIEW
    ========================= */
 
-function addImage() {
-  const url = imageUrl.value.trim();
-  if (!url) return adminPanel.showNotification("Image URL required", "error");
+function renderTypedImagePreview(categoryImages = []) {
+  const preview = document.getElementById("categoryImagesPreview");
+  if (!preview) return;
 
-  CategoryStore.categoryImages.push({
-    url,
-    altText: imageAltText.value.trim(),
-    isPrimary: CategoryStore.categoryImages.length === 0,
+  if (!categoryImages.length) {
+    preview.innerHTML =
+      '<div class="text-muted small">No category images uploaded yet</div>';
+    updateImageLabels({});
+    return;
+  }
+
+  const imageMap = {};
+  categoryImages.forEach((img) => {
+    imageMap[img.type] = img;
   });
 
-  imageUrl.value = "";
-  imageAltText.value = "";
-  renderImagePreview();
+  preview.innerHTML = `
+    <div class="row g-3">
+      ${categoryImages
+        .map(
+          (img) => `
+          <div class="col-md-2 text-center">
+            <div class="border rounded p-2 h-100">
+              <img src="${escapeHtml(img.url)}"
+                   class="img-fluid rounded mb-2"
+                   style="max-height:80px; object-fit:contain;" />
+              <div class="badge bg-secondary text-capitalize">${img.type}</div>
+            </div>
+          </div>
+        `
+        )
+        .join("")}
+    </div>
+  `;
+
+  updateImageLabels(imageMap);
+  document.querySelectorAll(".category-image-card").forEach((card) => {
+    const type = card.dataset.imageType;
+    const previewImg = imageMap[type]?.url;
+
+    if (previewImg) {
+      card.style.setProperty("--preview-image", `url(${previewImg})`);
+    }
+  });
 }
 
-function renderImagePreview() {
-  imagesPreview.innerHTML = CategoryStore.categoryImages
-    .map(
-      (img, i) => `
-      <div class="me-2 d-inline-block">
-        <img src="${escapeHtml(img.url)}" width="80">
-        <button onclick="removeImage(${i})">×</button>
-      </div>`
-    )
-    .join("");
-}
+function updateImageLabels(imageMap) {
+  document.querySelectorAll(".category-image-card").forEach((card) => {
+    const type = card.dataset.imageType;
+    const titleEl = card.querySelector(".image-title");
 
-function removeImage(i) {
-  CategoryStore.categoryImages.splice(i, 1);
-  renderImagePreview();
+    if (!titleEl) return;
+
+    const baseLabel = titleEl.textContent.replace(/^(Upload|Change)\s+/i, "");
+
+    titleEl.textContent = imageMap[type]
+      ? `Change ${baseLabel}`
+      : `Upload ${baseLabel}`;
+
+    card.classList.toggle("has-image", !!imageMap[type]);
+  });
 }
 
 /* =========================
@@ -151,7 +181,6 @@ async function saveCategory() {
         .map((k) => k.trim())
         .filter(Boolean),
     },
-    images: CategoryStore.categoryImages,
   };
 
   /* 🌍 REGIONAL PAYLOAD */
@@ -167,6 +196,7 @@ async function saveCategory() {
   }
 
   showLoading(true);
+
   try {
     let categoryId;
 
@@ -185,23 +215,91 @@ async function saveCategory() {
       sessionStorage.setItem("categorySuccess", "created");
     }
 
-    // 🔥 THIS IS THE MISSING PIECE
+    // 🔥 UPLOAD TYPED IMAGES (SEPARATE API)
     if (categoryId) {
-      await API.get("/categories/:categoryId", {
-        categoryId,
-      });
+      await uploadCategoryImages(categoryId);
+    }
+    adminPanel.showNotification("Category saved successfully", "success");
+
+    const btn = document.querySelector('button[onclick="saveCategory()"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Saving...";
     }
 
-    // Redirect AFTER all APIs
-    window.location.href = "categories.html";
+    setTimeout(() => {
+      window.location.href = "categories.html";
+    }, 1200);
   } catch (err) {
     console.error(err);
-    adminPanel.showNotification("Failed to save category", "error");
+    adminPanel.showNotification(
+      err?.response?.data?.message || "Image upload failed",
+      "error"
+    );
   } finally {
     showLoading(false);
   }
 }
 
+/* =========================
+   TYPED IMAGE UPLOAD
+   ========================= */
+
+async function uploadCategoryImages(categoryId) {
+  console.log("🔥 uploadCategoryImages called", categoryId);
+
+  const fd = new FormData();
+
+  const mappings = [
+    ["mainImage", "mainImageAlt"],
+    ["illustrationImage", "illustrationImageAlt"],
+    ["subcategoryImage", "subcategoryImageAlt"],
+    ["mobileImage", "mobileImageAlt"],
+    ["iconImage", "iconImageAlt"],
+  ];
+
+  let hasFiles = false;
+
+  mappings.forEach(([fileId, altId]) => {
+    const fileInput = document.getElementById(fileId);
+    const altInput = document.getElementById(altId);
+
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+      fd.append(fileId, fileInput.files[0]);
+      fd.append(altId, altInput?.value || "");
+      hasFiles = true;
+    }
+  });
+
+  if (!hasFiles) {
+    console.warn("⚠️ No images selected, skipping upload");
+    return;
+  }
+
+  const token = AUTH.getToken();
+
+  if (!token) {
+    throw new Error("Auth token missing");
+  }
+
+  const res = await fetch(
+    `${BASE_URL}/categories/${categoryId}/category-images`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: fd,
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("UPLOAD ERROR:", err);
+    throw new Error("Image upload failed");
+  }
+
+  console.log("✅ Category images uploaded successfully");
+}
+
 window.saveCategory = saveCategory;
-window.addImage = addImage;
-window.removeImage = removeImage;

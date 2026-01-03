@@ -16,6 +16,7 @@
     <!-- App CSS -->
     <link rel="stylesheet" href="../assets/css/style.css" />
     <link rel="stylesheet" href="../assets/css/responsive.css" />
+    <link rel="stylesheet" href="../assets/css/categories.css" />
   </head>
 
   <body>
@@ -83,10 +84,6 @@
                   required
                 />
               </div>
-              <div class="col-md-4">
-                <label class="form-label">Icon (Emoji)</label>
-                <input type="text" id="categoryIcon" class="form-control" />
-              </div>
             </div>
 
             <div class="mb-3">
@@ -106,33 +103,120 @@
             </div>
           </div>
 
-          <!-- IMAGES -->
+          <!-- CATEGORY IMAGES -->
           <div class="form-section mb-4">
-            <h6 class="text-primary mb-3">Images</h6>
+            <h6 class="text-primary mb-3">Category Images</h6>
 
-            <div class="input-group mb-2">
-              <input
-                type="url"
-                id="imageUrl"
-                class="form-control"
-                placeholder="Image URL"
-              />
-              <input
-                type="text"
-                id="imageAltText"
-                class="form-control"
-                placeholder="Alt text"
-              />
-              <button
-                type="button"
-                class="btn btn-primary"
-                onclick="addImage()"
-              >
-                Add
-              </button>
+            <div
+              id="categoryImagesPreview"
+              class="category-images-grid mb-4"
+            ></div>
+
+            <div class="category-image-card" data-image-type="main">
+              <div class="image-card-header">
+                <span class="image-title">Main Image</span>
+              </div>
+
+              <div class="image-input-row">
+                <input
+                  type="file"
+                  id="mainImage"
+                  class="form-control form-control-sm image-file"
+                  accept="image/*"
+                />
+
+                <input
+                  type="text"
+                  id="mainImageAlt"
+                  class="form-control form-control-sm"
+                  placeholder="Alt text"
+                />
+              </div>
             </div>
 
-            <div id="imagesPreview"></div>
+            <div class="category-image-card" data-image-type="illustration">
+              <div class="image-card-header">
+                <span class="image-title">Illustration Image</span>
+              </div>
+
+              <div class="image-input-row">
+                <input
+                  type="file"
+                  id="illustrationImage"
+                  class="form-control form-control-sm image-file"
+                  accept="image/*"
+                />
+                <input
+                  type="text"
+                  id="illustrationImageAlt"
+                  class="form-control form-control-sm"
+                  placeholder="Alt text"
+                />
+              </div>
+            </div>
+
+            <div class="category-image-card" data-image-type="subcategory">
+              <div class="image-card-header">
+                <span class="image-title">Subcategory Image</span>
+              </div>
+
+              <div class="image-input-row">
+                <input
+                  type="file"
+                  id="subcategoryImage"
+                  class="form-control form-control-sm image-file"
+                  accept="image/*"
+                />
+                <input
+                  type="text"
+                  id="subcategoryImageAlt"
+                  class="form-control form-control-sm"
+                  placeholder="Alt text"
+                />
+              </div>
+            </div>
+
+            <div class="category-image-card" data-image-type="mobile">
+              <div class="image-card-header">
+                <span class="image-title">Mobile Image</span>
+              </div>
+
+              <div class="image-input-row">
+                <input
+                  type="file"
+                  id="mobileImage"
+                  class="form-control form-control-sm image-file"
+                  accept="image/*"
+                />
+                <input
+                  type="text"
+                  id="mobileImageAlt"
+                  class="form-control form-control-sm"
+                  placeholder="Alt text"
+                />
+              </div>
+            </div>
+
+            <div class="category-image-card" data-image-type="icon">
+              <div class="image-card-header">
+                <span class="image-title">Icon Image</span>
+              </div>
+
+              <div class="image-input-row">
+                <input
+                  type="file"
+                  id="iconImage"
+                  class="form-control form-control-sm image-file"
+                  accept="image/*"
+                />
+                <input
+                  type="text"
+                  id="iconImageAlt"
+                  class="form-control form-control-sm"
+                  placeholder="Alt text"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- DISPLAY -->
