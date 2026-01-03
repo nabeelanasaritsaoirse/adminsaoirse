@@ -31,18 +31,20 @@
     <script>
       // Permission Guard - Check if user has access to categories module
       (function () {
-        const REQUIRED_PERMISSION = 'categories';
+        const REQUIRED_PERMISSION = "categories";
 
         // Check authentication
         if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
-          alert('Please login first');
+          alert("Please login first");
           window.location.href = "login.html";
           return;
         }
 
         // Check if user has permission to access categories
         if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
-          alert('Access Denied! You do not have permission to access Categories module.');
+          alert(
+            "Access Denied! You do not have permission to access Categories module."
+          );
           window.location.href = "dashboard.html";
           return;
         }
@@ -122,14 +124,9 @@
               Manage product categories with hierarchical structure
             </p>
           </div>
-          <button
-            class="btn btn-sm btn-primary"
-            data-bs-toggle="modal"
-            data-bs-target="#categoryModal"
-            onclick="openAddCategoryModal()"
-          >
+          <a href="category-add.html" class="btn btn-sm btn-primary">
             <i class="bi bi-plus-circle me-1"></i> Add Category
-          </button>
+          </a>
         </div>
 
         <!-- STATS CARDS (styled like products stats) -->
@@ -158,14 +155,18 @@
             <div class="card border-start border-warning border-4 shadow-sm">
               <div class="card-body">
                 <div class="text-xs fw-bold text-warning mb-1">Featured</div>
-                <div class="h5 fw-bold mb-0" id="featuredCategoriesCount">0</div>
+                <div class="h5 fw-bold mb-0" id="featuredCategoriesCount">
+                  0
+                </div>
               </div>
             </div>
           </div>
           <div class="col-md-3">
             <div class="card border-start border-info border-4 shadow-sm">
               <div class="card-body">
-                <div class="text-xs fw-bold text-info mb-1">Root Categories</div>
+                <div class="text-xs fw-bold text-info mb-1">
+                  Root Categories
+                </div>
                 <div class="h5 fw-bold mb-0" id="rootCategoriesCount">0</div>
               </div>
             </div>
@@ -241,254 +242,10 @@
       </div>
     </div>
 
-    <!-- ADD / EDIT CATEGORY MODAL -->
-    <div class="modal fade category-modal" id="categoryModal" tabindex="-1">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="categoryModalTitle">Add Category</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <form id="categoryForm">
-              <!-- BASIC INFO -->
-              <div class="form-section">
-                <h6 class="text-primary mb-3">
-                  <i class="bi bi-info-circle"></i> Basic Information
-                </h6>
-                <div class="row mb-3">
-                  <div class="col-md-8">
-                    <label class="form-label"
-                      >Category Name <span class="text-danger">*</span></label
-                    >
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="categoryName"
-                      required
-                    />
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Icon (Emoji)</label>
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="categoryIcon"
-                      placeholder="📱"
-                    />
-                  </div>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label">Description</label>
-                  <textarea
-                    class="form-control"
-                    id="categoryDescription"
-                    rows="3"
-                    maxlength="500"
-                  ></textarea>
-                  <small class="text-muted">Max 500 characters</small>
-                </div>
-
-                <div class="mb-3">
-                  <label class="form-label">Parent Category</label>
-                  <select class="form-select" id="parentCategory">
-                    <option value="">None (Root Category)</option>
-                    <!-- populated by JS -->
-                  </select>
-                </div>
-              </div>
-
-              <!-- IMAGES -->
-              <div class="form-section">
-                <h6 class="text-primary mb-3">
-                  <i class="bi bi-image"></i> Images
-                </h6>
-                <div class="mb-3">
-                  <label class="form-label">Add Images</label>
-                  <div class="input-group">
-                    <input
-                      type="url"
-                      class="form-control"
-                      id="imageUrl"
-                      placeholder="Enter image URL"
-                    />
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="imageAltText"
-                      placeholder="Alt text (optional)"
-                    />
-                    <button
-                      type="button"
-                      class="btn btn-primary"
-                      onclick="addImage()"
-                    >
-                      <i class="bi bi-plus"></i> Add
-                    </button>
-                  </div>
-                </div>
-                <div id="imagesPreview" class="image-preview-container"></div>
-              </div>
-
-              <!-- DISPLAY SETTINGS -->
-              <div class="form-section">
-                <h6 class="text-primary mb-3">
-                  <i class="bi bi-display"></i> Display Settings
-                </h6>
-                <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Display Order</label>
-                    <input
-                      type="number"
-                      class="form-control"
-                      id="displayOrder"
-                      value="0"
-                      min="0"
-                    />
-                  </div>
-                </div>
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="isActive"
-                    checked
-                  />
-                  <label class="form-check-label" for="isActive">Active</label>
-                </div>
-                <div class="form-check mb-2">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="isFeatured"
-                  />
-                  <label class="form-check-label" for="isFeatured"
-                    >Featured</label
-                  >
-                </div>
-                <div class="form-check mb-3">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="showInMenu"
-                    checked
-                  />
-                  <label class="form-check-label" for="showInMenu"
-                    >Show in Menu</label
-                  >
-                </div>
-              </div>
-
-              <!-- SEO SETTINGS -->
-              <div class="form-section">
-                <h6 class="text-primary mb-3">
-                  <i class="bi bi-search"></i> SEO Settings
-                </h6>
-                <div class="mb-3">
-                  <label class="form-label">Meta Title</label>
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="metaTitle"
-                    maxlength="60"
-                  />
-                  <small class="text-muted"
-                    >Max 60 characters for optimal SEO</small
-                  >
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Meta Description</label>
-                  <textarea
-                    class="form-control"
-                    id="metaDescription"
-                    rows="2"
-                    maxlength="160"
-                  ></textarea>
-                  <small class="text-muted"
-                    >Max 160 characters for optimal SEO</small
-                  >
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"
-                    >Meta Keywords (comma-separated)</label
-                  >
-                  <input
-                    type="text"
-                    class="form-control"
-                    id="metaKeywords"
-                    placeholder="keyword1, keyword2, keyword3"
-                  />
-                </div>
-              </div>
-
-              <!-- REGIONAL AVAILABILITY -->
-              <div class="form-section">
-                <h6 class="text-primary mb-3">
-                  <i class="bi bi-globe2"></i> Regional Availability
-                </h6>
-
-                <!-- Global Toggle -->
-                <div class="form-check mb-3">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    id="isGlobalCategory"
-                    checked
-                  >
-                  <label class="form-check-label" for="isGlobalCategory">
-                    <strong>Show in All Countries (Global Category)</strong>
-                  </label>
-                  <div class="form-text">
-                    Most categories are global. Uncheck this only if you want to restrict this category to specific countries.
-                  </div>
-                </div>
-
-                <!-- Regional Checkboxes (Hidden by default) -->
-                <div id="regionalCheckboxesSection" class="d-none">
-                  <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i>
-                    Select countries where this category should be visible to users.
-                  </div>
-
-                  <div class="row" id="regionalCheckboxesList">
-                    <!-- Will be populated by JavaScript -->
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              onclick="saveCategory()"
-            >
-              <i class="bi bi-save me-1"></i> Save Category
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- FOOTER -->
     <footer class="footer mt-auto py-3 bg-light">
       <div class="container-fluid text-center">
-        <span class="text-muted"
-          >© 2024 Admin Panel. All rights reserved.</span
-        >
+        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
       </div>
     </footer>
 
@@ -497,7 +254,9 @@
     <script src="../assets/js/utils.js"></script>
     <script src="../assets/js/regions-config.js"></script>
     <script src="../assets/js/main.js"></script>
-    <script src="../assets/js/categories.js"></script>
+    <script src="../assets/js/category.shared.js"></script>
+    <script src="../assets/js/category.list.js"></script>
+    <!-- <script src="../assets/js/categories.js"></script> -->
     <script src="../assets/js/navigation.js"></script>
   </body>
 </html>
