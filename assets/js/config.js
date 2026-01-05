@@ -424,6 +424,28 @@ const API = {
     });
   },
 };
+document.addEventListener("DOMContentLoaded", () => {
+  const adminBrand = document.querySelector(".navbar-brand");
+
+  if (!adminBrand) return;
+
+  adminBrand.addEventListener("click", (e) => {
+    const user = AUTH.getCurrentUser();
+    if (!user) return;
+
+    // Stop default <a href="index.html">
+    e.preventDefault();
+
+    // Role-aware routing
+    if (user.isSuperAdmin) {
+      window.location.href = isRootPage() ? "index.html" : "../index.html";
+    } else {
+      window.location.href = isRootPage()
+        ? "pages/welcome.html"
+        : "welcome.html";
+    }
+  });
+});
 
 /*******************************
  * EXPORT GLOBAL
