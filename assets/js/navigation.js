@@ -24,7 +24,7 @@ const NAV_CONFIG = {
       hrefFromRoot: "pages/users.html",
       permission: "users",
     },
-     {
+    {
       id: "users_analytics",
       label: "Users Analytics",
       icon: "bi-graph-up",
@@ -113,12 +113,12 @@ const NAV_CONFIG = {
       permission: "payments",
     },
     {
-      id: "analytics",
-      label: "Analytics",
-      icon: "bi-graph-up",
-      href: "#analytics",
-      hrefFromRoot: "#analytics",
-      permission: "analytics",
+      id: "faq_management",
+      label: "FAQ Management",
+      icon: "bi-question-circle",
+      href: "global-faqs.html",
+      hrefFromRoot: "pages/global-faqs.html",
+      permission: "faq_management",
     },
     {
       id: "notifications",
@@ -277,13 +277,16 @@ function renderNavigation(containerId = "sidebar") {
 // INIT
 // ===============================
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("sidebar")) {
+  const sidebar = document.getElementById("sidebar");
+
+  // Render sidebar ONLY if sidebar container exists
+  // Permission filtering already happens inside renderNavigation()
+  if (sidebar && typeof renderNavigation === "function") {
     renderNavigation();
   }
 
-  // Sidebar toggle
+  // Sidebar toggle (unchanged behavior)
   const toggleBtn = document.getElementById("sidebarToggle");
-  const sidebar = document.getElementById("sidebar");
   const main = document.querySelector(".main-content");
 
   if (toggleBtn && sidebar) {
@@ -301,3 +304,4 @@ window.Navigation = {
   render: renderNavigation,
   getActive: getActiveNavItem,
 };
+window.NAV_CONFIG = NAV_CONFIG;

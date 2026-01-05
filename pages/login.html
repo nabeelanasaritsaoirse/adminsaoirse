@@ -58,6 +58,7 @@
 
         <div class="card-body p-4">
           <form id="loginForm" onsubmit="return false;">
+            <!-- Email -->
             <div class="mb-3">
               <label class="form-label">
                 <i class="bi bi-envelope"></i> Email Address
@@ -65,18 +66,28 @@
               <input type="email" class="form-control" id="email" required />
             </div>
 
-            <div class="mb-3">
+            <!-- Password -->
+            <div class="mb-4">
               <label class="form-label">
                 <i class="bi bi-lock"></i> Password
               </label>
-              <input
-                type="password"
-                class="form-control"
-                id="password"
-                required
-              />
+
+              <div class="position-relative">
+                <input
+                  type="password"
+                  class="form-control pe-5"
+                  id="password"
+                  required
+                />
+                <i
+                  class="bi bi-eye position-absolute top-50 end-0 translate-middle-y me-3 text-muted"
+                  id="togglePassword"
+                  style="cursor: pointer"
+                ></i>
+              </div>
             </div>
 
+            <!-- Sign In -->
             <div class="d-grid">
               <button
                 type="button"
@@ -103,7 +114,9 @@
 
     <!-- ⭐ Wait for config to load, then initialize login handler -->
     <script>
-      // Safety guard: Ensure config is ready before running login logic
+      // ===============================
+      // INITIALIZE LOGIN HANDLER
+      // ===============================
       function initializeLoginHandler() {
         // Check 1: Verify BASE_URL is available
         if (!window.BASE_URL) {
@@ -113,7 +126,7 @@
           console.error("   Current window.BASE_URL:", window.BASE_URL);
           document.getElementById("loginForm").style.display = "none";
           alert(
-            "⚠️ Configuration Error\n\nBase URL is not initialized. This is a server configuration issue.\n\nPlease:\n1. Refresh the page (Ctrl+F5)\n2. Clear browser cache\n3. Contact support if problem persists"
+            "⚠️ Configuration Error\n\nBase URL is not initialized.\n\nPlease refresh the page or contact support."
           );
           return false;
         }
@@ -125,52 +138,50 @@
           return false;
         }
 
-        console.log("✅ Configuration loaded successfully v2");
+        console.log("✅ Configuration loaded successfully");
         console.log("   BASE_URL:", window.BASE_URL);
-        console.log(
-          "   API Endpoint:",
-          window.API_CONFIG.endpoints.auth.adminLogin
-        );
 
-        // Setup login form handler
+        // Attach login submit handler
         const form = document.getElementById("loginForm");
         if (!form) {
           console.error("❌ Login form not found!");
           return false;
         }
-
         form.addEventListener("submit", handleLoginSubmit);
-        console.log("✅ Login form handler attached successfully");
+
+        // Attach password toggle handler (👁 INSIDE INPUT)
+        const passwordInput = document.getElementById("password");
+        const toggleIcon = document.getElementById("togglePassword");
+
+        if (passwordInput && toggleIcon) {
+          toggleIcon.addEventListener("click", () => {
+            const isHidden = passwordInput.type === "password";
+            passwordInput.type = isHidden ? "text" : "password";
+            toggleIcon.classList.toggle("bi-eye");
+            toggleIcon.classList.toggle("bi-eye-slash");
+          });
+        }
+
         return true;
       }
 
-      // Main login handler
+      // ===============================
+      // LOGIN SUBMIT HANDLER
+      // ===============================
       async function handleLoginSubmit(e) {
-        console.log("🔵 handleLoginSubmit called");
         e.preventDefault();
 
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value.trim();
 
-        // Validate inputs
         if (!email || !password) {
           alert("Please enter both email and password");
           return;
         }
 
         try {
-          // ⭐ Safety Check: Verify window.BASE_URL exists before making request
-          if (!window.BASE_URL) {
-            console.error("❌ BASE_URL lost during form submission");
-            alert("Configuration error. Please reload the page.");
-            return;
-          }
-
-          // Build login URL using window.BASE_URL (global, safe)
           const loginURL =
             window.BASE_URL + window.API_CONFIG.endpoints.auth.adminLogin;
-
-          console.log("📡 Sending login request to:", loginURL);
 
           const response = await fetch(loginURL, {
             method: "POST",
@@ -181,65 +192,34 @@
             body: JSON.stringify({ email, password }),
           });
 
-          console.log("📥 Response status:", response.status);
-
           const result = await response.json();
 
-          if (!response.ok) {
-            console.error("❌ Login failed:", result);
-            alert(
-              result.message ||
-                `Login failed (${response.status}). Please check your credentials.`
-            );
-            return;
-          }
-
-          if (!result.success || !result.data || !result.data.accessToken) {
-            console.error("❌ Invalid response format:", result);
+          if (!response.ok || !result.success || !result.data?.accessToken) {
             alert(result.message || "Login failed. Please try again.");
             return;
           }
 
-          // ✅ Login successful - Use AUTH.saveUserData() to store everything
-          console.log("✅ Login successful");
-          console.log("📦 User data:", result.data);
-
-          // Save user data using AUTH helper (stores username, tokens, modules, etc.)
+          // Save user session
           window.AUTH.saveUserData(result.data);
 
-          console.log("💾 Stored username:", window.AUTH.getUsername());
-          console.log("💾 Stored modules:", window.AUTH.getUserModules());
-          console.log("💾 Is super admin:", window.AUTH.isSuperAdmin());
-
-          // ✅ Role-based redirect (DO NOT BREAK ANYTHING ELSE)
+          // Redirect
           if (window.AUTH.isSuperAdmin()) {
             window.location.href = "dashboard.html";
           } else {
-            // sub-admin or any limited admin
             window.location.href = "welcome.html";
           }
         } catch (err) {
-          console.error("❌ Login request error:", err);
-
-          if (
-            err instanceof TypeError &&
-            err.message.includes("Failed to fetch")
-          ) {
-            alert(
-              "Unable to connect to server.\n\nPlease check:\n• Your internet connection\n• The server is running\n• Your firewall settings"
-            );
-          } else {
-            alert(`Error: ${err.message || "Unknown error during login"}`);
-          }
+          console.error("❌ Login error:", err);
+          alert("Unable to connect to server. Please try again.");
         }
       }
 
-      // ⭐ Initialize login handler when DOM is ready
-      // This ensures config.js has already executed
+      // ===============================
+      // BOOTSTRAP INIT
+      // ===============================
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initializeLoginHandler);
       } else {
-        // DOM already loaded (script executed late)
         initializeLoginHandler();
       }
     </script>

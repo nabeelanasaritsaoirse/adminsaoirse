@@ -1,7 +1,7 @@
 /*******************************
  * BASE URL (GLOBAL)
  *******************************/
-window.BASE_URL = "https://api.epielio.com/api";
+window.BASE_URL = "http://13.127.15.87:8080/api";
 
 // ✅ SINGLE SOURCE OF TRUTH
 const API_BASE = window.BASE_URL;
@@ -9,7 +9,6 @@ const API_BASE = window.BASE_URL;
 // ✅ Installments
 const INSTALLMENTS_BASE = `${API_BASE}/installments`;
 const INSTALLMENTS_ADMIN_BASE = `${INSTALLMENTS_BASE}/admin`;
-
 
 // ⭐ CRITICAL: Expose BASE_URL globally IMMEDIATELY after computation
 // This MUST happen before any script tries to use it
@@ -33,7 +32,7 @@ const APP_CONFIG = {
  * API CONFIGURATION
  *******************************/
 const API_CONFIG = {
-  baseURL: BASE_URL,
+  baseURL: window.BASE_URL,
   timeout: 30000,
 
   endpoints: {
@@ -424,6 +423,35 @@ const API = {
       body: JSON.stringify(data),
     });
   },
+};
+document.addEventListener("DOMContentLoaded", () => {
+  const adminBrand = document.querySelector(".navbar-brand");
+
+  if (!adminBrand) return;
+
+  adminBrand.addEventListener("click", (e) => {
+    const user = AUTH.getCurrentUser();
+    if (!user) return;
+
+    // Stop default <a href="index.html">
+    e.preventDefault();
+
+    // Role-aware routing
+    if (user.isSuperAdmin) {
+      window.location.href = isRootPage() ? "index.html" : "../index.html";
+    } else {
+      window.location.href = isRootPage()
+        ? "pages/welcome.html"
+        : "welcome.html";
+    }
+  });
+});
+
+// ===============================
+// GLOBAL ROUTES (S3 SAFE)
+// ===============================
+window.APP_ROUTES = {
+  LOGIN: "/pages/login.html",
 };
 
 /*******************************

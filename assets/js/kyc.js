@@ -12,6 +12,46 @@ let expandedRowId = null;
 // State for filters
 let searchQuery = "";
 let statusFilter = "";
+// ================================
+// ROW EXPAND / COLLAPSE HANDLER
+// ================================
+function attachRowToggleListeners() {
+  const rows = document.querySelectorAll(".kyc-row-expand");
+
+  rows.forEach((row) => {
+    row.onclick = () => {
+      const kycId = row.dataset.kycId;
+      const detailRow = document.querySelector(
+        `.kyc-detail-row[data-kyc-detail-id="${kycId}"]`
+      );
+
+      if (!detailRow) return;
+
+      const isExpanded = expandedRowId === kycId;
+
+      // Collapse all detail rows
+      document.querySelectorAll(".kyc-detail-row").forEach((r) => {
+        r.style.display = "none";
+      });
+
+      document.querySelectorAll(".kyc-toggle-icon").forEach((icon) => {
+        icon.classList.remove("rotate-180");
+      });
+
+      if (isExpanded) {
+        // Collapse current
+        expandedRowId = null;
+        detailRow.style.display = "none";
+      } else {
+        // Expand current
+        expandedRowId = kycId;
+        detailRow.style.display = "table-row";
+        const icon = row.querySelector(".kyc-toggle-icon");
+        if (icon) icon.classList.add("rotate-180");
+      }
+    };
+  });
+}
 
 // ================================
 // LOAD KYC LIST
@@ -43,15 +83,16 @@ function applyFilters() {
   // Apply search filter (name or email)
   if (searchQuery.trim() !== "") {
     const q = searchQuery.toLowerCase();
-    filteredList = filteredList.filter(k =>
-      (k.userId?.name || "").toLowerCase().includes(q) ||
-      (k.userId?.email || "").toLowerCase().includes(q)
+    filteredList = filteredList.filter(
+      (k) =>
+        (k.userId?.name || "").toLowerCase().includes(q) ||
+        (k.userId?.email || "").toLowerCase().includes(q)
     );
   }
 
   // Apply status filter
   if (statusFilter !== "" && statusFilter !== "all") {
-    filteredList = filteredList.filter(k => k.status === statusFilter);
+    filteredList = filteredList.filter((k) => k.status === statusFilter);
   }
 
   // Reset to first page when filters change
@@ -67,7 +108,8 @@ function renderTable() {
   tbody.innerHTML = "";
 
   if (!filteredList.length) {
-    tbody.insertAdjacentHTML("beforeend", 
+    tbody.insertAdjacentHTML(
+      "beforeend",
       `<tr><td colspan="5" class="text-center py-3">No KYC records found</td></tr>`
     );
     renderPagination();
@@ -77,7 +119,7 @@ function renderTable() {
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageItems = filteredList.slice(start, start + PAGE_SIZE);
 
-  pageItems.forEach(item => {
+  pageItems.forEach((item) => {
     // Main row
     tbody.insertAdjacentHTML("beforeend", renderMainRow(item));
 
@@ -95,13 +137,14 @@ function renderTable() {
 // ================================
 function renderMainRow(item) {
   const user = item.userId || {};
-  const submittedAt = item.submittedAt  
-    ? new Date(item.submittedAt).toLocaleString() 
+  const submittedAt = item.submittedAt
+    ? new Date(item.submittedAt).toLocaleString()
     : "-";
 
-  const autoTimer = item.status === "pending"
-    ? `<span class="text-danger fw-bold" id="timer-${item._id}"></span>`
-    : "-";
+  const autoTimer =
+    item.status === "pending"
+      ? `<span class="text-danger fw-bold" id="timer-${item._id}"></span>`
+      : "-";
 
   return `
     <tr class="kyc-row-expand" data-kyc-id="${item._id}">
@@ -114,19 +157,25 @@ function renderMainRow(item) {
           <i class="bi bi-chevron-down kyc-toggle-icon ms-2"></i>
         </div>
       </td>
-      <td><span class="badge bg-${getStatusColor(item.status)}">${item.status}</span></td>
+      <td><span class="badge bg-${getStatusColor(item.status)}">${
+    item.status
+  }</span></td>
       <td>${submittedAt}</td>
       <td>${autoTimer}</td>
       <td>
         <div class="kyc-action-buttons">
-          ${item.status === "pending" ? `
+          ${
+            item.status === "pending"
+              ? `
             <button class="btn btn-success btn-sm" onclick="approveKyc('${item._id}')" title="Approve">
               <i class="bi bi-check-circle"></i>
             </button>
             <button class="btn btn-danger btn-sm" onclick="openRejectModal('${item._id}')" title="Reject">
               <i class="bi bi-x-circle"></i>
             </button>
-          ` : "-"}
+          `
+              : "-"
+          }
         </div>
       </td>
     </tr>
@@ -146,7 +195,10 @@ function renderDetailRow(item) {
           <h6 class="mb-3">KYC Documents</h6>
           ${documentsHtml}
           <div class="mt-3">
-            <button class="btn btn-sm btn-primary" onclick="openDocumentModal(${JSON.stringify(item.documents || []).replace(/"/g, '&quot;')})">
+            <button class="btn btn-sm btn-primary" onclick="openDocumentModal(${JSON.stringify(
+              item
+            ).replace(/"/g, "&quot;")})"
+">
               <i class="bi bi-eye"></i> View Documents
             </button>
           </div>
@@ -162,9 +214,9 @@ function renderDetailRow(item) {
 // Group documents into selfie / aadhaar / pan (single object per group)
 function groupDocuments(documents) {
   const result = {
-    selfie: null,  // single object or null
+    selfie: null, // single object or null
     aadhaar: null, // object with frontUrl/backUrl or null
-    pan: null      // object with frontUrl/backUrl or null
+    pan: null, // object with frontUrl/backUrl or null
   };
 
   if (!Array.isArray(documents)) return result;
@@ -220,15 +272,26 @@ function renderDocumentGroups(documents) {
   }
 
   // AADHAAR (Front + Back)
-  if (grouped.aadhaar && (grouped.aadhaar.frontUrl || grouped.aadhaar.backUrl)) {
+  if (
+    grouped.aadhaar &&
+    (grouped.aadhaar.frontUrl || grouped.aadhaar.backUrl)
+  ) {
     const f = grouped.aadhaar.frontUrl || "";
     const b = grouped.aadhaar.backUrl || "";
     html += `
       <div class="kyc-doc-group">
         <div class="kyc-doc-group-title">AADHAAR</div>
         <div class="kyc-doc-links">
-          ${f ? `<a href="${f}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Front</a>` : ""}
-          ${b ? `<a href="${b}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Back</a>` : ""}
+          ${
+            f
+              ? `<a href="${f}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Front</a>`
+              : ""
+          }
+          ${
+            b
+              ? `<a href="${b}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Back</a>`
+              : ""
+          }
         </div>
       </div>
     `;
@@ -242,8 +305,16 @@ function renderDocumentGroups(documents) {
       <div class="kyc-doc-group">
         <div class="kyc-doc-group-title">PAN</div>
         <div class="kyc-doc-links">
-          ${f ? `<a href="${f}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Front</a>` : ""}
-          ${b ? `<a href="${b}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Back</a>` : ""}
+          ${
+            f
+              ? `<a href="${f}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Front</a>`
+              : ""
+          }
+          ${
+            b
+              ? `<a href="${b}" target="_blank" class="kyc-doc-link" rel="noopener"><i class="bi bi-file-image"></i> Back</a>`
+              : ""
+          }
         </div>
       </div>
     `;
@@ -259,24 +330,31 @@ function renderDocumentGroups(documents) {
 
 // Open modal and show grouped documents in a clean grid layout
 // Accepts either an array (direct call) or a JSON string (defensive)
-function openDocumentModal(documents) {
-  let docs = documents;
+function openDocumentModal(kyc) {
+  let data = kyc;
 
-  // Defensive: if a JSON string was passed, parse it
-  if (typeof documents === "string") {
+  if (typeof kyc === "string") {
     try {
-      docs = JSON.parse(documents);
+      data = JSON.parse(kyc);
     } catch (err) {
-      // If parse fails, log and abort
-      console.error("openDocumentModal: failed to parse documents JSON", err);
+      console.error("openDocumentModal: failed to parse KYC JSON", err);
       return;
     }
   }
 
-  const grouped = groupDocuments(Array.isArray(docs) ? docs : []);
+  const { aadhaarNumber, panNumber, documents } = data;
+
+  const grouped = groupDocuments(Array.isArray(documents) ? documents : []);
 
   // Build modal grid HTML — selfie first, then Aadhaar, then PAN
-  let html = `<div class="modal-document-grid">`;
+  let html = `
+  <div class="mb-3 p-3 border rounded bg-light">
+    <h6 class="fw-bold mb-2">KYC Numbers</h6>
+    <p class="mb-1"><strong>Aadhaar Number:</strong> ${aadhaarNumber || "-"}</p>
+    <p class="mb-0"><strong>PAN Number:</strong> ${panNumber || "-"}</p>
+  </div>
+  <div class="modal-document-grid">
+`;
 
   // SELFIE (single large preview)
   if (grouped.selfie && grouped.selfie.frontUrl) {
@@ -289,7 +367,10 @@ function openDocumentModal(documents) {
   }
 
   // AADHAAR front/back
-  if (grouped.aadhaar && (grouped.aadhaar.frontUrl || grouped.aadhaar.backUrl)) {
+  if (
+    grouped.aadhaar &&
+    (grouped.aadhaar.frontUrl || grouped.aadhaar.backUrl)
+  ) {
     if (grouped.aadhaar.frontUrl) {
       html += `
         <div class="modal-document-item">
@@ -318,14 +399,14 @@ function openDocumentModal(documents) {
         </div>
       `;
     }
-    if (grouped.pan.backUrl) {
-      html += `
-        <div class="modal-document-item">
-          <img src="${grouped.pan.backUrl}" alt="PAN Back" loading="lazy">
-          <div class="modal-document-label">PAN (Back)</div>
-        </div>
-      `;
-    }
+    // if (grouped.pan.backUrl) {
+    //   html += `
+    //     <div class="modal-document-item">
+    //       <img src="${grouped.pan.backUrl}" alt="PAN Back" loading="lazy">
+    //       <div class="modal-document-label">PAN (Back)</div>
+    //     </div>
+    //   `;
+    // }
   }
 
   html += `</div>`;
@@ -378,7 +459,7 @@ function goToPage(page) {
 // ================================
 // SEARCH INPUT HANDLER
 // ================================
-document.getElementById("searchInput").addEventListener("input", e => {
+document.getElementById("searchInput").addEventListener("input", (e) => {
   searchQuery = e.target.value;
   expandedRowId = null;
   applyFilters();
@@ -387,7 +468,7 @@ document.getElementById("searchInput").addEventListener("input", e => {
 // ================================
 // STATUS FILTER HANDLER
 // ================================
-document.getElementById("filterStatus").addEventListener("change", e => {
+document.getElementById("filterStatus").addEventListener("change", (e) => {
   statusFilter = e.target.value;
   expandedRowId = null;
   applyFilters();
@@ -398,10 +479,14 @@ document.getElementById("filterStatus").addEventListener("change", e => {
 // ================================
 function getStatusColor(status) {
   switch (status) {
-    case "approved": return "success";
-    case "auto_approved": return "primary";
-    case "rejected": return "danger";
-    default: return "warning";
+    case "approved":
+      return "success";
+    case "auto_approved":
+      return "primary";
+    case "rejected":
+      return "danger";
+    default:
+      return "warning";
   }
 }
 
@@ -409,7 +494,7 @@ function getStatusColor(status) {
 // AUTO-APPROVE TIMER
 // ================================
 function startTimers() {
-  filteredList.forEach(item => {
+  filteredList.forEach((item) => {
     if (item.status !== "pending") return;
 
     const timerEl = document.getElementById(`timer-${item._id}`);
@@ -460,21 +545,25 @@ function openRejectModal(id) {
   new bootstrap.Modal(document.getElementById("rejectModal")).show();
 }
 
-document.getElementById("rejectSubmitBtn").addEventListener("click", async () => {
-  const note = document.getElementById("rejectNote").value.trim();
-  if (!note) return alert("Please enter a rejection reason.");
+document
+  .getElementById("rejectSubmitBtn")
+  .addEventListener("click", async () => {
+    const note = document.getElementById("rejectNote").value.trim();
+    if (!note) return alert("Please enter a rejection reason.");
 
-  try {
-    const res = await API.patch(`/kyc/admin/reject/${rejectKycId}`, { note });
-    if (res.success) {
-      bootstrap.Modal.getInstance(document.getElementById("rejectModal")).hide();
-      expandedRowId = null;
-      loadKyc();
+    try {
+      const res = await API.patch(`/kyc/admin/reject/${rejectKycId}`, { note });
+      if (res.success) {
+        bootstrap.Modal.getInstance(
+          document.getElementById("rejectModal")
+        ).hide();
+        expandedRowId = null;
+        loadKyc();
+      }
+    } catch (e) {
+      console.error(e);
     }
-  } catch (e) {
-    console.error(e);
-  }
-});
+  });
 
 // ================================
 // INITIAL LOAD

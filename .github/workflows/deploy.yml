@@ -1,10 +1,11 @@
 name: Host Static Site to AWS S3
-run-name: "🚀 Deployment by ${{ github.actor }} on branch ${{ github.ref_name }}"
+run-name: "🚀 Deployment triggered by ${{ github.actor }} on branch ${{ github.ref_name }}"
 
 on:
   push:
     branches:
-      - main   # ONLY main will deploy
+      - main
+      - dev
 
 jobs:
   deploy:
@@ -12,8 +13,10 @@ jobs:
 
     env:
       AWS_REGION: ap-south-1
-      S3_BUCKET: admin-dashboard-site-prod
-      CUSTOM_DOMAIN: admin.epielio.com
+
+      # ✔ No secrets for bucket names = no censorship
+      S3_BUCKET: ${{ github.ref_name == 'main' && 'admin-dashboard-site-prod' || 'admin-dashboard-site-dev' }}
+      CUSTOM_DOMAIN: ${{ github.ref_name == 'main' && 'admin.epielio.com' || 'dev-admin.epielio.com' }}
 
     steps:
       - name: Checkout code
@@ -26,45 +29,39 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: 🧹 Clean S3 Bucket Before Deploy
+      - name: 🔄 Sync files to S3
         run: |
-          echo "Cleaning bucket: $S3_BUCKET"
-          aws s3 rm s3://$S3_BUCKET --recursive
-
-      - name: 🔄 Sync ONLY Required Files to S3
-        run: |
-          echo "Deploying only static site files"
-
-          # Upload folders
-          aws s3 sync assets/ s3://$S3_BUCKET/assets/ --delete
-          aws s3 sync pages/ s3://$S3_BUCKET/pages/ --delete
-
-          # Upload HTML files in root
-          for file in *.html *.txt; do
-            if [ -f "$file" ]; then
-              aws s3 cp "$file" s3://$S3_BUCKET/
-            fi
-          done
+          echo "Deploying to bucket: $S3_BUCKET"
+          aws s3 sync . s3://$S3_BUCKET --delete \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --exclude "*.md" \
+            --exclude ".gitignore"
 
       - name: 🚀 Invalidate CloudFront Cache
         run: |
           DIST_ID="${{ secrets.CF_PROD }}"
           echo "Invalidating CloudFront Distribution: $DIST_ID"
+
           aws cloudfront create-invalidation \
             --distribution-id "$DIST_ID" \
             --paths "/*"
+
+
 
       - name: 🌐 Print Website URL
         run: |
           echo "-----------------------------------"
           echo "Deployment completed successfully!"
+          echo "Branch: ${{ github.ref_name }}"
           echo "S3 Bucket: $S3_BUCKET"
-          echo "CloudFront: https://${CUSTOM_DOMAIN}"
+          echo "URL: http://$S3_BUCKET.s3-website.$AWS_REGION.amazonaws.com"
           echo "-----------------------------------"
 
       - name: 🧾 Add summary with clickable links
         if: success()
         run: |
+          ENVIRONMENT=$([[ "${{ github.ref_name }}" == "main" ]] && echo "Production" || echo "Development")
           
           echo "## ✅ Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -81,4 +78,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           echo "🚀 Deployment successful!" >> $GITHUB_STEP_SUMMARY
-

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel - Global FAQs</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
+
+  <body>
+    <!-- AUTH + PERMISSION GUARD -->
+    <script src="../assets/js/config.js"></script>
+    <script>
+      (function () {
+        const REQUIRED_PERMISSION = "faqs";
+
+        if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
+          alert("Please login first");
+          window.location.href = "login.html";
+          return;
+        }
+
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+          alert("Access Denied!");
+          window.location.href = "dashboard.html";
+        }
+      })();
+    </script>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
+
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="profile.html">Profile</a></li>
+              <li><hr class="dropdown-divider" /></li>
+              <li><a class="dropdown-item logout-btn" href="#">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <!-- PAGE HEADER -->
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Global FAQs</h1>
+          <button id="addFaqBtn" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add FAQ
+          </button>
+        </div>
+        <!-- ADD FAQ FORM -->
+        <div id="faqFormCard" class="card mb-4 d-none">
+          <div class="card-body">
+            <h5 class="mb-3">Add FAQ</h5>
+
+            <div class="mb-3">
+              <label class="form-label">Question</label>
+              <input type="text" id="newFaqQuestion" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Answer</label>
+              <textarea
+                id="newFaqAnswer"
+                class="form-control"
+                rows="3"
+              ></textarea>
+            </div>
+
+            <div class="form-check mb-3">
+              <input
+                type="checkbox"
+                id="newFaqActive"
+                class="form-check-input"
+                checked
+              />
+              <label class="form-check-label">Active</label>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button id="createFaqBtn" class="btn btn-success">Save</button>
+              <button id="cancelFaqBtn" class="btn btn-secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- FAQ LIST -->
+        <div id="faqList"></div>
+      </div>
+    </div>
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/global-faqs.js"></script>
+
+    <script>
+      document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        localStorage.clear();
+        window.location.href = "login.html";
+      });
+    </script>
+  </body>
+</html>
