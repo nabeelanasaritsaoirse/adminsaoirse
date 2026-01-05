@@ -1,8 +1,9 @@
 document.addEventListener("DOMContentLoaded", async () => {
   resetRegionalState();
-  await loadCategories();
 
   const categoryId = new URLSearchParams(location.search).get("id");
+
+  await loadCategories();
   populateParentCategoryDropdown(categoryId);
 
   const globalCheckbox = document.getElementById("isGlobalCategory");
@@ -37,22 +38,29 @@ document.addEventListener("DOMContentLoaded", async () => {
      EDIT MODE
      ========================= */
   if (categoryId) {
-    CategoryStore.currentCategoryId = categoryId;
-    fillFormForEdit(categoryId);
+    try {
+      const res = await API.get(`/categories/${categoryId}`);
+      const cat = res?.data;
+
+      if (!cat) {
+        adminPanel.showNotification("Category not found", "error");
+        return;
+      }
+
+      CategoryStore.currentCategoryId = categoryId;
+
+      // 🔥 DIRECTLY FILL USING FULL DATA
+      fillFormForEditFromApi(cat);
+    } catch (err) {
+      console.error(err);
+      adminPanel.showNotification("Failed to load category", "error");
+    }
   }
 });
 
-/* =========================
-   EDIT
-   ========================= */
-
-function fillFormForEdit(id) {
-  const cat = CategoryStore.categories.find((c) => c._id === id);
-  if (!cat) return;
-
+function fillFormForEditFromApi(cat) {
   categoryName.value = cat.name || "";
   categoryDescription.value = cat.description || "";
-  categoryIcon.value = cat.icon || "";
   displayOrder.value = cat.displayOrder || 0;
 
   isActive.checked = !!cat.isActive;
@@ -63,9 +71,23 @@ function fillFormForEdit(id) {
   metaDescription.value = cat.meta?.description || "";
   metaKeywords.value = cat.meta?.keywords?.join(", ") || "";
 
-  renderTypedImagePreview(cat.categoryImages || []);
+  // ✅ CATEGORY IMAGES
+  const images = [
+    cat.mainImage,
+    cat.illustrationImage,
+    cat.subcategoryImage,
+    cat.mobileImage,
+    cat.iconImage,
+  ].filter(Boolean);
 
-  /* 🌍 REGIONAL STATE */
+  renderTypedImagePreview(images);
+
+  // ✅ BANNERS
+  if (Array.isArray(cat.bannerImages) && cat.bannerImages.length) {
+    renderBannerPreview(cat.bannerImages);
+  }
+
+  // 🌍 REGIONAL
   const globalCheckbox = document.getElementById("isGlobalCategory");
   const regionalSection = document.getElementById("regionalCheckboxesSection");
 
@@ -94,9 +116,65 @@ function fillFormForEdit(id) {
 }
 
 /* =========================
-   TYPED IMAGE PREVIEW
+   EDIT
    ========================= */
 
+function fillFormForEdit(id) {
+  const cat = CategoryStore.categories.find((c) => c._id === id);
+  if (!cat) return;
+
+  categoryName.value = cat.name || "";
+  categoryDescription.value = cat.description || "";
+  displayOrder.value = cat.displayOrder || 0;
+
+  isActive.checked = !!cat.isActive;
+  isFeatured.checked = !!cat.isFeatured;
+  showInMenu.checked = !!cat.showInMenu;
+
+  metaTitle.value = cat.meta?.title || "";
+  metaDescription.value = cat.meta?.description || "";
+  metaKeywords.value = cat.meta?.keywords?.join(", ") || "";
+
+  const images = [
+    cat.mainImage,
+    cat.illustrationImage,
+    cat.subcategoryImage,
+    cat.mobileImage,
+    cat.iconImage,
+  ].filter(Boolean);
+
+  renderTypedImagePreview(images);
+  if (Array.isArray(cat.bannerImages) && cat.bannerImages.length) {
+    renderBannerPreview(cat.bannerImages);
+  }
+
+  /* 🌍 REGIONAL STATE */
+  const globalCheckbox = document.getElementById("isGlobalCategory");
+  const regionalSection = document.getElementById("regionalCheckboxesSection");
+
+  if (Array.isArray(cat.availableInRegions) && cat.availableInRegions.length) {
+    CategoryStore.isGlobalCategory = false;
+    CategoryStore.selectedRegions = [...cat.availableInRegions];
+    CategoryStore.regionalMetaMap = {};
+
+    cat.regionalMeta?.forEach((rm) => {
+      if (rm.region) {
+        CategoryStore.regionalMetaMap[rm.region] = {
+          metaTitle: rm.metaTitle || "",
+          metaDescription: rm.metaDescription || "",
+          keywords: rm.keywords || [],
+        };
+      }
+    });
+
+    globalCheckbox.checked = false;
+    regionalSection.classList.remove("d-none");
+    initializeRegionalCheckboxes();
+  } else {
+    globalCheckbox.checked = true;
+    regionalSection.classList.add("d-none");
+  }
+}
 function renderTypedImagePreview(categoryImages = []) {
   const preview = document.getElementById("categoryImagesPreview");
   if (!preview) return;
@@ -120,9 +198,11 @@ function renderTypedImagePreview(categoryImages = []) {
           (img) => `
           <div class="col-md-2 text-center">
             <div class="border rounded p-2 h-100">
-              <img src="${escapeHtml(img.url)}"
-                   class="img-fluid rounded mb-2"
-                   style="max-height:80px; object-fit:contain;" />
+              <img
+                src="${escapeHtml(img.url)}"
+                class="img-fluid rounded mb-2"
+                style="max-height:90px; object-fit:contain;"
+              />
               <div class="badge bg-secondary text-capitalize">${img.type}</div>
             </div>
           </div>
@@ -132,31 +212,61 @@ function renderTypedImagePreview(categoryImages = []) {
     </div>
   `;
 
-  updateImageLabels(imageMap);
+  // 🔥 APPLY PREVIEW TO INPUT CARDS
   document.querySelectorAll(".category-image-card").forEach((card) => {
     const type = card.dataset.imageType;
-    const previewImg = imageMap[type]?.url;
-
-    if (previewImg) {
-      card.style.setProperty("--preview-image", `url(${previewImg})`);
+    if (imageMap[type]?.url) {
+      card.style.setProperty("--preview-image", `url(${imageMap[type].url})`);
+      card.classList.add("has-image");
+    } else {
+      card.classList.remove("has-image");
     }
   });
+
+  updateImageLabels(imageMap);
+}
+
+/* =========================
+   IMAGE PREVIEW (FIXED)
+   ========================= */
+
+function renderBannerPreview(banners = []) {
+  const preview = document.getElementById("bannerImagesPreview");
+  if (!preview || !banners.length) return;
+
+  // ✅ Clear old banners (important on re-edit)
+  preview.innerHTML = "";
+
+  preview.innerHTML = `
+    <div class="row g-3">
+      ${banners
+        .map(
+          (b) => `
+          <div class="col-md-4 text-center">
+            <div class="border rounded p-2 h-100">
+              <img
+                src="${escapeHtml(b.url)}"
+                class="img-fluid rounded mb-2"
+                style="max-height:140px; object-fit:cover;"
+              />
+              <div class="badge bg-dark">Banner</div>
+            </div>
+          </div>
+        `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function updateImageLabels(imageMap) {
   document.querySelectorAll(".category-image-card").forEach((card) => {
     const type = card.dataset.imageType;
     const titleEl = card.querySelector(".image-title");
-
     if (!titleEl) return;
 
-    const baseLabel = titleEl.textContent.replace(/^(Upload|Change)\s+/i, "");
-
-    titleEl.textContent = imageMap[type]
-      ? `Change ${baseLabel}`
-      : `Upload ${baseLabel}`;
-
-    card.classList.toggle("has-image", !!imageMap[type]);
+    const base = titleEl.textContent.replace(/^(Upload|Change)\s+/i, "");
+    titleEl.textContent = imageMap[type] ? `Change ${base}` : `Upload ${base}`;
   });
 }
 
@@ -202,9 +312,7 @@ async function saveCategory() {
 
     if (CategoryStore.currentCategoryId) {
       // UPDATE
-      await API.put("/categories/:categoryId", payload, {
-        categoryId: CategoryStore.currentCategoryId,
-      });
+      await API.put(`/categories/${CategoryStore.currentCategoryId}`, payload);
 
       categoryId = CategoryStore.currentCategoryId;
       sessionStorage.setItem("categorySuccess", "updated");
@@ -218,6 +326,7 @@ async function saveCategory() {
     // 🔥 UPLOAD TYPED IMAGES (SEPARATE API)
     if (categoryId) {
       await uploadCategoryImages(categoryId);
+      await uploadCategoryBanners(categoryId);
     }
     adminPanel.showNotification("Category saved successfully", "success");
 
@@ -300,6 +409,33 @@ async function uploadCategoryImages(categoryId) {
   }
 
   console.log("✅ Category images uploaded successfully");
+}
+
+async function uploadCategoryBanners(categoryId) {
+  const input = document.getElementById("bannerImages");
+  if (!input || !input.files.length) return;
+
+  const fd = new FormData();
+  Array.from(input.files).forEach((file) => {
+    fd.append("bannerImages", file);
+  });
+
+  const token = AUTH.getToken();
+
+  const res = await fetch(
+    `${BASE_URL}/categories/${categoryId}/banner-images`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: fd,
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Banner image upload failed");
+  }
 }
 
 window.saveCategory = saveCategory;

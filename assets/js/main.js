@@ -174,3 +174,22 @@ window.adminPanel = {
     loadData,
     exportTableToCSV
 };
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".logout-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      // Clear auth safely
+      if (window.AUTH) {
+        AUTH.logout?.();
+      }
+
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Always redirect using ABSOLUTE path
+      const base = window.location.origin;
+      window.location.href = base + "../login.html";
+    });
+  });
+});
