@@ -447,6 +447,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ===============================
+// GLOBAL ROUTES (S3 SAFE)
+// ===============================
+window.APP_ROUTES = {
+  LOGIN: "/pages/login.html",
+};
+
 /*******************************
  * EXPORT GLOBAL
  *******************************/

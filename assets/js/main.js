@@ -179,6 +179,7 @@ window.adminPanel = {
   loadData,
   exportTableToCSV,
 };
+
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".logout-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -192,8 +193,8 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.clear();
       sessionStorage.clear();
 
-      // ✅ ROOT RELATIVE (S3 SAFE)
-      window.location.href = "/login.html";
+      // ✅ Correct for your structure
+      window.location.href = window.APP_ROUTES.LOGIN;
     });
   });
 });
