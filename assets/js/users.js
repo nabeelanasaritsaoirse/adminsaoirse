@@ -52,10 +52,9 @@ async function loadUsers() {
  * FILTER + PAGINATION PIPELINE
  ********************************************/
 function applyFiltersAndRender() {
-  const searchTerm =
-    (document.getElementById("searchUser")?.value || "")
-      .toLowerCase()
-      .trim();
+  const searchTerm = (document.getElementById("searchUser")?.value || "")
+    .toLowerCase()
+    .trim();
 
   const roleFilter = (
     document.getElementById("filterRole")?.value || ""
@@ -124,7 +123,9 @@ function renderUsersTable(users, offset = 0) {
           <td>${escapeHtml(u.email)}</td>
 
           <td>
-              <span class="badge ${u.role === "admin" ? "bg-danger" : "bg-primary"}">
+              <span class="badge ${
+                u.role === "admin" ? "bg-danger" : "bg-primary"
+              }">
                   ${escapeHtml(u.role)}
               </span>
           </td>
@@ -136,17 +137,19 @@ function renderUsersTable(users, offset = 0) {
           </td>
 
           <td>${
-            u.createdAt
-              ? new Date(u.createdAt).toLocaleDateString()
-              : "-"
+            u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"
           }</td>
 
           <td>
-              <button class="btn btn-sm btn-outline-primary" onclick="openEditUserModal('${u._id}')">
+              <button class="btn btn-sm btn-outline-primary" onclick="openEditUserModal('${
+                u._id
+              }')">
                   <i class="bi bi-pencil"></i>
               </button>
 
-              <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${u._id}')">
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${
+                u._id
+              }')">
                   <i class="bi bi-trash"></i>
               </button>
           </td>
@@ -163,42 +166,72 @@ function renderPagination(totalPages) {
   if (!container) return;
 
   container.innerHTML = "";
-
   if (totalPages <= 1) return;
 
-  let html = `<ul class="pagination justify-content-end mb-0">`;
+  const PAGE_WINDOW = 10;
 
-  const prevDisabled = currentPage === 1 ? " disabled" : "";
+  // Calculate window
+  const windowStart =
+    Math.floor((currentPage - 1) / PAGE_WINDOW) * PAGE_WINDOW + 1;
+  const windowEnd = Math.min(windowStart + PAGE_WINDOW - 1, totalPages);
+
+  let html = `<ul class="pagination justify-content-center mb-0">`;
+
+  // ⏮️ Double Previous (<<)
   html += `
-    <li class="page-item${prevDisabled}">
-      <a class="page-link" href="#" data-page="${currentPage - 1}">&laquo;</a>
+    <li class="page-item ${windowStart === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowStart - PAGE_WINDOW}">
+        &laquo;
+      </a>
     </li>
   `;
 
-  for (let p = 1; p <= totalPages; p++) {
-    const activeClass = p === currentPage ? " active" : "";
+  // ◀ Single Previous (<)
+  html += `
+    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage - 1}">
+        &lsaquo;
+      </a>
+    </li>
+  `;
+
+  // Page numbers (ONLY 10)
+  for (let p = windowStart; p <= windowEnd; p++) {
     html += `
-      <li class="page-item${activeClass}">
+      <li class="page-item ${p === currentPage ? "active" : ""}">
         <a class="page-link" href="#" data-page="${p}">${p}</a>
       </li>
     `;
   }
 
-  const nextDisabled = currentPage === totalPages ? " disabled" : "";
+  // ▶ Single Next (>)
   html += `
-    <li class="page-item${nextDisabled}">
-      <a class="page-link" href="#" data-page="${currentPage + 1}">&raquo;</a>
+    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage + 1}">
+        &rsaquo;
+      </a>
+    </li>
+  `;
+
+  // ⏭️ Double Next (>>)
+  html += `
+    <li class="page-item ${windowEnd === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowEnd + 1}">
+        &raquo;
+      </a>
     </li>
   `;
 
   html += `</ul>`;
   container.innerHTML = html;
 
+  // Event binding (unchanged logic)
   container.querySelectorAll("a.page-link").forEach((a) => {
     a.addEventListener("click", (e) => {
       e.preventDefault();
       const targetPage = parseInt(a.getAttribute("data-page"), 10);
-      if (targetPage < 1 || targetPage > totalPages) return;
+      if (isNaN(targetPage) || targetPage < 1 || targetPage > totalPages)
+        return;
 
       currentPage = targetPage;
       applyFiltersAndRender();
