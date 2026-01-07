@@ -38,6 +38,7 @@ const API_CONFIG = {
   endpoints: {
     auth: {
       adminLogin: "/admin-auth/login", // ✅ New unified endpoint
+      adminRegisterRequest: "/admin-auth/register-request",
       legacyLogin: "/auth/admin-login", // Old endpoint for reference
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
@@ -47,6 +48,11 @@ const API_CONFIG = {
       subAdmins: "/admin-mgmt/sub-admins",
       subAdminById: "/admin-mgmt/sub-admins/:adminId",
       resetPassword: "/admin-mgmt/sub-admins/:adminId/reset-password",
+      registrationRequests: "/admin-mgmt/registration-requests",
+      approveRegistrationRequest:
+        "/admin-mgmt/registration-requests/:requestId/approve",
+      rejectRegistrationRequest:
+        "/admin-mgmt/registration-requests/:requestId/reject",
     },
 
     users: {

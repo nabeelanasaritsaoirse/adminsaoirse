@@ -32,6 +32,7 @@ function getAssignableModulesFromNav() {
  */
 document.addEventListener("DOMContentLoaded", function () {
   loadSubAdmins();
+  loadRegistrationRequests();
   renderModuleCheckboxes();
 });
 
@@ -478,4 +479,224 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+/***************************************
+ * ADMIN REGISTRATION REQUESTS
+ ***************************************/
+
+let registrationRequests = [];
+
+/**
+ * Load pending registration requests
+ */
+async function loadRegistrationRequests() {
+  try {
+    document.getElementById("requestsLoading").style.display = "block";
+    document.getElementById("requestsTableContainer").style.display = "none";
+    document.getElementById("requestsEmpty").style.display = "none";
+
+    const url = API.buildURL(
+      API_CONFIG.endpoints.adminManagement.registrationRequests
+    );
+
+    const response = await API.request(url, {
+      method: "GET",
+      headers: AUTH.getAuthHeaders(),
+    });
+
+    if (!response.success) {
+      throw new Error(response.message || "Failed to load requests");
+    }
+
+    registrationRequests = response.data?.requests || [];
+    renderRegistrationRequests(registrationRequests);
+  } catch (error) {
+    console.error("Error loading registration requests:", error);
+    alert("Failed to load registration requests");
+  }
+}
+
+/**
+ * Render requests table
+ */
+function renderRegistrationRequests(requests) {
+  const tbody = document.querySelector("#registrationRequestsTable tbody");
+
+  document.getElementById("requestsLoading").style.display = "none";
+
+  if (!requests.length) {
+    document.getElementById("requestsEmpty").style.display = "block";
+    document.getElementById("requestsTableContainer").style.display = "none";
+    return;
+  }
+
+  document.getElementById("requestsEmpty").style.display = "none";
+  document.getElementById("requestsTableContainer").style.display = "block";
+
+  tbody.innerHTML = requests
+    .map(
+      (req, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(req.name)}</td>
+        <td>${escapeHtml(req.email)}</td>
+        <td>${new Date(req.requestedAt).toLocaleString()}</td>
+        <td>
+          <button class="btn btn-sm btn-success me-1"
+            onclick="approveRegistrationRequest('${req._id}')">
+            <i class="bi bi-check-circle"></i> Approve
+          </button>
+          <button class="btn btn-sm btn-danger"
+            onclick="rejectRegistrationRequest('${req._id}')">
+            <i class="bi bi-x-circle"></i> Reject
+          </button>
+        </td>
+      </tr>
+    `
+    )
+    .join("");
+}
+
+/**
+ * Approve request
+ */
+function approveRegistrationRequest(requestId) {
+  const request = registrationRequests.find((r) => r._id === requestId);
+  if (!request) {
+    alert("Request not found");
+    return;
+  }
+
+  document.getElementById("approvingRequestId").value = requestId;
+  document.getElementById("approveReqName").textContent = request.name;
+  document.getElementById("approveReqEmail").textContent = request.email;
+
+  // IMPORTANT:
+  // requestedModules comes from registration request
+  const requested = Array.isArray(request.requestedModules)
+    ? request.requestedModules
+    : Array.isArray(request.moduleAccess)
+    ? request.moduleAccess
+    : [];
+
+  renderApproveModuleCheckboxes(requested);
+
+  const modal = new bootstrap.Modal(
+    document.getElementById("approveRequestModal")
+  );
+  modal.show();
+}
+
+/**
+ * Reject request
+ */
+async function rejectRegistrationRequest(requestId) {
+  const reason = prompt("Optional rejection reason:");
+
+  try {
+    const url = API.buildURL(
+      API_CONFIG.endpoints.adminManagement.rejectRegistrationRequest,
+      { requestId }
+    );
+
+    const response = await API.request(url, {
+      method: "POST",
+      headers: AUTH.getAuthHeaders(),
+      body: JSON.stringify({ reason }),
+    });
+
+    if (!response.success) {
+      throw new Error(response.message || "Rejection failed");
+    }
+
+    alert("Request rejected");
+
+    loadRegistrationRequests();
+  } catch (error) {
+    console.error("Reject error:", error);
+    alert("Failed to reject request");
+  }
+}
+
+function renderApproveModuleCheckboxes(requestedModules = []) {
+  const container = document.getElementById("approveModuleCheckboxes");
+  if (!container) return;
+
+  const modules = getAssignableModulesFromNav();
+
+  container.innerHTML = modules
+    .map(
+      (module) => `
+      <div class="module-checkbox-item">
+        <label>
+          <input
+            type="checkbox"
+            class="approve-module-checkbox"
+            value="${module.id}"
+            ${requestedModules.includes(module.id) ? "checked" : ""}
+          />
+          <i class="bi ${module.icon}"></i>
+          <span>${module.label}</span>
+        </label>
+      </div>
+    `
+    )
+    .join("");
+}
+/***************************************
+ * APPROVAL MODAL ACTIONS
+ ***************************************/
+
+function selectAllApproveModules() {
+  document
+    .querySelectorAll(".approve-module-checkbox")
+    .forEach((cb) => (cb.checked = true));
+}
+
+function deselectAllApproveModules() {
+  document
+    .querySelectorAll(".approve-module-checkbox")
+    .forEach((cb) => (cb.checked = false));
+}
+
+async function confirmApproveRequest() {
+  const requestId = document.getElementById("approvingRequestId").value;
+
+  const selectedModules = Array.from(
+    document.querySelectorAll(".approve-module-checkbox:checked")
+  ).map((cb) => cb.value);
+
+  if (selectedModules.length === 0) {
+    alert("Please select at least one module");
+    return;
+  }
+
+  try {
+    const url = API.buildURL(
+      API_CONFIG.endpoints.adminManagement.approveRegistrationRequest,
+      { requestId }
+    );
+
+    const response = await API.request(url, {
+      method: "POST",
+      headers: AUTH.getAuthHeaders(),
+      body: JSON.stringify({ moduleAccess: selectedModules }),
+    });
+
+    if (!response.success) {
+      throw new Error(response.message || "Approval failed");
+    }
+
+    alert("Admin approved and created successfully");
+
+    bootstrap.Modal.getInstance(
+      document.getElementById("approveRequestModal")
+    ).hide();
+
+    loadRegistrationRequests();
+    loadSubAdmins();
+  } catch (error) {
+    console.error("Approve error:", error);
+    alert("Failed to approve admin");
+  }
 }
