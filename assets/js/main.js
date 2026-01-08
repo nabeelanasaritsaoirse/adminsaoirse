@@ -198,3 +198,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+document.addEventListener("DOMContentLoaded", () => {
+  const user = AUTH.getCurrentUser();
+  const userNameEl = document.getElementById("userName");
+
+  if (!user || !userNameEl) return;
+
+  if (user.role === "sales_team") {
+    userNameEl.textContent = "Sales";
+  } else if (user.isSuperAdmin) {
+    userNameEl.textContent = "Admin";
+  } else {
+    userNameEl.textContent = "Sub Admin";
+  }
+});
+function getUserIdFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("id") || params.get("userId");
+}
