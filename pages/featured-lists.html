@@ -38,12 +38,19 @@
           return;
         }
 
+        const REQUIRED_PERMISSION = "featured_lists";
+
         const user = AUTH.getCurrentUser();
-        if (user.isSuperAdmin !== true) {
-          alert(
-            "Access Denied! Only Super Admins can access Featured Lists Management."
-          );
-          window.location.href = "dashboard.html";
+
+        // Super Admin → always allowed
+        if (user.isSuperAdmin === true) {
+          return;
+        }
+
+        // Sub-admin → must have module
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+          alert("Access Denied!");
+          window.location.href = "welcome.html";
         }
       })();
     </script>

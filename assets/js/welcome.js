@@ -1,10 +1,10 @@
 /**
- * Welcome Page – Sub Admin Landing
- * --------------------------------
- * - Uses AUTH.getUserModules() as single source of truth
- * - Renders ALL modules (no silent drops)
- * - Known modules → rich cards
- * - Unknown modules → generic cards
+ * Welcome Page – Sub Admin Landing (HARDENED)
+ * ------------------------------------------
+ * - Sanitizes backend modules
+ * - Blocks sales + super admin modules
+ * - Prevents redirect loops
+ * - Never sends sub-admin to dashboard.html
  */
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -20,23 +20,37 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const user = AUTH.getCurrentUser();
-  if (!user) {
-    container.innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-danger">
-          Unable to load user information. Please re-login.
-        </div>
-      </div>
-    `;
+
+  // 🚫 Super Admin should NEVER be here
+  if (user.isSuperAdmin === true) {
+    window.location.href = "dashboard.html";
+    return;
+  }
+
+  // 🚫 Sales Team should NEVER be here
+  if (user.role === "sales_team") {
+    window.location.href = "sales-dashboard.html";
     return;
   }
 
   // ============================
-  // SOURCE OF TRUTH
+  // SOURCE OF TRUTH (SANITIZED)
   // ============================
-  const modules = AUTH.getUserModules();
+  let modules = AUTH.getUserModules();
 
-  if (!Array.isArray(modules) || modules.length === 0) {
+  if (!Array.isArray(modules)) modules = [];
+
+  // ⛔ HARD BLOCKED MODULES FOR SUB ADMINS
+  const BLOCKED_MODULES = [
+    "dashboard",
+    "sales-dashboard",
+    "admin_management",
+    "featured_lists", // 🔒 super admin only in your system
+  ];
+
+  modules = modules.filter((m) => !BLOCKED_MODULES.includes(m));
+
+  if (modules.length === 0) {
     container.innerHTML = `
       <div class="col-12">
         <div class="alert alert-warning">
@@ -48,7 +62,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // ============================
-  // OPTIONAL RICH META
+  // MODULE META
   // ============================
   const MODULE_META = {
     users: {
@@ -96,22 +110,21 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   // ============================
-  // RENDER ALL MODULES
+  // RENDER SAFE MODULES
   // ============================
-  modules
-    .filter((key) => key !== "dashboard")
-    .forEach((key) => {
-      const meta = MODULE_META[key] || {
-        icon: "bi-grid",
-        title: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-        desc: "Manage this module",
-        page: "#",
-      };
+  modules.forEach((key) => {
+    const meta = MODULE_META[key];
 
-      const col = document.createElement("div");
-      col.className = "col-md-6 col-lg-4";
+    // 🚫 Unknown modules → do NOT render clickable cards
+    if (!meta) {
+      console.warn("[WELCOME] Skipping unknown module:", key);
+      return;
+    }
 
-      col.innerHTML = `
+    const col = document.createElement("div");
+    col.className = "col-md-6 col-lg-4";
+
+    col.innerHTML = `
       <div class="access-card" role="button">
         <div class="access-icon">
           <i class="bi ${meta.icon}"></i>
@@ -121,12 +134,12 @@ document.addEventListener("DOMContentLoaded", function () {
       </div>
     `;
 
-      col.querySelector(".access-card").onclick = () => {
-        if (meta.page && meta.page !== "#") {
-          window.location.href = meta.page;
-        }
-      };
+    col.querySelector(".access-card").onclick = () => {
+      window.location.href = meta.page;
+    };
 
-      container.appendChild(col);
-    });
+    container.appendChild(col);
+  });
+
+  console.log("[WELCOME] ✅ Modules rendered safely:", modules);
 });

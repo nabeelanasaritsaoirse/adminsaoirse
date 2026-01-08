@@ -213,7 +213,7 @@ function canShowItem(item) {
 
   // Special case: Sales Dashboard
   if (item.id === "sales_dashboard") {
-    return ["sales_team", "super_admin", "admin"].includes(user.role);
+    return user.role === "sales_team" || user.isSuperAdmin === true;
   }
 
   // Block super-admin-only items
