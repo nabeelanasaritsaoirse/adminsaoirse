@@ -17,6 +17,14 @@ const NAV_CONFIG = {
       superAdminOnly: true,
     },
     {
+      id: "sales_dashboard",
+      label: "Sales Dashboard",
+      icon: "bi-graph-up-arrow",
+      href: "sales-dashboard.html",
+      hrefFromRoot: "pages/sales-dashboard.html",
+      permission: "sales-dashboard",
+    },
+    {
       id: "users",
       label: "Users",
       icon: "bi-people",
@@ -171,6 +179,14 @@ const NAV_CONFIG = {
       permission: "admin_management",
       superAdminOnly: true,
     },
+    {
+      id: "sales_team_management",
+      label: "Sales Team",
+      icon: "bi-people-fill",
+      href: "sales-team-management.html",
+      hrefFromRoot: "pages/sales-team-management.html",
+      superAdminOnly: true,
+    },
   ],
 };
 
@@ -190,16 +206,23 @@ function getNavHref(item) {
 // ===============================
 function canShowItem(item) {
   const user = AUTH.getCurrentUser();
-
   if (!user) return false;
 
-  // Super admin sees all (except if superAdminOnly is explicitly false)
+  // Super admin sees everything
   if (user.isSuperAdmin === true) return true;
 
-  // SuperAdminOnly → hide from sub-admins
-  if (item.superAdminOnly === true && !user.isSuperAdmin) return false;
+  // Special case: Sales Dashboard
+  if (item.id === "sales_dashboard") {
+    return ["sales_team", "super_admin", "admin"].includes(user.role);
+  }
 
-  // Sub-admin must have permission
+  // Block super-admin-only items
+  if (item.superAdminOnly === true) return false;
+
+  // Items without permission → hide
+  if (!item.permission) return false;
+
+  // Normal RBAC
   return AUTH.hasModule(item.permission);
 }
 

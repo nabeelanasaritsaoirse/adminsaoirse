@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sales User Detail</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Bootstrap -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+
+    <!-- Admin Styles -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+  </head>
+
+  <body>
+    <!-- CONFIG MUST LOAD FIRST -->
+    <script src="../assets/js/config.js"></script>
+
+    <!-- AUTH GUARD -->
+    <script>
+      const user = AUTH.getCurrentUser();
+
+      if (
+        !AUTH.isAuthenticated() ||
+        !(
+          user?.role === "sales_team" ||
+          user?.role === "admin" ||
+          user?.isSuperAdmin === true
+        )
+      ) {
+        AUTH.unauthorizedRedirect();
+      }
+    </script>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+        <span class="navbar-brand ms-3">Sales Panel</span>
+
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i>
+              <span id="topUserName">User</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item logout-btn" href="#">Logout</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <!-- SIDEBAR -->
+        <div id="sidebar" class="col-md-2 sidebar"></div>
+
+        <!-- MAIN -->
+        <main class="col-md-10 ms-sm-auto px-4 py-4 main-content">
+          <h4 class="mb-4"><i class="bi bi-person"></i> User Detail</h4>
+
+          <!-- USER SUMMARY -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h6 class="mb-3">User Information</h6>
+              <div class="row">
+                <div class="col-md-4">
+                  <strong>Name:</strong> <span id="uName">-</span>
+                </div>
+                <div class="col-md-4">
+                  <strong>Email:</strong> <span id="uEmail">-</span>
+                </div>
+                <div class="col-md-4">
+                  <strong>Phone:</strong> <span id="uPhone">-</span>
+                </div>
+                <div class="col-md-4 mt-2">
+                  <strong>Referral Code:</strong> <span id="uRef">-</span>
+                </div>
+                <div class="col-md-4 mt-2">
+                  <strong>Joined:</strong> <span id="uJoined">-</span>
+                </div>
+                <div class="col-md-4 mt-2">
+                  <strong>Status:</strong> <span id="uStatus">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WALLET -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h6 class="mb-3">Wallet Snapshot</h6>
+              <div class="row">
+                <div class="col-md-3">
+                  Balance: ₹<span id="wBalance">0</span>
+                </div>
+                <div class="col-md-3">Hold: ₹<span id="wHold">0</span></div>
+                <div class="col-md-3">
+                  Referral Bonus: ₹<span id="wReferral">0</span>
+                </div>
+                <div class="col-md-3">
+                  Commission: ₹<span id="wCommission">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REFERRALS -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h6 class="mb-3">Referrals</h6>
+              <p>
+                L1 Count: <strong id="l1Count">0</strong> | L2 Count:
+                <strong id="l2Count">0</strong>
+              </p>
+              <div id="referralTree" class="small"></div>
+            </div>
+          </div>
+
+          <!-- ORDERS -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <h6 class="mb-3">Orders</h6>
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>Product</th>
+                    <th>Status</th>
+                    <th>Paid</th>
+                    <th>Remaining</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- WISHLIST & CART -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-body">
+                  <h6>Wishlist</h6>
+                  <ul id="wishlist" class="small"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-body">
+                  <h6>Cart</h6>
+                  <ul id="cart" class="small"></ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/sales-user-detail.js"></script>
+  </body>
+</html>
