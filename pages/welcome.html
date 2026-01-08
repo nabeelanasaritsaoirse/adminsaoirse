@@ -26,18 +26,33 @@
       document.body.classList.add("welcome-page");
     </script>
     <!-- AUTH GUARD -->
+    <!-- AUTH GUARD -->
     <script src="../assets/js/config.js"></script>
     <script>
       (function () {
+        // 1️⃣ Must be authenticated
         if (!AUTH.isAuthenticated()) {
           window.location.href = "login.html";
           return;
         }
 
-        // Super admins should NOT land here
-        if (AUTH.isSuperAdmin()) {
+        const user = AUTH.getCurrentUser();
+
+        // 2️⃣ Super Admin → Dashboard
+        if (user.isSuperAdmin === true) {
           window.location.href = "dashboard.html";
+          return;
         }
+
+        // 3️⃣ Sales Team → Sales Dashboard ONLY
+        if (user.role === "sales_team") {
+          window.location.href = "sales-dashboard.html";
+          return;
+        }
+
+        // 4️⃣ Sub Admin → stay here (WELCOME PAGE)
+        // ✅ NO redirect
+        console.log("[WELCOME] ✅ Sub Admin access granted");
       })();
     </script>
 

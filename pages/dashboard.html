@@ -1,318 +1,370 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel - Dashboard</title>
 
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
 
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/responsive.css">
-</head>
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
 
-<body>
+  <body>
+    <!-- Load config for AUTH helper -->
+    <script src="../assets/js/config.js"></script>
+    <script>
+      // 🔐 Sales Dashboard Auth Guard (FINAL)
+      console.log("[SALES-DASHBOARD] 🔐 Auth Guard - Checking permissions...");
 
-<!-- Load config for AUTH helper -->
-<script src="../assets/js/config.js"></script>
-<script>
-    // Permission Guard - Check if user has access to dashboard module
-    console.log('[DASHBOARD] 🔐 Auth Guard - Checking permissions...');
-    (function () {
-        const REQUIRED_PERMISSION = 'dashboard';
-
-        if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
-            console.error('[DASHBOARD] ❌ Not authenticated');
-            alert('Please login first');
-            window.location.href = "login.html";
-            return;
+      (function () {
+        // 1️⃣ Must be authenticated
+        if (!AUTH.isAuthenticated()) {
+          console.error("[SALES-DASHBOARD] ❌ Not authenticated");
+          alert("Please login first");
+          window.location.href = "login.html";
+          return;
         }
 
-        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
-            console.error('[DASHBOARD] ❌ No permission for dashboard module');
-            alert('Access Denied! You do not have permission to access Dashboard.');
-            window.location.href = "login.html";
-            return;
+        const user = AUTH.getCurrentUser();
+
+        // 2️⃣ Allow ONLY Sales Team or Super Admin
+        if (user.role !== "sales_team" && user.isSuperAdmin !== true) {
+          console.error(
+            "[SALES-DASHBOARD] ❌ Access denied for role:",
+            user.role
+          );
+          alert("Access Denied!");
+          window.location.href = "welcome.html";
+          return;
         }
 
-        console.log('[DASHBOARD] ✅ Auth check passed');
-        console.log('[DASHBOARD] User:', AUTH.getUsername());
-        console.log('[DASHBOARD] Is Super Admin:', AUTH.isSuperAdmin());
-    })();
-</script>
+        console.log("[SALES-DASHBOARD] ✅ Access granted");
+        console.log("[SALES-DASHBOARD] User:", user.name);
+        console.log("[SALES-DASHBOARD] Role:", user.role);
+        console.log("[SALES-DASHBOARD] Is Super Admin:", user.isSuperAdmin);
+      })();
+    </script>
 
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-    <div class="container-fluid">
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
         <button class="btn btn-dark" id="sidebarToggle">
-            <i class="bi bi-list"></i>
+          <i class="bi bi-list"></i>
         </button>
 
         <a class="navbar-brand ms-3" href="dashboard.html">
-            <i class="bi bi-gear-fill"></i> Admin Panel
+          <i class="bi bi-gear-fill"></i> Admin Panel
         </a>
 
         <ul class="navbar-nav ms-auto">
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="bi bi-person-circle"></i> Admin
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item logout-btn" href="#">Logout</a></li>
-                </ul>
-            </li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle"></i> Admin
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item logout-btn" href="#">Logout</a></li>
+            </ul>
+          </li>
         </ul>
-    </div>
-</nav>
+      </div>
+    </nav>
 
-<!-- SIDEBAR -->
-<div id="sidebar" class="sidebar"></div>
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar"></div>
 
-<!-- MAIN CONTENT -->
-<div class="main-content">
-    <div class="container-fluid">
-
-        <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">Dashboard</h1>
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <div
+          class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
+        >
+          <h1 class="h2">Dashboard</h1>
         </div>
 
         <!-- STATS CARDS -->
         <div class="row">
-
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-primary shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-xs fw-bold text-primary">Total Users</div>
-                                <div class="h5 mb-0 fw-bold" id="totalUsers">0</div>
-                            </div>
-                            <i class="bi bi-people fs-2 text-muted"></i>
-                        </div>
-                    </div>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-primary">Total Users</div>
+                    <div class="h5 mb-0 fw-bold" id="totalUsers">0</div>
+                  </div>
+                  <i class="bi bi-people fs-2 text-muted"></i>
                 </div>
+              </div>
             </div>
+          </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-success shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-xs fw-bold text-success">Revenue</div>
-                                <div class="h5 mb-0 fw-bold" id="totalRevenue">₹0</div>
-                            </div>
-                            <i class="bi bi-currency-rupee fs-2 text-muted"></i>
-                        </div>
-                    </div>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-success">Revenue</div>
+                    <div class="h5 mb-0 fw-bold" id="totalRevenue">₹0</div>
+                  </div>
+                  <i class="bi bi-currency-rupee fs-2 text-muted"></i>
                 </div>
+              </div>
             </div>
+          </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-info shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-xs fw-bold text-info">Total Orders</div>
-                                <div class="h5 mb-0 fw-bold" id="totalOrders">0</div>
-                            </div>
-                            <i class="bi bi-cart-check fs-2 text-muted"></i>
-                        </div>
-                    </div>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-info">Total Orders</div>
+                    <div class="h5 mb-0 fw-bold" id="totalOrders">0</div>
+                  </div>
+                  <i class="bi bi-cart-check fs-2 text-muted"></i>
                 </div>
+              </div>
             </div>
+          </div>
 
-            <div class="col-xl-3 col-md-6 mb-4">
-                <div class="card border-left-warning shadow-sm">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <div class="text-xs fw-bold text-warning">Pending Orders</div>
-                                <div class="h5 mb-0 fw-bold" id="pendingOrders">0</div>
-                            </div>
-                            <i class="bi bi-clock-history fs-2 text-muted"></i>
-                        </div>
+          <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <div class="text-xs fw-bold text-warning">
+                      Pending Orders
                     </div>
+                    <div class="h5 mb-0 fw-bold" id="pendingOrders">0</div>
+                  </div>
+                  <i class="bi bi-clock-history fs-2 text-muted"></i>
                 </div>
+              </div>
             </div>
-
+          </div>
         </div>
 
         <!-- 🔵 TODAY'S SUMMARY SECTION -->
         <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 fw-bold text-primary">Today's Summary</h6>
-                    </div>
-                    <div class="card-body row text-center">
-                        <div class="col-md-4">
-                            <h4 id="ordersToday">0</h4>
-                            <p class="text-muted mb-0">Orders Today</p>
-                        </div>
-                        <div class="col-md-4">
-                            <h4 id="revenueToday">₹0</h4>
-                            <p class="text-muted mb-0">Revenue Today</p>
-                        </div>
-                        <div class="col-md-4">
-                            <h4 id="kycToday">0</h4>
-                            <p class="text-muted mb-0">New KYC Submitted Today</p>
-                        </div>
-                    </div>
+          <div class="col-md-12">
+            <div class="card shadow-sm">
+              <div
+                class="card-header d-flex justify-content-between align-items-center"
+              >
+                <h6 class="m-0 fw-bold text-primary">Today's Summary</h6>
+              </div>
+              <div class="card-body row text-center">
+                <div class="col-md-4">
+                  <h4 id="ordersToday">0</h4>
+                  <p class="text-muted mb-0">Orders Today</p>
                 </div>
+                <div class="col-md-4">
+                  <h4 id="revenueToday">₹0</h4>
+                  <p class="text-muted mb-0">Revenue Today</p>
+                </div>
+                <div class="col-md-4">
+                  <h4 id="kycToday">0</h4>
+                  <p class="text-muted mb-0">New KYC Submitted Today</p>
+                </div>
+              </div>
             </div>
+          </div>
         </div>
 
         <!-- 🔵 RECENT USERS SECTION -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h6 class="m-0 fw-bold text-primary">Recent Users</h6>
+          <div class="card-header">
+            <h6 class="m-0 fw-bold text-primary">Recent Users</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Date Joined</th>
+                  </tr>
+                </thead>
+                <tbody id="recentUsersTable"></tbody>
+              </table>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Email</th>
-                                <th>Date Joined</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentUsersTable"></tbody>
-                    </table>
-                </div>
-            </div>
+          </div>
         </div>
 
         <!-- 🔵 TOP SELLING PRODUCTS SECTION -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h6 class="m-0 fw-bold text-primary">Top Selling Products</h6>
+          <div class="card-header">
+            <h6 class="m-0 fw-bold text-primary">Top Selling Products</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Orders</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody id="topProductsTable"></tbody>
+              </table>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Orders</th>
-                                <th>Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody id="topProductsTable"></tbody>
-                    </table>
-                </div>
-            </div>
+          </div>
         </div>
 
         <!-- 🔵 TIME FILTER (Today / Week / Month) -->
         <div class="mb-3 d-flex gap-2">
-            <button class="btn btn-outline-primary" onclick="applyTimeFilter('today')">Today</button>
-            <button class="btn btn-outline-primary" onclick="applyTimeFilter('week')">This Week</button>
-            <button class="btn btn-outline-primary" onclick="applyTimeFilter('month')">This Month</button>
+          <button
+            class="btn btn-outline-primary"
+            onclick="applyTimeFilter('today')"
+          >
+            Today
+          </button>
+          <button
+            class="btn btn-outline-primary"
+            onclick="applyTimeFilter('week')"
+          >
+            This Week
+          </button>
+          <button
+            class="btn btn-outline-primary"
+            onclick="applyTimeFilter('month')"
+          >
+            This Month
+          </button>
         </div>
 
         <!-- 🔍 SEARCH + FILTER + SORT BAR -->
         <div class="row mb-3">
+          <div class="col-md-4">
+            <input
+              id="searchOrders"
+              type="text"
+              class="form-control"
+              placeholder="Search orders..."
+              onkeyup="handleSearch()"
+            />
+          </div>
 
-            <div class="col-md-4">
-                <input 
-                    id="searchOrders" 
-                    type="text" 
-                    class="form-control" 
-                    placeholder="Search orders..."
-                    onkeyup="handleSearch()"
-                >
-            </div>
+          <div class="col-md-3">
+            <select
+              class="form-select"
+              id="orderStatusFilter"
+              onchange="handleStatusFilter()"
+            >
+              <option value="">Filter by Status</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
 
-            <div class="col-md-3">
-                <select class="form-select" id="orderStatusFilter" onchange="handleStatusFilter()">
-                    <option value="">Filter by Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="processing">Processing</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                </select>
-            </div>
-
-            <div class="col-md-3">
-                <select class="form-select" id="orderSort" onchange="handleSort()">
-                    <option value="newest">Sort: Newest First</option>
-                    <option value="oldest">Sort: Oldest First</option>
-                </select>
-            </div>
-
+          <div class="col-md-3">
+            <select class="form-select" id="orderSort" onchange="handleSort()">
+              <option value="newest">Sort: Newest First</option>
+              <option value="oldest">Sort: Oldest First</option>
+            </select>
+          </div>
         </div>
 
         <!-- TABLE -->
         <div class="table-responsive mb-3">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
 
-                <tbody id="recentActivityTable"></tbody>
-
-            </table>
+            <tbody id="recentActivityTable"></tbody>
+          </table>
         </div>
 
         <!-- PAGINATION -->
-        <div id="recentPagination" class="mt-3 d-flex justify-content-center"></div>
+        <div
+          id="recentPagination"
+          class="mt-3 d-flex justify-content-center"
+        ></div>
 
         <!-- WALLET TABS -->
         <div class="card shadow-sm">
           <div class="card-body">
-
             <ul class="nav nav-tabs" id="walletTabs">
               <li class="nav-item">
-                <button class="nav-link active" id="walletTabBtn" data-bs-toggle="tab" data-bs-target="#walletTab">
+                <button
+                  class="nav-link active"
+                  id="walletTabBtn"
+                  data-bs-toggle="tab"
+                  data-bs-target="#walletTab"
+                >
                   Wallet Details
                 </button>
               </li>
 
               <li class="nav-item">
-                <button class="nav-link" id="withdrawTabBtn" data-bs-toggle="tab" data-bs-target="#withdrawTab">
+                <button
+                  class="nav-link"
+                  id="withdrawTabBtn"
+                  data-bs-toggle="tab"
+                  data-bs-target="#withdrawTab"
+                >
                   Withdrawal Requests
                 </button>
               </li>
             </ul>
 
             <div class="tab-content pt-3">
-
               <!-- TAB 1: WALLET DETAILS -->
               <div class="tab-pane fade show active" id="walletTab">
                 <div class="d-none" id="walletCard">
                   <div class="card-body">
-
                     <h5 class="mb-3">Wallet Details</h5>
 
                     <div class="row">
                       <div class="col-md-6">
                         <ul class="list-group">
-                          <li class="list-group-item d-flex justify-content-between">
+                          <li
+                            class="list-group-item d-flex justify-content-between"
+                          >
                             <span>Wallet Balance</span>
                             <strong id="walletBalance">₹0</strong>
                           </li>
-                          <li class="list-group-item d-flex justify-content-between">
+                          <li
+                            class="list-group-item d-flex justify-content-between"
+                          >
                             <span>Hold Balance</span>
                             <strong id="holdBalance">₹0</strong>
                           </li>
-                          <li class="list-group-item d-flex justify-content-between">
+                          <li
+                            class="list-group-item d-flex justify-content-between"
+                          >
                             <span>Referral Bonus</span>
                             <strong id="referralBonus">₹0</strong>
                           </li>
-                          <li class="list-group-item d-flex justify-content-between">
+                          <li
+                            class="list-group-item d-flex justify-content-between"
+                          >
                             <span>Invested Amount</span>
                             <strong id="investedAmount">₹0</strong>
                           </li>
@@ -322,14 +374,23 @@
                       <div class="col-md-6">
                         <h6>Adjust Wallet</h6>
                         <div class="input-group mb-3">
-                          <input type="number" class="form-control" id="adjustAmount" placeholder="Enter amount">
-                          <button class="btn btn-success" id="addMoneyBtn">Add</button>
-                          <button class="btn btn-danger" id="deductMoneyBtn">Deduct</button>
+                          <input
+                            type="number"
+                            class="form-control"
+                            id="adjustAmount"
+                            placeholder="Enter amount"
+                          />
+                          <button class="btn btn-success" id="addMoneyBtn">
+                            Add
+                          </button>
+                          <button class="btn btn-danger" id="deductMoneyBtn">
+                            Deduct
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    <hr>
+                    <hr />
 
                     <h5>Transactions</h5>
                     <div class="table-responsive">
@@ -345,14 +406,12 @@
                         <tbody id="txnTable"></tbody>
                       </table>
                     </div>
-
                   </div>
                 </div>
               </div>
 
               <!-- TAB 2: WITHDRAWAL REQUESTS -->
               <div class="tab-pane fade" id="withdrawTab">
-
                 <h4 class="mb-3">Withdrawal Requests</h4>
 
                 <div class="table-responsive">
@@ -371,9 +430,7 @@
                     <tbody id="withdrawTable"></tbody>
                   </table>
                 </div>
-
               </div>
-
             </div>
           </div>
         </div>
@@ -382,31 +439,33 @@
         <div class="modal fade" id="withdrawModal" tabindex="-1">
           <div class="modal-dialog modal-lg">
             <div class="modal-content">
-
               <div class="modal-header">
                 <h5 class="modal-title">Withdrawal Details</h5>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
               </div>
 
-              <div class="modal-body" id="withdrawModalContent">
-                Loading...
-              </div>
+              <div class="modal-body" id="withdrawModalContent">Loading...</div>
 
               <div class="modal-footer">
-                <button class="btn btn-success" id="modalApproveBtn">Approve</button>
-                <button class="btn btn-danger" id="modalRejectBtn">Reject</button>
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-success" id="modalApproveBtn">
+                  Approve
+                </button>
+                <button class="btn btn-danger" id="modalRejectBtn">
+                  Reject
+                </button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                  Close
+                </button>
               </div>
-
             </div>
           </div>
         </div>
 
         <!-- FOOTER -->
         <footer class="footer bg-light py-3">
-            <div class="text-center text-muted">
-                © 2024 Admin Panel. All rights reserved.
-            </div>
+          <div class="text-center text-muted">
+            © 2024 Admin Panel. All rights reserved.
+          </div>
         </footer>
 
         <!-- SCRIPTS -->
@@ -416,14 +475,14 @@
         <script src="../assets/js/dashboard.js"></script>
 
         <script>
-        document.getElementById("logoutBtn")?.addEventListener("click", () => {
-            localStorage.clear();
-            window.location.href = "login.html";
-        });
+          document
+            .getElementById("logoutBtn")
+            ?.addEventListener("click", () => {
+              localStorage.clear();
+              window.location.href = "login.html";
+            });
         </script>
-
+      </div>
     </div>
-</div>
-
-</body>
+  </body>
 </html>

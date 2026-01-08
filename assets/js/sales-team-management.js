@@ -44,40 +44,93 @@ function renderSalesTeam(list) {
   tbody.innerHTML = "";
 
   list.forEach((member, i) => {
+    const isPending = member.isApproved === false;
+
+    const statusBadge = isPending
+      ? `<span class="badge bg-warning text-dark">Pending</span>`
+      : `<span class="badge bg-success">Approved</span>`;
+
+    const requestedOn = member.createdAt
+      ? new Date(member.createdAt).toLocaleDateString()
+      : "-";
+
+    const actions = isPending
+      ? `
+        <button
+          class="btn btn-sm btn-success me-1"
+          onclick="approveSales('${member._id}')"
+        >
+          <i class="bi bi-check-circle"></i>
+        </button>
+        <button
+          class="btn btn-sm btn-danger"
+          onclick="rejectSales('${member._id}')"
+        >
+          <i class="bi bi-x-circle"></i>
+        </button>
+      `
+      : `
+        <button
+          class="btn btn-sm btn-warning me-1"
+          onclick="resetPassword('${member._id}')"
+        >
+          <i class="bi bi-key"></i>
+        </button>
+        <button
+          class="btn btn-sm btn-danger"
+          onclick="toggleStatus('${member._id}')"
+        >
+          <i class="bi bi-power"></i>
+        </button>
+      `;
+
     tbody.innerHTML += `
       <tr>
         <td>${i + 1}</td>
         <td>${member.name}</td>
         <td>${member.email}</td>
-        <td>
-          <span class="badge ${
-            member.isActive ? "bg-success" : "bg-secondary"
-          }">
-            ${member.isActive ? "Active" : "Inactive"}
-          </span>
-        </td>
-        <td>${
-          member.lastLogin
-            ? new Date(member.lastLogin).toLocaleString()
-            : "Never"
-        }</td>
-        <td>
-          <button class="btn btn-sm btn-warning" onclick="resetPassword('${
-            member._id
-          }')">
-            <i class="bi bi-key"></i>
-          </button>
-          <button class="btn btn-sm btn-danger" onclick="toggleStatus('${
-            member._id
-          }')">
-            <i class="bi bi-power"></i>
-          </button>
-        </td>
+        <td>${statusBadge}</td>
+        <td>${requestedOn}</td>
+        <td>${actions}</td>
       </tr>
     `;
   });
 
   document.getElementById("tableContainer").style.display = "block";
+}
+async function approveSales(id) {
+  if (!confirm("Approve this sales member?")) return;
+
+  try {
+    const res = await API.patch(`/admin-mgmt/sales-team/${id}/approve`);
+
+    if (!res.success) {
+      alert(res.message || "Approval failed");
+      return;
+    }
+
+    alert("✅ Sales member approved");
+    loadSalesTeam();
+  } catch (err) {
+    alert("Server error while approving");
+  }
+}
+async function rejectSales(id) {
+  if (!confirm("Reject this sales request?")) return;
+
+  try {
+    const res = await API.delete(`/admin-mgmt/sales-team/${id}`);
+
+    if (!res.success) {
+      alert(res.message || "Rejection failed");
+      return;
+    }
+
+    alert("❌ Sales request rejected");
+    loadSalesTeam();
+  } catch (err) {
+    alert("Server error while rejecting");
+  }
 }
 
 /**

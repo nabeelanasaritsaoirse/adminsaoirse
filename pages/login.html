@@ -58,20 +58,24 @@
 
         <div class="card-body p-4">
           <!-- MODE TOGGLE -->
-          <div class="d-flex justify-content-center mb-3">
+          <div class="d-flex justify-content-center mb-3 gap-2">
             <button
-              class="btn btn-sm btn-outline-primary me-2"
-              id="loginModeBtn"
+              class="btn btn-sm btn-outline-primary"
               onclick="switchMode('login')"
             >
               Login
             </button>
             <button
               class="btn btn-sm btn-outline-secondary"
-              id="registerModeBtn"
-              onclick="switchMode('register')"
+              onclick="switchMode('register_admin')"
             >
-              Register as Admin
+              Register Admin
+            </button>
+            <button
+              class="btn btn-sm btn-outline-success"
+              onclick="switchMode('register_sales')"
+            >
+              Register Sales
             </button>
           </div>
 
@@ -154,31 +158,42 @@
     <script src="../assets/js/navigation.js"></script>
 
     <script>
-      let AUTH_MODE = "login"; // login | register
+      let AUTH_MODE = "login"; // login | register_admin | register_sales
 
       function switchMode(mode) {
         AUTH_MODE = mode;
 
         const nameField = document.getElementById("nameField");
+        const moduleBox = document.getElementById("moduleSelectBox");
         const headerText = document.getElementById("headerText");
         const submitBtn = document.getElementById("submitBtn");
 
-        if (mode === "register") {
-          nameField.classList.remove("d-none");
-          document.getElementById("moduleSelectBox").classList.remove("d-none");
-
-          headerText.textContent = "Request admin access";
-          submitBtn.innerHTML =
-            '<i class="bi bi-person-plus"></i> Submit Request';
-
-          renderRegisterModules();
-        } else {
+        if (mode === "login") {
           nameField.classList.add("d-none");
-          document.getElementById("moduleSelectBox").classList.add("d-none");
-
+          moduleBox.classList.add("d-none");
           headerText.textContent = "Sign in to your account";
           submitBtn.innerHTML =
             '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+        }
+
+        if (mode === "register_admin") {
+          nameField.classList.remove("d-none");
+          moduleBox.classList.remove("d-none");
+
+          headerText.textContent = "Request admin access";
+          submitBtn.innerHTML =
+            '<i class="bi bi-person-plus"></i> Submit Admin Request';
+
+          renderRegisterModules();
+        }
+
+        if (mode === "register_sales") {
+          nameField.classList.remove("d-none");
+          moduleBox.classList.add("d-none"); // ❌ sales has no module selection
+
+          headerText.textContent = "Request sales access";
+          submitBtn.innerHTML =
+            '<i class="bi bi-person-plus"></i> Submit Sales Request';
         }
       }
 
@@ -243,8 +258,12 @@
       async function handleLoginSubmit(e) {
         e.preventDefault();
 
-        if (AUTH_MODE === "register") {
+        if (AUTH_MODE === "register_admin") {
           return submitAdminRegistration();
+        }
+
+        if (AUTH_MODE === "register_sales") {
+          return submitSalesRegistration();
         }
 
         const email = document.getElementById("email").value.trim();
@@ -332,6 +351,53 @@
 
           alert(
             "✅ Registration request submitted.\nPlease wait for super admin approval."
+          );
+
+          switchMode("login");
+          document.getElementById("loginForm").reset();
+        } catch (err) {
+          alert("Server error");
+        }
+      }
+      async function submitSalesRegistration() {
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        if (!name || !email || !password) {
+          alert("All fields are required");
+          return;
+        }
+
+        if (password.length < 6) {
+          alert("Password must be at least 6 characters");
+          return;
+        }
+
+        try {
+          const url =
+            window.BASE_URL +
+            window.API_CONFIG.endpoints.auth.salesRegisterRequest;
+
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name,
+              email,
+              password,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            alert(result.message || "Sales registration failed");
+            return;
+          }
+
+          alert(
+            "✅ Sales registration request submitted.\nPlease wait for admin approval."
           );
 
           switchMode("login");
