@@ -30,7 +30,7 @@ const NAV_CONFIG = {
       icon: "bi-people-fill",
       href: "sales-users.html",
       hrefFromRoot: "sales-users.html",
-      permission: "users",
+      permission: "sales-users",
     },
 
     {
