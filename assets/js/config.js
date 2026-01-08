@@ -203,7 +203,6 @@ const API_CONFIG = {
  * RBAC PERMISSIONS CONFIGURATION
  *******************************/
 const PERMISSIONS = {
-  DASHBOARD: "dashboard",
   USERS: "users",
   WALLET: "wallet",
   KYC: "kyc",
@@ -325,7 +324,9 @@ const AUTH = {
         role: userData.role,
         profilePicture: userData.profilePicture || "",
         isSuperAdmin: userData.isSuperAdmin,
-        modules: userData.modules || userData.moduleAccess || [],
+        modules: (userData.modules || userData.moduleAccess || []).filter(
+          (m) => m !== "dashboard"
+        ),
       })
     );
 

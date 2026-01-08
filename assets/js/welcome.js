@@ -1,11 +1,11 @@
 /**
- * Welcome Page – Sub Admin Landing (NAV_CONFIG DRIVEN)
- * ---------------------------------------------------
+ * Welcome Page – Sub Admin Landing (FINAL)
+ * ---------------------------------------
  * - NAV_CONFIG = single source of truth
- * - No hardcoded module metadata
- * - RBAC via AUTH.hasModule()
- * - Dashboard never shown to sub-admin
- * - Featured Lists shown if assigned
+ * - No role-based hacks (NO sales team logic)
+ * - RBAC strictly via AUTH.hasModule()
+ * - Super Admin redirected to dashboard
+ * - Sub Admin sees ONLY assigned modules
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -22,15 +22,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const user = AUTH.getCurrentUser();
 
-  // 🚫 Super Admin should NEVER be on welcome
+  // 🚫 Super Admin → Dashboard ONLY
   if (user.isSuperAdmin === true) {
     window.location.href = "dashboard.html";
-    return;
-  }
-
-  // 🚫 Sales team should NEVER be on welcome
-  if (user.role === "sales_team") {
-    window.location.href = "sales-dashboard.html";
     return;
   }
 
@@ -40,19 +34,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const navItems = window.NAV_CONFIG?.items || [];
 
   const allowedItems = navItems.filter((item) => {
-    // ❌ Never show dashboard on welcome
-    if (item.id === "dashboard") return false;
-
-    // ❌ Never show sales dashboard to admin
-    if (item.id === "sales_dashboard") return false;
-
-    // ❌ Block super-admin-only modules
+    // ❌ Never show super-admin-only items
     if (item.superAdminOnly === true) return false;
 
     // ❌ Must have permission defined
     if (!item.permission) return false;
 
-    // ✅ Must be allowed by RBAC
+    // ❌ Dashboard is NOT a sub-admin module
+    if (item.permission === "dashboard") return false;
+
+    // ✅ STRICT RBAC (single source of truth)
     return AUTH.hasModule(item.permission);
   });
 
@@ -98,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   console.log(
-    "[WELCOME] ✅ Modules rendered from NAV_CONFIG:",
-    allowedItems.map((i) => i.id)
+    "[WELCOME] ✅ Modules rendered:",
+    allowedItems.map((i) => i.permission)
   );
 });
