@@ -138,7 +138,9 @@
 
     try {
       const endpoint =
-        action === "credit" ? "/admin/wallet/credit" : "/admin/wallet/debit";
+        action === "credit"
+          ? API_CONFIG.endpoints.adminWalletCredit
+          : API_CONFIG.endpoints.adminWalletDebit;
 
       const res = await API.post(endpoint, body);
 

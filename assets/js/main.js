@@ -218,10 +218,8 @@ function getUserIdFromURL() {
 }
 document.addEventListener("DOMContentLoaded", () => {
   if (AUTH.isAuthenticated()) {
-    AUTH.refreshMyModules();
 
     setInterval(() => {
-      AUTH.refreshMyModules();
       Navigation.render(); // re-render sidebar
     }, 15000); // 15 seconds
   }
