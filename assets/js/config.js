@@ -354,26 +354,6 @@ const AUTH = {
     window.location.href = "../pages/login.html";
   },
 };
-AUTH.refreshMyModules = async function () {
-  try {
-    const res = await API.get(API_CONFIG.endpoints.admin.myModules);
-
-    if (!res.success) return;
-
-    const current = AUTH.getCurrentUser();
-    if (!current) return;
-
-    const updatedUser = {
-      ...current,
-      modules: res.data.modules,
-      isSuperAdmin: res.data.isSuperAdmin,
-    };
-
-    localStorage.setItem("authUser", JSON.stringify(updatedUser));
-  } catch (err) {
-    console.warn("Failed to refresh modules", err);
-  }
-};
 
 /*******************************
  * API WRAPPER (FIXED)
