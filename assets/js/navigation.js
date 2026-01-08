@@ -209,31 +209,16 @@ function canShowItem(item) {
   const user = AUTH.getCurrentUser();
   if (!user) return false;
 
-  // ✅ Super admin sees everything
+  // Super admin sees everything
   if (user.isSuperAdmin === true) return true;
 
-  // ===============================
-  // SALES SIDEBAR RULES
-  // ===============================
-  if (item.id === "sales_dashboard" || item.id === "sales_users") {
-    return (
-      user.role === "sales_team" ||
-      (user.role === "admin" &&
-        Array.isArray(user.modules) &&
-        user.modules.includes("sales-dashboard"))
-    );
-  }
-
-  // ===============================
-  // SUPER ADMIN ONLY
-  // ===============================
+  // Block super-admin-only items
   if (item.superAdminOnly === true) return false;
 
-  // ===============================
-  // NORMAL MODULE-BASED ITEMS
-  // ===============================
+  // Must be permission based
   if (!item.permission) return false;
 
+  // ONLY source of truth
   return AUTH.hasModule(item.permission);
 }
 
