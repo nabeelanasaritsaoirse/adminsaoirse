@@ -9,13 +9,16 @@ function getAssignableModulesFromNav() {
 
   return NAV_CONFIG.items
     .filter((item) => {
-      // must have a permission
+      // must have permission
       if (!item.permission) return false;
 
-      // ignore fake permissions
-      if (item.permission === "super_admin_only") return false;
+      // ❌ NEVER allow dashboard to be assigned
+      if (item.permission === "dashboard") return false;
 
-      // Admin Management itself should not be assignable
+      // ❌ never allow super-admin-only modules
+      if (item.superAdminOnly === true) return false;
+
+      // ❌ Admin Management should not be assignable
       if (item.permission === "admin_management") return false;
 
       return true;
@@ -226,6 +229,7 @@ function openCreateModal() {
  */
 async function editAdmin(adminId) {
   try {
+    renderModuleCheckboxes();
     const admin = allSubAdmins.find((a) => a._id === adminId);
     if (!admin) {
       alert("Admin not found");

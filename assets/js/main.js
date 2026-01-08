@@ -216,3 +216,11 @@ function getUserIdFromURL() {
   const params = new URLSearchParams(window.location.search);
   return params.get("id") || params.get("userId");
 }
+document.addEventListener("DOMContentLoaded", () => {
+  if (AUTH.isAuthenticated()) {
+
+    setInterval(() => {
+      Navigation.render(); // re-render sidebar
+    }, 15000); // 15 seconds
+  }
+});

@@ -13,7 +13,7 @@ const NAV_CONFIG = {
       label: "Dashboard",
       icon: "bi-speedometer2",
       href: "dashboard.html",
-      hrefFromRoot: "pages/dashboard.html",
+      hrefFromRoot: "dashboard.html",
       superAdminOnly: true,
     },
     {
@@ -21,15 +21,24 @@ const NAV_CONFIG = {
       label: "Sales Dashboard",
       icon: "bi-graph-up-arrow",
       href: "sales-dashboard.html",
-      hrefFromRoot: "pages/sales-dashboard.html",
+      hrefFromRoot: "sales-dashboard.html",
       permission: "sales-dashboard",
     },
+    {
+      id: "sales_users",
+      label: "Sales Users",
+      icon: "bi-people-fill",
+      href: "sales-users.html",
+      hrefFromRoot: "sales-users.html",
+      permission: "sales-users",
+    },
+
     {
       id: "users",
       label: "Users",
       icon: "bi-people",
       href: "users.html",
-      hrefFromRoot: "pages/users.html",
+      hrefFromRoot: "users.html",
       permission: "users",
     },
     {
@@ -37,7 +46,7 @@ const NAV_CONFIG = {
       label: "Users Analytics",
       icon: "bi-graph-up",
       href: "user_analytics.html",
-      hrefFromRoot: "pages/user_analytics.html",
+      hrefFromRoot: "user_analytics.html",
       permission: "users_analytics",
     },
     {
@@ -45,7 +54,7 @@ const NAV_CONFIG = {
       label: "User Wallets",
       icon: "bi-wallet2",
       href: "admin_wallet.html",
-      hrefFromRoot: "pages/admin_wallet.html",
+      hrefFromRoot: "admin_wallet.html",
       permission: "wallet",
     },
     {
@@ -53,7 +62,7 @@ const NAV_CONFIG = {
       label: "KYC Verification",
       icon: "bi-shield-check",
       href: "kyc.html",
-      hrefFromRoot: "pages/kyc.html",
+      hrefFromRoot: "kyc.html",
       permission: "kyc",
     },
     {
@@ -61,7 +70,7 @@ const NAV_CONFIG = {
       label: "Categories",
       icon: "bi-folder-fill",
       href: "categories.html",
-      hrefFromRoot: "pages/categories.html",
+      hrefFromRoot: "categories.html",
       permission: "categories",
     },
     {
@@ -69,7 +78,7 @@ const NAV_CONFIG = {
       label: "Products",
       icon: "bi-box-seam",
       href: "products.html",
-      hrefFromRoot: "pages/products.html",
+      hrefFromRoot: "products.html",
       permission: "products",
     },
     {
@@ -77,7 +86,7 @@ const NAV_CONFIG = {
       label: "Image Uploader",
       icon: "bi-image",
       href: "uploader.html",
-      hrefFromRoot: "pages/uploader.html",
+      hrefFromRoot: "uploader.html",
       permission: "uploader",
     },
     {
@@ -85,7 +94,7 @@ const NAV_CONFIG = {
       label: "Coupons",
       icon: "bi-ticket-perforated",
       href: "coupons.html",
-      hrefFromRoot: "pages/coupons.html",
+      hrefFromRoot: "coupons.html",
       permission: "coupons",
     },
     {
@@ -93,7 +102,7 @@ const NAV_CONFIG = {
       label: "Featured Lists",
       icon: "bi-star-fill",
       href: "featured-lists.html",
-      hrefFromRoot: "pages/featured-lists.html",
+      hrefFromRoot: "featured-lists.html",
       permission: "featured_lists",
     },
     {
@@ -109,7 +118,7 @@ const NAV_CONFIG = {
       label: "Orders",
       icon: "bi-cart3",
       href: "orders.html",
-      hrefFromRoot: "pages/orders.html",
+      hrefFromRoot: "orders.html",
       permission: "orders",
     },
     {
@@ -117,7 +126,7 @@ const NAV_CONFIG = {
       label: "Payments",
       icon: "bi-cash-stack",
       href: "payments.html",
-      hrefFromRoot: "pages/payments.html",
+      hrefFromRoot: "payments.html",
       permission: "payments",
     },
     {
@@ -125,7 +134,7 @@ const NAV_CONFIG = {
       label: "FAQ Management",
       icon: "bi-question-circle",
       href: "global-faqs.html",
-      hrefFromRoot: "pages/global-faqs.html",
+      hrefFromRoot: "global-faqs.html",
       permission: "faq_management",
     },
     {
@@ -133,7 +142,7 @@ const NAV_CONFIG = {
       label: "Notifications",
       icon: "bi-bell",
       href: "notifications.html",
-      hrefFromRoot: "pages/notifications.html",
+      hrefFromRoot: "notifications.html",
       permission: "notifications",
     },
     {
@@ -141,7 +150,7 @@ const NAV_CONFIG = {
       label: "Chat Management",
       icon: "bi-chat-dots",
       href: "chat.html",
-      hrefFromRoot: "pages/chat.html",
+      hrefFromRoot: "chat.html",
       permission: "chat",
     },
     {
@@ -149,7 +158,7 @@ const NAV_CONFIG = {
       label: "Chat Reports",
       icon: "bi-flag",
       href: "chat-reports.html",
-      hrefFromRoot: "pages/chat-reports.html",
+      hrefFromRoot: "chat-reports.html",
       permission: "chat-reports",
     },
     {
@@ -157,7 +166,7 @@ const NAV_CONFIG = {
       label: "Chat Analytics",
       icon: "bi-bar-chart",
       href: "chat-analytics.html",
-      hrefFromRoot: "pages/chat-analytics.html",
+      hrefFromRoot: "chat-analytics.html",
       permission: "chat-analytics",
     },
     {
@@ -165,7 +174,7 @@ const NAV_CONFIG = {
       label: "Settings",
       icon: "bi-gear",
       href: "settings.html",
-      hrefFromRoot: "pages/settings.html",
+      hrefFromRoot: "settings.html",
       permission: "settings",
     },
 
@@ -175,16 +184,8 @@ const NAV_CONFIG = {
       label: "Admin Management",
       icon: "bi-person-gear",
       href: "admin-management.html",
-      hrefFromRoot: "pages/admin-management.html",
+      hrefFromRoot: "admin-management.html",
       permission: "admin_management",
-      superAdminOnly: true,
-    },
-    {
-      id: "sales_team_management",
-      label: "Sales Team",
-      icon: "bi-people-fill",
-      href: "sales-team-management.html",
-      hrefFromRoot: "pages/sales-team-management.html",
       superAdminOnly: true,
     },
   ],
@@ -211,18 +212,13 @@ function canShowItem(item) {
   // Super admin sees everything
   if (user.isSuperAdmin === true) return true;
 
-  // Special case: Sales Dashboard
-  if (item.id === "sales_dashboard") {
-    return ["sales_team", "super_admin", "admin"].includes(user.role);
-  }
-
   // Block super-admin-only items
   if (item.superAdminOnly === true) return false;
 
-  // Items without permission → hide
+  // Must be permission based
   if (!item.permission) return false;
 
-  // Normal RBAC
+  // ONLY source of truth
   return AUTH.hasModule(item.permission);
 }
 

@@ -39,11 +39,16 @@
         }
 
         const user = AUTH.getCurrentUser();
-        if (user.isSuperAdmin !== true) {
-          alert(
-            "Access Denied! Only Super Admins can access Featured Lists Management."
-          );
-          window.location.href = "dashboard.html";
+
+        // Super Admin → always allowed
+        if (user.isSuperAdmin === true) {
+          return;
+        }
+
+        // Sub-admin → must have module
+        if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
+          alert("Access Denied!");
+          window.location.href = "welcome.html";
         }
       })();
     </script>
@@ -209,7 +214,7 @@
     <!-- FOOTER -->
     <footer class="footer mt-auto py-3 bg-light">
       <div class="container-fluid text-center">
-        <span class="text-muted">© 2024 Admin Panel. All rights reserved.</span>
+        <span class="text-muted">© 2026 Admin Panel. All rights reserved.</span>
       </div>
     </footer>
 

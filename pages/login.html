@@ -58,20 +58,18 @@
 
         <div class="card-body p-4">
           <!-- MODE TOGGLE -->
-          <div class="d-flex justify-content-center mb-3">
+          <div class="d-flex justify-content-center mb-3 gap-2">
             <button
-              class="btn btn-sm btn-outline-primary me-2"
-              id="loginModeBtn"
+              class="btn btn-sm btn-outline-primary"
               onclick="switchMode('login')"
             >
               Login
             </button>
             <button
               class="btn btn-sm btn-outline-secondary"
-              id="registerModeBtn"
-              onclick="switchMode('register')"
+              onclick="switchMode('register_admin')"
             >
-              Register as Admin
+              Register Admin
             </button>
           </div>
 
@@ -112,6 +110,27 @@
                 ></i>
               </div>
             </div>
+            <!-- Confirm Password (Register Only) -->
+            <!-- Confirm Password (Register Only) -->
+            <div class="mb-4 d-none" id="confirmPasswordField">
+              <label class="form-label">
+                <i class="bi bi-lock-fill"></i> Confirm Password
+              </label>
+
+              <div class="position-relative">
+                <input
+                  type="password"
+                  class="form-control pe-5"
+                  id="confirmPassword"
+                />
+                <i
+                  class="bi bi-eye position-absolute top-50 end-0 translate-middle-y me-3 text-muted"
+                  id="toggleConfirmPassword"
+                  style="cursor: pointer"
+                ></i>
+              </div>
+            </div>
+
             <!-- Module Selection (Register Only) -->
             <div class="mb-3 d-none" id="moduleSelectBox">
               <label class="form-label">
@@ -141,7 +160,7 @@
         </div>
 
         <div class="card-footer text-center text-muted">
-          <small>© 2024 Admin Panel. All rights reserved.</small>
+          <small>© 2026 Admin Panel. All rights reserved.</small>
         </div>
       </div>
     </div>
@@ -154,31 +173,39 @@
     <script src="../assets/js/navigation.js"></script>
 
     <script>
-      let AUTH_MODE = "login"; // login | register
+      let AUTH_MODE = "login"; // login | register_admin
 
       function switchMode(mode) {
         AUTH_MODE = mode;
 
         const nameField = document.getElementById("nameField");
+        const moduleBox = document.getElementById("moduleSelectBox");
         const headerText = document.getElementById("headerText");
         const submitBtn = document.getElementById("submitBtn");
 
-        if (mode === "register") {
-          nameField.classList.remove("d-none");
-          document.getElementById("moduleSelectBox").classList.remove("d-none");
+        const confirmPasswordField = document.getElementById(
+          "confirmPasswordField"
+        );
 
-          headerText.textContent = "Request admin access";
-          submitBtn.innerHTML =
-            '<i class="bi bi-person-plus"></i> Submit Request';
-
-          renderRegisterModules();
-        } else {
+        if (mode === "login") {
           nameField.classList.add("d-none");
-          document.getElementById("moduleSelectBox").classList.add("d-none");
-
+          moduleBox.classList.add("d-none");
+          confirmPasswordField.classList.add("d-none");
           headerText.textContent = "Sign in to your account";
           submitBtn.innerHTML =
             '<i class="bi bi-box-arrow-in-right"></i> Sign In';
+        }
+
+        if (mode === "register_admin") {
+          nameField.classList.remove("d-none");
+          moduleBox.classList.remove("d-none");
+          confirmPasswordField.classList.remove("d-none");
+
+          headerText.textContent = "Request admin access";
+          submitBtn.innerHTML =
+            '<i class="bi bi-person-plus"></i> Submit Admin Request';
+
+          renderRegisterModules();
         }
       }
 
@@ -188,16 +215,29 @@
           return;
         }
 
+        // Password toggle
         const passwordInput = document.getElementById("password");
-        const toggleIcon = document.getElementById("togglePassword");
+        const togglePassword = document.getElementById("togglePassword");
 
-        toggleIcon.addEventListener("click", () => {
+        togglePassword?.addEventListener("click", () => {
           const isHidden = passwordInput.type === "password";
           passwordInput.type = isHidden ? "text" : "password";
-          toggleIcon.classList.toggle("bi-eye");
-          toggleIcon.classList.toggle("bi-eye-slash");
+          togglePassword.classList.toggle("bi-eye");
+          togglePassword.classList.toggle("bi-eye-slash");
+        });
+
+        // Confirm password toggle
+        const confirmInput = document.getElementById("confirmPassword");
+        const toggleConfirm = document.getElementById("toggleConfirmPassword");
+
+        toggleConfirm?.addEventListener("click", () => {
+          const isHidden = confirmInput.type === "password";
+          confirmInput.type = isHidden ? "text" : "password";
+          toggleConfirm.classList.toggle("bi-eye");
+          toggleConfirm.classList.toggle("bi-eye-slash");
         });
       }
+
       function getAssignableModulesFromNav() {
         if (!window.NAV_CONFIG || !NAV_CONFIG.items) return [];
 
@@ -243,7 +283,7 @@
       async function handleLoginSubmit(e) {
         e.preventDefault();
 
-        if (AUTH_MODE === "register") {
+        if (AUTH_MODE === "register_admin") {
           return submitAdminRegistration();
         }
 
@@ -304,6 +344,14 @@
 
         if (password.length < 6) {
           alert("Password must be at least 6 characters");
+          return;
+        }
+        const confirmPassword = document
+          .getElementById("confirmPassword")
+          .value.trim();
+
+        if (password !== confirmPassword) {
+          alert("Password and Confirm Password do not match");
           return;
         }
 

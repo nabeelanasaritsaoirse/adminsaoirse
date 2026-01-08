@@ -1,13 +1,14 @@
 /**
- * Welcome Page – Sub Admin Landing
- * --------------------------------
- * - Uses AUTH.getUserModules() as single source of truth
- * - Renders ALL modules (no silent drops)
- * - Known modules → rich cards
- * - Unknown modules → generic cards
+ * Welcome Page – Sub Admin Landing (FINAL)
+ * ---------------------------------------
+ * - NAV_CONFIG = single source of truth
+ * - No role-based hacks (NO sales team logic)
+ * - RBAC strictly via AUTH.hasModule()
+ * - Super Admin redirected to dashboard
+ * - Sub Admin sees ONLY assigned modules
  */
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   const container = document.getElementById("accessCards");
   if (!container) return;
 
@@ -20,23 +21,36 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   const user = AUTH.getCurrentUser();
-  if (!user) {
-    container.innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-danger">
-          Unable to load user information. Please re-login.
-        </div>
-      </div>
-    `;
+
+  // 🚫 Super Admin → Dashboard ONLY
+  if (user.isSuperAdmin === true) {
+    window.location.href = "dashboard.html";
     return;
   }
 
   // ============================
-  // SOURCE OF TRUTH
+  // BUILD MODULE LIST FROM NAV_CONFIG
   // ============================
-  const modules = AUTH.getUserModules();
+  const navItems = window.NAV_CONFIG?.items || [];
 
-  if (!Array.isArray(modules) || modules.length === 0) {
+  const allowedItems = navItems.filter((item) => {
+    // ❌ Never show super-admin-only items
+    if (item.superAdminOnly === true) return false;
+
+    // ❌ Must have permission defined
+    if (!item.permission) return false;
+
+    // ❌ Dashboard is NOT a sub-admin module
+    if (item.permission === "dashboard") return false;
+
+    // ✅ STRICT RBAC (single source of truth)
+    return AUTH.hasModule(item.permission);
+  });
+
+  // ============================
+  // EMPTY STATE
+  // ============================
+  if (allowedItems.length === 0) {
     container.innerHTML = `
       <div class="col-12">
         <div class="alert alert-warning">
@@ -48,85 +62,34 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // ============================
-  // OPTIONAL RICH META
+  // RENDER MODULE CARDS
   // ============================
-  const MODULE_META = {
-    users: {
-      icon: "bi-people",
-      title: "User Management",
-      desc: "View and manage users",
-      page: "users.html",
-    },
-    wallet: {
-      icon: "bi-wallet2",
-      title: "User Wallets",
-      desc: "Manage user wallet balances",
-      page: "admin_wallet.html",
-    },
-    categories: {
-      icon: "bi-folder-fill",
-      title: "Category Management",
-      desc: "Organize product categories",
-      page: "categories.html",
-    },
-    products: {
-      icon: "bi-box-seam",
-      title: "Product Management",
-      desc: "Create and manage products",
-      page: "products.html",
-    },
-    uploader: {
-      icon: "bi-image",
-      title: "Image Uploader",
-      desc: "Upload and manage images",
-      page: "uploader.html",
-    },
-    chat: {
-      icon: "bi-chat-dots",
-      title: "Chat Management",
-      desc: "Manage chat conversations",
-      page: "chat.html",
-    },
-    coupons: {
-      icon: "bi-ticket-perforated",
-      title: "Coupon Management",
-      desc: "Create and manage coupons",
-      page: "coupons.html",
-    },
-  };
+  allowedItems.forEach((item) => {
+    const col = document.createElement("div");
+    col.className = "col-md-6 col-lg-4";
 
-  // ============================
-  // RENDER ALL MODULES
-  // ============================
-  modules
-    .filter((key) => key !== "dashboard")
-    .forEach((key) => {
-      const meta = MODULE_META[key] || {
-        icon: "bi-grid",
-        title: key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-        desc: "Manage this module",
-        page: "#",
-      };
-
-      const col = document.createElement("div");
-      col.className = "col-md-6 col-lg-4";
-
-      col.innerHTML = `
+    col.innerHTML = `
       <div class="access-card" role="button">
         <div class="access-icon">
-          <i class="bi ${meta.icon}"></i>
+          <i class="bi ${item.icon || "bi-grid"}"></i>
         </div>
-        <div class="access-title">${meta.title}</div>
-        <div class="access-desc">${meta.desc}</div>
+        <div class="access-title">${item.label}</div>
+        <div class="access-desc">
+          Manage ${item.label.toLowerCase()}
+        </div>
       </div>
     `;
 
-      col.querySelector(".access-card").onclick = () => {
-        if (meta.page && meta.page !== "#") {
-          window.location.href = meta.page;
-        }
-      };
+    col.querySelector(".access-card").onclick = () => {
+      const href = item.hrefFromRoot || item.href;
+      if (href) window.location.href = href;
+    };
 
-      container.appendChild(col);
-    });
+    container.appendChild(col);
+  });
+
+  console.log(
+    "[WELCOME] ✅ Modules rendered:",
+    allowedItems.map((i) => i.permission)
+  );
 });
