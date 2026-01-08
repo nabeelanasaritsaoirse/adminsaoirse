@@ -43,6 +43,11 @@ const API_CONFIG = {
       refreshToken: "/auth/refresh-token",
       logout: "/auth/logout",
     },
+    dashboardStats: "/sales/dashboard-stats",
+    sales: {
+      dashboardStats: "/sales/dashboard-stats",
+      users: "/sales/users",
+    },
 
     adminManagement: {
       subAdmins: "/admin-mgmt/sub-admins",
@@ -215,6 +220,7 @@ const PERMISSIONS = {
   SETTINGS: "settings",
   ADMIN_MANAGEMENT: "admin_management",
   FEATURED_LISTS: "featured_lists",
+  SALES_DASHBOARD: "sales-dashboard",
 };
 
 /*******************************
@@ -228,7 +234,6 @@ const AUTH = {
       null
     );
   },
-
   setToken(token) {
     if (!token) return;
     localStorage.setItem("epi_admin_token", token);
@@ -300,6 +305,11 @@ const AUTH = {
   isAuthenticated() {
     return !!this.getToken() && !!this.getCurrentUser();
   },
+  // Check if user is sales team
+  isSalesTeam() {
+    const user = this.getCurrentUser();
+    return user && user.role === "sales_team";
+  },
 
   // Save user data after login
   saveUserData(userData) {
@@ -330,6 +340,11 @@ const AUTH = {
     if (userData.refreshToken) {
       localStorage.setItem("epi_refresh_token", userData.refreshToken);
     }
+  },
+  unauthorizedRedirect() {
+    console.warn("Unauthorized access. Redirecting to login.");
+    this.removeToken();
+    window.location.href = "../pages/login.html";
   },
 
   // Logout and clear all data
