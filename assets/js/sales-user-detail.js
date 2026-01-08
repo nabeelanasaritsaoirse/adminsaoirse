@@ -1,123 +1,173 @@
+/**
+ * Sales User Detail – READ ONLY
+ */
+
 let userId;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ✅ SET GLOBAL userId (NO const)
+  const currentUser = AUTH.getCurrentUser();
+
+  /* =========================
+     RBAC GUARD (UX + SAFETY)
+  ========================= */
+  const isSales = currentUser?.role === "sales_team";
+  const isSuperAdmin = currentUser?.isSuperAdmin === true;
+  const hasSalesModule =
+    currentUser?.role === "admin" &&
+    Array.isArray(currentUser?.modules) &&
+    (currentUser.modules.includes("sales-dashboard") ||
+      currentUser.modules.includes("users"));
+
+  if (!(isSales || isSuperAdmin || hasSalesModule)) {
+    console.warn("Unauthorized access to sales user detail");
+    AUTH.unauthorizedRedirect();
+    return;
+  }
+
+  // ✅ SET GLOBAL userId
   userId = getUserIdFromURL();
 
   if (!userId) {
-    alert("User ID missing");
+    console.error("User ID missing in URL");
     window.location.href = "sales-users.html";
     return;
   }
 
   const topUser = document.getElementById("topUserName");
   if (topUser) {
-    topUser.textContent = AUTH.getCurrentUser()?.name || "User";
+    topUser.textContent = currentUser?.name || "User";
   }
 
   loadUserDetail(userId);
 });
 
+/* =========================
+   LOAD USER DETAIL
+========================= */
 async function loadUserDetail(uid) {
   try {
-    const res = await API.get(API_CONFIG.endpoints.sales.users + `/${uid}`);
+    const res = await API.get(`${API_CONFIG.endpoints.sales.users}/${uid}`);
 
-    if (!res.success) throw new Error("Failed");
+    if (!res?.success) throw new Error("API failure");
 
-    const { user, level1Referrals, wishlist, cart, orders } = res.data;
+    const data = res.data || {};
+    const user = data.user || {};
 
-    // User info
-    setText("uName", user.name);
-    setText("uEmail", user.email);
+    const level1Referrals = data.level1Referrals || [];
+    const wishlist = data.wishlist || [];
+    const cart = data.cart || [];
+    const orders = data.orders || [];
+
+    /* USER INFO */
+    setText("uName", user.name || "-");
+    setText("uEmail", user.email || "-");
     setText("uPhone", user.phoneNumber || "-");
-    setText("uRef", user.referralCode);
-    setText("uJoined", new Date(user.createdAt).toLocaleDateString());
+    setText("uRef", user.referralCode || "-");
+    setText(
+      "uJoined",
+      user.createdAt
+        ? new Date(user.createdAt).toLocaleDateString("en-IN")
+        : "-"
+    );
     setText("uStatus", user.isActive ? "Active" : "Inactive");
 
-    // Wallet
+    /* WALLET */
     setText("wBalance", user.wallet?.balance || 0);
     setText("wHold", user.wallet?.holdBalance || 0);
     setText("wReferral", user.wallet?.referralBonus || 0);
     setText("wCommission", user.wallet?.commissionEarned || 0);
 
-    // Referrals
+    /* REFERRALS */
     setText("l1Count", user.level1Count || 0);
     setText("l2Count", user.level2Count || 0);
-    renderReferrals(level1Referrals || []);
+    renderReferrals(level1Referrals);
 
-    // Orders
-    renderOrders(orders || []);
+    /* ORDERS */
+    renderOrders(orders);
 
-    // Wishlist & Cart
-    renderList("wishlist", wishlist || [], "name");
-    renderList("cart", cart || [], (c) => `${c.product?.name} x${c.quantity}`);
+    /* WISHLIST & CART */
+    renderList("wishlist", wishlist, "name");
+    renderList(
+      "cart",
+      cart,
+      (c) => `${c.product?.name || "-"} x${c.quantity || 1}`
+    );
   } catch (e) {
-    console.error(e);
-    alert("Failed to load user detail");
+    console.error("Failed to load user detail:", e);
+    window.location.href = "sales-users.html";
   }
 }
 
-function renderReferrals(level1) {
+/* =========================
+   REFERRALS
+========================= */
+function renderReferrals(level1 = []) {
   const box = document.getElementById("referralTree");
+
+  if (!level1.length) {
+    box.innerHTML = "<em>No referrals</em>";
+    return;
+  }
+
   box.innerHTML = level1
     .map(
-      (l1) =>
-        `<div>
-          <strong>${l1.name}</strong> (${l1.email}) – L2: ${l1.level2Count}
+      (l1) => `
+        <div>
+          <strong>${l1.name || "-"}</strong>
+          (${l1.email || "-"}) – L2: ${l1.level2Count || 0}
         </div>`
     )
     .join("");
 }
 
-function renderOrders(orders) {
+/* =========================
+   ORDERS
+========================= */
+function renderOrders(orders = []) {
   const tbody = document.getElementById("ordersTable");
 
   if (!orders.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-muted text-center">No orders found</td>
+        <td colspan="6" class="text-muted text-center">
+          No orders found
+        </td>
       </tr>`;
     return;
   }
 
-  // ✅ USE GLOBAL userId — DO NOT RE-READ PARAMS
   tbody.innerHTML = orders
     .map(
       (o) => `
       <tr>
-        <td>${o.orderId}</td>
-        <td>${o.productName}</td>
-        <td>${o.status}</td>
-        <td>₹${o.totalPaidAmount}</td>
-        <td>₹${o.remainingAmount}</td>
-        <td>
-          <button
-            class="btn btn-sm btn-outline-primary"
-            onclick="openUserOrders()"
-          >
-            <i class="bi bi-list"></i>
-          </button>
-        </td>
+        <td>${o.orderId || o._id || "-"}</td>
+        <td>${o.productName || "-"}</td>
+        <td>${o.status || "-"}</td>
+        <td>₹${o.totalPaidAmount || 0}</td>
+        <td>₹${o.remainingAmount || 0}</td>
+        <td>-</td>
       </tr>`
     )
     .join("");
 }
 
-function openUserOrders() {
-  if (!userId) {
-    alert("User ID missing");
-    return;
-  }
-  window.location.href = `sales-user-orders.html?id=${userId}`;
-}
-
-function renderList(id, items, field) {
+/* =========================
+   GENERIC HELPERS
+========================= */
+function renderList(id, items = [], field) {
   const el = document.getElementById(id);
   if (!el) return;
 
-  el.innerHTML = items
-    .map((i) => `<li>${typeof field === "function" ? field(i) : i[field]}</li>`)
-    .join("");
+  el.innerHTML = items.length
+    ? items
+        .map(
+          (i) =>
+            `<li>${
+              typeof field === "function" ? field(i) : i[field] || "-"
+            }</li>`
+        )
+        .join("")
+    : "<li class='text-muted'>Empty</li>";
 }
 
 function setText(id, val) {

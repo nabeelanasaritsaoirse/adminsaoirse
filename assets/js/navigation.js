@@ -25,6 +25,15 @@ const NAV_CONFIG = {
       permission: "sales-dashboard",
     },
     {
+      id: "sales_users",
+      label: "Sales Users",
+      icon: "bi-people-fill",
+      href: "sales-users.html",
+      hrefFromRoot: "pages/sales-users.html",
+      permission: "sales-users",
+    },
+
+    {
       id: "users",
       label: "Users",
       icon: "bi-people",
@@ -179,14 +188,6 @@ const NAV_CONFIG = {
       permission: "admin_management",
       superAdminOnly: true,
     },
-    {
-      id: "sales_team_management",
-      label: "Sales Team",
-      icon: "bi-people-fill",
-      href: "sales-team-management.html",
-      hrefFromRoot: "pages/sales-team-management.html",
-      superAdminOnly: true,
-    },
   ],
 };
 
@@ -208,21 +209,31 @@ function canShowItem(item) {
   const user = AUTH.getCurrentUser();
   if (!user) return false;
 
-  // Super admin sees everything
+  // ✅ Super admin sees everything
   if (user.isSuperAdmin === true) return true;
 
-  // Special case: Sales Dashboard
-  if (item.id === "sales_dashboard") {
-    return user.role === "sales_team" || user.isSuperAdmin === true;
+  // ===============================
+  // SALES SIDEBAR RULES
+  // ===============================
+  if (item.id === "sales_dashboard" || item.id === "sales_users") {
+    return (
+      user.role === "sales_team" ||
+      (user.role === "admin" &&
+        Array.isArray(user.modules) &&
+        user.modules.includes("sales-dashboard"))
+    );
   }
 
-  // Block super-admin-only items
+  // ===============================
+  // SUPER ADMIN ONLY
+  // ===============================
   if (item.superAdminOnly === true) return false;
 
-  // Items without permission → hide
+  // ===============================
+  // NORMAL MODULE-BASED ITEMS
+  // ===============================
   if (!item.permission) return false;
 
-  // Normal RBAC
   return AUTH.hasModule(item.permission);
 }
 
