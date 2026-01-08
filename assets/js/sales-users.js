@@ -9,7 +9,26 @@ const LIMIT = 20;
 document.addEventListener("DOMContentLoaded", () => {
   const user = AUTH.getCurrentUser();
 
-  // Top right name
+  /* =========================
+     RBAC GUARD (MANDATORY)
+  ========================= */
+  const isSales = user?.role === "sales_team";
+  const isSuperAdmin = user?.isSuperAdmin === true;
+
+  const hasSalesModule =
+    Array.isArray(user?.modules) &&
+    (user.modules.includes("sales-dashboard") ||
+      user.modules.includes("users"));
+
+  if (!(isSales || isSuperAdmin || hasSalesModule)) {
+    console.warn("Unauthorized access to Sales Users page");
+    window.location.href = "login.html";
+    return;
+  }
+
+  /* =========================
+     TOP RIGHT USER NAME
+  ========================= */
   document.getElementById("topUserName").textContent = user?.name || "Sales";
 
   loadUsers();
@@ -34,12 +53,18 @@ async function loadUsers(page = 1) {
       }
     );
 
-    if (!response.success) {
+    if (!response?.success) {
       throw new Error("Failed to fetch users");
     }
 
-    renderUsers(response.data.users);
-    renderPagination(response.data.pagination);
+    const users = response.data?.users || [];
+    const pagination = response.data?.pagination || {
+      page: 1,
+      totalPages: 1,
+    };
+
+    renderUsers(users);
+    renderPagination(pagination);
 
     currentPage = page;
   } catch (err) {
@@ -88,6 +113,7 @@ function renderUsers(users = []) {
         <button
           class="btn btn-sm btn-outline-primary"
           onclick="viewUser('${u._id}')"
+          title="View user"
         >
           <i class="bi bi-eye"></i>
         </button>
@@ -130,7 +156,7 @@ function renderPagination(pagination) {
  */
 function viewUser(userId) {
   if (!userId) {
-    alert("User ID missing");
+    console.error("User ID missing");
     return;
   }
 
