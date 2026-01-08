@@ -119,9 +119,8 @@
   // ADD / DEDUCT BALANCE
   // =========================
   async function adjustBalance(action) {
-    const q = (searchInput?.value || "").trim();
-    if (!q) {
-      alert("Search a user first!");
+    if (!currentUserId) {
+      alert("Search and select a user first!");
       return;
     }
 
@@ -132,25 +131,24 @@
     }
 
     const body = {
+      userId: currentUserId, // ✅ SINGLE SOURCE OF TRUTH
       amount,
       description: action === "credit" ? "Admin credit" : "Admin debit",
     };
-
-    if (q.includes("@")) body.email = q;
-    else body.phone = q;
 
     try {
       const endpoint =
         action === "credit" ? "/admin/wallet/credit" : "/admin/wallet/debit";
 
       const res = await API.post(endpoint, body);
+
       if (!res?.success) {
         alert(res?.message || "Error");
         return;
       }
 
       alert(res.message || "Success");
-      if (adjustAmount) adjustAmount.value = "";
+      adjustAmount.value = "";
       await searchWallet();
     } catch (err) {
       console.error("ADJUST BALANCE ERROR:", err);
