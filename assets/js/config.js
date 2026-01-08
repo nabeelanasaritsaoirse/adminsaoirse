@@ -325,7 +325,7 @@ const AUTH = {
         role: userData.role,
         profilePicture: userData.profilePicture || "",
         isSuperAdmin: userData.isSuperAdmin,
-        modules: userData.modules || [],
+        modules: userData.modules || userData.moduleAccess || [],
       })
     );
 
