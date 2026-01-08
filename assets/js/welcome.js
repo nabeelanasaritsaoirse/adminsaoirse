@@ -1,13 +1,14 @@
 /**
- * Welcome Page – Sub Admin Landing (HARDENED)
- * ------------------------------------------
- * - Sanitizes backend modules
- * - Blocks sales + super admin modules
- * - Prevents redirect loops
- * - Never sends sub-admin to dashboard.html
+ * Welcome Page – Sub Admin Landing (NAV_CONFIG DRIVEN)
+ * ---------------------------------------------------
+ * - NAV_CONFIG = single source of truth
+ * - No hardcoded module metadata
+ * - RBAC via AUTH.hasModule()
+ * - Dashboard never shown to sub-admin
+ * - Featured Lists shown if assigned
  */
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
   const container = document.getElementById("accessCards");
   if (!container) return;
 
@@ -21,36 +22,44 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const user = AUTH.getCurrentUser();
 
-  // 🚫 Super Admin should NEVER be here
+  // 🚫 Super Admin should NEVER be on welcome
   if (user.isSuperAdmin === true) {
     window.location.href = "dashboard.html";
     return;
   }
 
-  // 🚫 Sales Team should NEVER be here
+  // 🚫 Sales team should NEVER be on welcome
   if (user.role === "sales_team") {
     window.location.href = "sales-dashboard.html";
     return;
   }
 
   // ============================
-  // SOURCE OF TRUTH (SANITIZED)
+  // BUILD MODULE LIST FROM NAV_CONFIG
   // ============================
-  let modules = AUTH.getUserModules();
+  const navItems = window.NAV_CONFIG?.items || [];
 
-  if (!Array.isArray(modules)) modules = [];
+  const allowedItems = navItems.filter((item) => {
+    // ❌ Never show dashboard on welcome
+    if (item.id === "dashboard") return false;
 
-  // ⛔ HARD BLOCKED MODULES FOR SUB ADMINS
-  const BLOCKED_MODULES = [
-    "dashboard",
-    "sales-dashboard",
-    "admin_management",
-    "featured_lists", // 🔒 super admin only in your system
-  ];
+    // ❌ Never show sales dashboard to admin
+    if (item.id === "sales_dashboard") return false;
 
-  modules = modules.filter((m) => !BLOCKED_MODULES.includes(m));
+    // ❌ Block super-admin-only modules
+    if (item.superAdminOnly === true) return false;
 
-  if (modules.length === 0) {
+    // ❌ Must have permission defined
+    if (!item.permission) return false;
+
+    // ✅ Must be allowed by RBAC
+    return AUTH.hasModule(item.permission);
+  });
+
+  // ============================
+  // EMPTY STATE
+  // ============================
+  if (allowedItems.length === 0) {
     container.innerHTML = `
       <div class="col-12">
         <div class="alert alert-warning">
@@ -62,84 +71,34 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // ============================
-  // MODULE META
+  // RENDER MODULE CARDS
   // ============================
-  const MODULE_META = {
-    users: {
-      icon: "bi-people",
-      title: "User Management",
-      desc: "View and manage users",
-      page: "users.html",
-    },
-    wallet: {
-      icon: "bi-wallet2",
-      title: "User Wallets",
-      desc: "Manage user wallet balances",
-      page: "admin_wallet.html",
-    },
-    categories: {
-      icon: "bi-folder-fill",
-      title: "Category Management",
-      desc: "Organize product categories",
-      page: "categories.html",
-    },
-    products: {
-      icon: "bi-box-seam",
-      title: "Product Management",
-      desc: "Create and manage products",
-      page: "products.html",
-    },
-    uploader: {
-      icon: "bi-image",
-      title: "Image Uploader",
-      desc: "Upload and manage images",
-      page: "uploader.html",
-    },
-    chat: {
-      icon: "bi-chat-dots",
-      title: "Chat Management",
-      desc: "Manage chat conversations",
-      page: "chat.html",
-    },
-    coupons: {
-      icon: "bi-ticket-perforated",
-      title: "Coupon Management",
-      desc: "Create and manage coupons",
-      page: "coupons.html",
-    },
-  };
-
-  // ============================
-  // RENDER SAFE MODULES
-  // ============================
-  modules.forEach((key) => {
-    const meta = MODULE_META[key];
-
-    // 🚫 Unknown modules → do NOT render clickable cards
-    if (!meta) {
-      console.warn("[WELCOME] Skipping unknown module:", key);
-      return;
-    }
-
+  allowedItems.forEach((item) => {
     const col = document.createElement("div");
     col.className = "col-md-6 col-lg-4";
 
     col.innerHTML = `
       <div class="access-card" role="button">
         <div class="access-icon">
-          <i class="bi ${meta.icon}"></i>
+          <i class="bi ${item.icon || "bi-grid"}"></i>
         </div>
-        <div class="access-title">${meta.title}</div>
-        <div class="access-desc">${meta.desc}</div>
+        <div class="access-title">${item.label}</div>
+        <div class="access-desc">
+          Manage ${item.label.toLowerCase()}
+        </div>
       </div>
     `;
 
     col.querySelector(".access-card").onclick = () => {
-      window.location.href = meta.page;
+      const href = item.hrefFromRoot || item.href;
+      if (href) window.location.href = href;
     };
 
     container.appendChild(col);
   });
 
-  console.log("[WELCOME] ✅ Modules rendered safely:", modules);
+  console.log(
+    "[WELCOME] ✅ Modules rendered from NAV_CONFIG:",
+    allowedItems.map((i) => i.id)
+  );
 });
