@@ -71,6 +71,21 @@ function fillFormForEditFromApi(cat) {
   metaDescription.value = cat.meta?.description || "";
   metaKeywords.value = cat.meta?.keywords?.join(", ") || "";
 
+  /* =========================
+     ✅ FIX: RESTORE PARENT CATEGORY
+     ========================= */
+  const parentCategory = document.getElementById("parentCategory");
+  if (parentCategory) {
+    if (cat.parentCategoryId) {
+      parentCategory.value =
+        typeof cat.parentCategoryId === "object"
+          ? cat.parentCategoryId._id
+          : cat.parentCategoryId;
+    } else {
+      parentCategory.value = "";
+    }
+  }
+
   // ✅ CATEGORY IMAGES
   const images = [
     cat.mainImage,
