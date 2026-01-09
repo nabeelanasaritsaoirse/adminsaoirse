@@ -60,6 +60,15 @@ const API_CONFIG = {
         "/admin-mgmt/registration-requests/:requestId/reject",
     },
 
+    adminWallet: {
+      search: "/admin/wallet",
+      credit: "/admin/wallet/credit",
+      debit: "/admin/wallet/debit",
+      withdrawals: "/admin/wallet/withdrawals",
+      approveWithdrawal: "/admin/wallet/withdrawals/approve",
+      rejectWithdrawal: "/admin/wallet/withdrawals/reject",
+    },
+
     users: {
       getAll: "/users",
       getById: "/users/:userId",
