@@ -1,7 +1,7 @@
 /*******************************
  * BASE URL (GLOBAL)
  *******************************/
-window.BASE_URL = "https://api.epielio.com/api";
+window.BASE_URL = "http://13.127.15.87:8080/api";
 
 // ✅ SINGLE SOURCE OF TRUTH
 const API_BASE = window.BASE_URL;
@@ -58,6 +58,15 @@ const API_CONFIG = {
         "/admin-mgmt/registration-requests/:requestId/approve",
       rejectRegistrationRequest:
         "/admin-mgmt/registration-requests/:requestId/reject",
+    },
+
+    adminWallet: {
+      search: "/admin/wallet",
+      credit: "/admin/wallet/credit",
+      debit: "/admin/wallet/debit",
+      withdrawals: "/admin/wallet/withdrawals",
+      approveWithdrawal: "/admin/wallet/withdrawals/approve",
+      rejectWithdrawal: "/admin/wallet/withdrawals/reject",
     },
 
     users: {
