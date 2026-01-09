@@ -1,7 +1,7 @@
 /*******************************
  * BASE URL (GLOBAL)
  *******************************/
-window.BASE_URL = "http://admin.epielio.com/api";
+window.BASE_URL = "https://admin.epielio.com/api";
 
 // ✅ SINGLE SOURCE OF TRUTH
 const API_BASE = window.BASE_URL;
