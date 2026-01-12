@@ -1427,9 +1427,27 @@ async function saveProduct() {
     showProductSuccess("Product Created Successfully");
   } catch (err) {
     console.error("Save failed:", err);
-    showNotification(err.message || "Save failed", "error");
-  } finally {
-    showLoading(false);
+
+    // Try to extract backend error message safely
+    const backendMessage =
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      err?.message ||
+      "";
+
+    // Handle duplicate SKU error explicitly
+    if (
+      backendMessage.toLowerCase().includes("sku") ||
+      backendMessage.toLowerCase().includes("duplicate")
+    ) {
+      showNotification("SKU already exists. Please use a unique SKU.", "error");
+
+      // Optional UX improvement: focus SKU field
+      document.getElementById("productSku")?.focus();
+    } else {
+      // Fallback for other errors
+      showNotification(backendMessage || "Failed to save product", "error");
+    }
   }
 }
 
