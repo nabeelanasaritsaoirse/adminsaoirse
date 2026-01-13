@@ -32,7 +32,22 @@ const NAV_CONFIG = {
       hrefFromRoot: "sales-users.html",
       permission: "sales-users",
     },
-
+    {
+      id: "sales_opportunities",
+      label: "Sales Opportunities",
+      icon: "bi-fire",
+      href: "sales-opportunities.html",
+      hrefFromRoot: "sales-opportunities.html",
+      permission: "sales-dashboard",
+    },
+    {
+      id: "sales_leaderboard",
+      label: "Sales Leaderboard",
+      icon: "bi-trophy",
+      href: "sales-leaderboard.html",
+      hrefFromRoot: "sales-leaderboard.html",
+      permission: "sales-dashboard",
+    },
     {
       id: "users",
       label: "Users",
