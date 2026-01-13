@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
  */
 async function loadSalesDashboardStats() {
   try {
-    const url = API.buildURL(API_CONFIG.endpoints.sales.dashboardStats);
+    const url = API.buildURL("/sales/my-stats");
 
     const response = await API.request(url, { method: "GET" });
 
@@ -38,16 +38,18 @@ async function loadSalesDashboardStats() {
     }
 
     const {
-      totalUsers = 0,
-      activeOrders = 0,
-      totalRevenue = 0,
-      pendingKYC = 0,
+      teamStats = {},
+      orderStats = {},
+      revenueStats = {},
     } = response.data || {};
 
-    setText("totalUsers", totalUsers);
-    setText("activeOrders", activeOrders);
-    setText("pendingKYC", pendingKYC);
-    setText("totalRevenue", "₹" + formatCurrency(totalRevenue));
+    setText("totalUsers", teamStats.totalTeamSize || 0);
+    setText("activeOrders", orderStats.activeOrders || 0);
+    setText("pendingKYC", teamStats.activeMembers || 0);
+    setText(
+      "totalRevenue",
+      "₹" + formatCurrency(revenueStats.totalPaidAmount || 0)
+    );
   } catch (err) {
     console.error("Sales dashboard error:", err);
     alert("Failed to load sales dashboard data");
@@ -70,15 +72,17 @@ async function loadRecentUsers() {
   if (!tableBody) return;
 
   try {
-    const url = API.buildURL(API_CONFIG.endpoints.sales.users);
-
-    const response = await API.request(url, { method: "GET" });
+    const response = await API.get(
+      "/sales/my-team/users",
+      {},
+      { page: 1, limit: 10 }
+    );
 
     if (!response?.success || !Array.isArray(response.data?.users)) {
       throw new Error("Invalid users response");
     }
 
-    const users = response.data.users.slice(0, 10);
+    const users = response.data.users;
 
     if (users.length === 0) {
       tableBody.innerHTML = `
@@ -95,14 +99,14 @@ async function loadRecentUsers() {
         const name = user.name || "—";
         const emailOrPhone = user.email || user.phoneNumber || "—";
         const wallet = user.wallet?.balance || 0;
-        const referrals = user.level1Count || 0;
+        const level = user.level === 1 ? "L1" : "L2";
 
         return `
           <tr>
             <td>${escapeHtml(name)}</td>
             <td>${escapeHtml(emailOrPhone)}</td>
             <td>₹${formatCurrency(wallet)}</td>
-            <td>${referrals}</td>
+            <td>${level}</td>
             <td class="text-end">
               <a
                 href="sales-user-detail.html?id=${user._id}"

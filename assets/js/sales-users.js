@@ -1,5 +1,6 @@
 /**
  * Sales Users – READ ONLY
+ * Scoped to MY TEAM users only
  */
 
 let currentPage = 1;
@@ -33,18 +34,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadUsers();
 
-  document
-    .getElementById("searchInput")
-    .addEventListener("input", debounce(handleSearch, 400));
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", debounce(handleSearch, 400));
+  }
 });
 
 /**
- * Load users
+ * Load users (MY TEAM USERS ONLY)
  */
 async function loadUsers(page = 1) {
   try {
     const response = await API.get(
-      API_CONFIG.endpoints.sales.users,
+      "/sales/my-team/users",
       {},
       {
         page,
@@ -97,30 +99,32 @@ function renderUsers(users = []) {
   }
 
   tbody.innerHTML = users
-    .map(
-      (u) => `
-    <tr>
-      <td>
-        <strong>${u.name || "-"}</strong>
-      </td>
-      <td>${u.email || "-"}</td>
-      <td>${u.phoneNumber || "-"}</td>
-      <td>${u.referralCode || "-"}</td>
-      <td>${u.level1Count || 0}</td>
-      <td>₹${(u.wallet?.balance || 0).toLocaleString("en-IN")}</td>
-      <td>${new Date(u.createdAt).toLocaleString("en-IN")}</td>
-      <td>
-        <button
-          class="btn btn-sm btn-outline-primary"
-          onclick="viewUser('${u._id}')"
-          title="View user"
-        >
-          <i class="bi bi-eye"></i>
-        </button>
-      </td>
-    </tr>
-  `
-    )
+    .map((u) => {
+      const levelLabel = u.level === 1 ? "L1" : u.level === 2 ? "L2" : "-";
+
+      return `
+        <tr>
+          <td><strong>${u.name || "-"}</strong></td>
+          <td>${u.email || "-"}</td>
+          <td>${u.phoneNumber || "-"}</td>
+          <td>
+  ${u.level === 2 ? u.referredBy?.referralCode || "-" : "-"}
+</td>
+          <td>${levelLabel}</td>
+          <td>₹${(u.wallet?.balance || 0).toLocaleString("en-IN")}</td>
+          <td>${new Date(u.createdAt).toLocaleString("en-IN")}</td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-primary"
+              onclick="viewUser('${u._id}')"
+              title="View user"
+            >
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    })
     .join("");
 }
 
@@ -152,7 +156,7 @@ function renderPagination(pagination) {
 }
 
 /**
- * View user detail (Step-2)
+ * View user detail
  */
 function viewUser(userId) {
   if (!userId) {

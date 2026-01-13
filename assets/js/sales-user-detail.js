@@ -1,5 +1,6 @@
 /**
  * Sales User Detail – READ ONLY
+ * Scoped to MY TEAM users only
  */
 
 let userId;
@@ -24,8 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ✅ SET GLOBAL userId
-  userId = getUserIdFromURL();
+  // ✅ GET userId from URL
+  const params = new URLSearchParams(window.location.search);
+  userId = params.get("userId") || params.get("id");
 
   if (!userId) {
     console.error("User ID missing in URL");
@@ -42,11 +44,11 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* =========================
-   LOAD USER DETAIL
+   LOAD USER DETAIL (MY TEAM)
 ========================= */
 async function loadUserDetail(uid) {
   try {
-    const res = await API.get(`${API_CONFIG.endpoints.sales.users}/${uid}`);
+    const res = await API.get("/sales/my-team/:userId", { userId: uid });
 
     if (!res?.success) throw new Error("API failure");
 
@@ -69,7 +71,7 @@ async function loadUserDetail(uid) {
         ? new Date(user.createdAt).toLocaleDateString("en-IN")
         : "-"
     );
-    setText("uStatus", user.isActive ? "Active" : "Inactive");
+    setText("uStatus", user.isActive === true ? "Active" : "Inactive");
 
     /* WALLET */
     setText("wBalance", user.wallet?.balance || 0);
@@ -90,7 +92,7 @@ async function loadUserDetail(uid) {
     renderList(
       "cart",
       cart,
-      (c) => `${c.product?.name || "-"} x${c.quantity || 1}`
+      (c) => `${c.productDetails?.name || "-"} x${c.quantity || 1}`
     );
   } catch (e) {
     console.error("Failed to load user detail:", e);
@@ -103,6 +105,7 @@ async function loadUserDetail(uid) {
 ========================= */
 function renderReferrals(level1 = []) {
   const box = document.getElementById("referralTree");
+  if (!box) return;
 
   if (!level1.length) {
     box.innerHTML = "<em>No referrals</em>";
@@ -125,6 +128,7 @@ function renderReferrals(level1 = []) {
 ========================= */
 function renderOrders(orders = []) {
   const tbody = document.getElementById("ordersTable");
+  if (!tbody) return;
 
   if (!orders.length) {
     tbody.innerHTML = `
