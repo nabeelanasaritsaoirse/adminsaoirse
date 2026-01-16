@@ -152,7 +152,24 @@ function renderMainRow(item) {
         <div class="d-flex justify-content-between align-items-center">
           <div>
             <strong>${user.name || "-"}</strong><br>
-            <small class="text-muted">${user.email || "-"}</small>
+
+<small class="text-muted">
+  ${user.email || "-"}
+  ${
+    user.emailVerified
+      ? `<span class="badge bg-success ms-1">Email Verified</span>`
+      : `<span class="badge bg-secondary ms-1">Email Not Verified</span>`
+  }
+</small><br>
+
+<small class="text-muted">
+  ${user.phoneNumber || "-"}
+  ${
+    user.phoneVerified
+      ? `<span class="badge bg-success ms-1">Phone Verified</span>`
+      : `<span class="badge bg-secondary ms-1">Phone Not Verified</span>`
+  }
+</small>
           </div>
           <i class="bi bi-chevron-down kyc-toggle-icon ms-2"></i>
         </div>
@@ -501,7 +518,7 @@ function startTimers() {
     if (!timerEl) return;
 
     const created = new Date(item.submittedAt).getTime();
-    const expireTime = created + 10 * 60 * 1000;
+    const expireTime = created + 6 * 60 * 60 * 1000;
 
     const interval = setInterval(() => {
       const diff = expireTime - Date.now();
