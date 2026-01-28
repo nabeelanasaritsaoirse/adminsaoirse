@@ -209,7 +209,6 @@ async function handleViewDetails(e) {
   }
 }
 
-// ===============================
 // VIEW USAGE (API #3)
 // ===============================
 async function viewUsage(id) {
