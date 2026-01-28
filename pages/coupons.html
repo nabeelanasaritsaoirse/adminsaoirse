@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -33,25 +33,27 @@
     <script src="../assets/js/config.js"></script>
     <script>
       // Permission Guard - Check if user has access to coupons module
-      console.log('[COUPONS] 🔐 Auth Guard - Checking permissions...');
+      console.log("[COUPONS] 🔐 Auth Guard - Checking permissions...");
       (function () {
-        const REQUIRED_PERMISSION = 'coupons';
+        const REQUIRED_PERMISSION = "coupons";
 
         if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
-          console.error('[COUPONS] ❌ Not authenticated');
-          alert('Please login first');
+          console.error("[COUPONS] ❌ Not authenticated");
+          alert("Please login first");
           window.location.href = "login.html";
           return;
         }
 
         if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
-          console.error('[COUPONS] ❌ No permission for coupons module');
-          alert('Access Denied! You do not have permission to access Coupons module.');
+          console.error("[COUPONS] ❌ No permission for coupons module");
+          alert(
+            "Access Denied! You do not have permission to access Coupons module.",
+          );
           window.location.href = "dashboard.html";
           return;
         }
 
-        console.log('[COUPONS] ✅ Auth check passed');
+        console.log("[COUPONS] ✅ Auth check passed");
       })();
     </script>
 
@@ -88,58 +90,21 @@
     <!-- MAIN CONTENT -->
     <div class="main-content">
       <div class="container-fluid">
+        <!-- HEADER -->
         <div
           class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
         >
           <h1 class="h2">Coupon Management</h1>
-          <button
-            class="btn btn-primary"
-            data-bs-toggle="modal"
-            data-bs-target="#createCouponModal"
-          >
-            <i class="bi bi-plus-circle"></i> Create Coupon
-          </button>
         </div>
 
         <!-- ALERT -->
         <div id="couponAlert"></div>
 
-        <!-- COUPONS TABLE -->
-        <div class="card shadow-sm">
+        <!-- CREATE / EDIT COUPON CARD -->
+        <div class="card shadow-sm mt-3">
           <div class="card-body">
-            <h5 class="mb-3">All Coupons</h5>
+            <h5 class="mb-3">Create / Edit Coupon</h5>
 
-            <div class="table-responsive">
-              <table class="table table-hover">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Code</th>
-                    <th>Discount</th>
-                    <th>Coupon Type</th>
-                    <th>Min Order</th>
-                    <th>Expiry</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="couponsTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- CREATE COUPON MODAL -->
-    <div class="modal fade" id="createCouponModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Create New Coupon</h5>
-            <button class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-
-          <div class="modal-body">
             <form id="couponForm">
               <div class="row">
                 <div class="col-md-4 mb-3">
@@ -227,16 +192,55 @@
                   </div>
                 </div>
               </div>
-            </form>
-          </div>
 
-          <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">
-              Cancel
-            </button>
-            <button class="btn btn-primary" type="submit" form="couponForm">
-              Create Coupon
-            </button>
+              <!-- FORM ACTIONS (INSIDE FORM) -->
+              <div class="d-flex justify-content-end gap-2 mt-3">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  id="cancelCouponBtn"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  class="btn btn-primary"
+                  type="submit"
+                  id="submitCouponBtn"
+                >
+                  Save Coupon
+                </button>
+              </div>
+            </form>
+
+            <!-- RECENT COUPONS -->
+            <div class="card shadow-sm mt-4">
+              <div class="card-body">
+                <h5 class="mb-3">Recent Coupons</h5>
+
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Type</th>
+                        <th>Discount</th>
+                        <th>Usage</th>
+                        <th>Expiry</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recentCouponsTableBody">
+                      <tr>
+                        <td colspan="6" class="text-center text-muted">
+                          Loading recent coupons...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -249,20 +253,5 @@
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/navigation.js"></script>
     <script src="../assets/js/coupons.js"></script>
-
-    <script>
-      document
-        .getElementById("couponType")
-        .addEventListener("change", function () {
-          const value = this.value;
-          document.getElementById("milestoneFields").style.display =
-            value === "MILESTONE_REWARD" ? "block" : "none";
-        });
-
-      document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        localStorage.clear();
-        window.location.href = "login.html";
-      });
-    </script>
   </body>
 </html>

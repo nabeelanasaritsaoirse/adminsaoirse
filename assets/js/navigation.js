@@ -113,6 +113,14 @@ const NAV_CONFIG = {
       permission: "coupons",
     },
     {
+      id: "coupon_list",
+      label: "Coupon List",
+      icon: "bi-list-check",
+      href: "coupon-list.html",
+      hrefFromRoot: "pages/coupon-list.html",
+      permission: "coupons",
+    },
+    {
       id: "featured_lists",
       label: "Featured Lists",
       icon: "bi-star-fill",
@@ -293,8 +301,8 @@ function renderNavigation(containerId = "sidebar") {
                                data-nav-id="${item.id}"
                                href="${href}">
                                 <i class="bi ${item.icon} me-2"></i>${
-                    item.label
-                  }
+                                  item.label
+                                }
                             </a>
                         </li>
                     `;
