@@ -23,6 +23,13 @@ document.addEventListener("DOMContentLoaded", function () {
       // Reset form to create mode
       form.reset();
       milestoneFields.style.display = "none";
+      percentageCapRow.style.display = "none";
+      winbackDaysRow.style.display = "none";
+      stackPriorityRow.style.display = "none";
+
+      // Re-enable discount fields
+      document.getElementById("discountType").disabled = false;
+      document.getElementById("discountValue").disabled = false;
 
       showMessage("info", "Switched to Create New Coupon mode");
     });
@@ -41,9 +48,71 @@ document.addEventListener("DOMContentLoaded", function () {
   const milestoneFields = document.getElementById("milestoneFields");
   const submitBtn = document.getElementById("submitCouponBtn");
 
+  const percentageCapRow = document.getElementById("percentageCapRow");
+  const isWinBackInput = document.getElementById("isWinBackCoupon");
+  const winbackDaysRow = document.getElementById("winbackDaysRow");
+  const isStackableInput = document.getElementById("isStackable");
+  const stackPriorityRow = document.getElementById("stackPriorityRow");
+  // ===============================
+  // REFERRAL COUPON - LOAD USERS
+  // ===============================
+  loadReferralUsers();
+
+  async function loadReferralUsers() {
+    const select = document.getElementById("referralUserSelect");
+    if (!select) return;
+
+    try {
+      const res = await API.request(
+        API.buildURL(API_CONFIG.endpoints.users.getAll),
+        { method: "GET", headers: AUTH.getAuthHeaders() },
+      );
+
+      const users = res.data || res || [];
+
+      select.innerHTML = `<option value="">Select a user</option>`;
+
+      users
+        .filter((u) => u.role === "user" && u.isActive)
+        .forEach((u) => {
+          select.innerHTML += `
+          <option value="${u._id}">
+            ${u.name} — ${u.email}
+          </option>
+        `;
+        });
+    } catch (err) {
+      console.error("Failed to load referral users:", err);
+      select.innerHTML = `<option value="">Failed to load users</option>`;
+    }
+  }
+
   couponTypeInput.addEventListener("change", () => {
-    milestoneFields.style.display =
-      couponTypeInput.value === "MILESTONE_REWARD" ? "block" : "none";
+    const isMilestone = couponTypeInput.value === "MILESTONE_REWARD";
+
+    milestoneFields.style.display = isMilestone ? "block" : "none";
+
+    // Hide discount fields for milestone
+    document.getElementById("discountType").disabled = isMilestone;
+    document.getElementById("discountValue").disabled = isMilestone;
+    percentageCapRow.style.display = "none";
+  });
+
+  // Percentage cap toggle
+  document.getElementById("discountType").addEventListener("change", (e) => {
+    percentageCapRow.style.display =
+      e.target.value === "percentage" ? "block" : "none";
+  });
+
+  // Win-back toggle
+  isWinBackInput.addEventListener("change", (e) => {
+    winbackDaysRow.style.display = e.target.value === "true" ? "block" : "none";
+  });
+
+  // Stackable toggle
+  isStackableInput.addEventListener("change", (e) => {
+    stackPriorityRow.style.display =
+      e.target.value === "true" ? "block" : "none";
   });
 
   // ===============================
@@ -74,6 +143,11 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById("couponCode").value = coupon.couponCode || "";
       document.getElementById("couponType").value = coupon.couponType || "";
       document.getElementById("discountType").value = coupon.discountType || "";
+      // Show percentage cap if needed
+      if (coupon.discountType === "percentage") {
+        percentageCapRow.style.display = "block";
+      }
+
       document.getElementById("discountValue").value =
         coupon.discountValue || "";
       document.getElementById("minOrderValue").value =
@@ -87,6 +161,46 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("rewardCondition").value =
           coupon.rewardCondition || "";
         document.getElementById("rewardValue").value = coupon.rewardValue || "";
+      }
+      // Usage + restrictions
+      document.getElementById("maxUsageCount").value =
+        coupon.maxUsageCount ?? "";
+      document.getElementById("maxUsagePerUser").value =
+        coupon.maxUsagePerUser ?? "";
+      document.getElementById("isActive").value = String(coupon.isActive);
+
+      document.getElementById("firstTimeUserOnly").value = String(
+        coupon.firstTimeUserOnly,
+      );
+      document.getElementById("description").value = coupon.description || "";
+
+      document.getElementById("maxDiscountAmount").value =
+        coupon.maxDiscountAmount ?? "";
+
+      // Payment methods
+      if (Array.isArray(coupon.applicablePaymentMethods)) {
+        const pmSelect = document.getElementById("applicablePaymentMethods");
+        [...pmSelect.options].forEach((opt) => {
+          opt.selected = coupon.applicablePaymentMethods.includes(opt.value);
+        });
+      }
+
+      // Win-back
+      document.getElementById("isWinBackCoupon").value = String(
+        coupon.isWinBackCoupon,
+      );
+      if (coupon.isWinBackCoupon) {
+        winbackDaysRow.style.display = "block";
+        document.getElementById("minDaysSinceLastOrder").value =
+          coupon.minDaysSinceLastOrder ?? "";
+      }
+
+      // Stackable
+      document.getElementById("isStackable").value = String(coupon.isStackable);
+      if (coupon.isStackable) {
+        stackPriorityRow.style.display = "block";
+        document.getElementById("stackPriority").value =
+          coupon.stackPriority ?? 0;
       }
 
       showMessage("info", "Editing coupon: " + coupon.couponCode);
@@ -116,15 +230,61 @@ document.addEventListener("DOMContentLoaded", function () {
     const rewardValue =
       parseInt(document.getElementById("rewardValue").value) || null;
 
+    const maxUsageCount =
+      parseInt(document.getElementById("maxUsageCount").value) || null;
+    const maxUsagePerUser =
+      parseInt(document.getElementById("maxUsagePerUser").value) || null;
+    const isActive = document.getElementById("isActive").value === "true";
+    const firstTimeUserOnly =
+      document.getElementById("firstTimeUserOnly").value === "true";
+    const description = document.getElementById("description").value || "";
+
+    const maxDiscountAmount =
+      parseFloat(document.getElementById("maxDiscountAmount").value) || null;
+
+    const applicablePaymentMethods = Array.from(
+      document.getElementById("applicablePaymentMethods").selectedOptions,
+    ).map((opt) => opt.value);
+
+    const isWinBackCoupon =
+      document.getElementById("isWinBackCoupon").value === "true";
+    const minDaysSinceLastOrder =
+      parseInt(document.getElementById("minDaysSinceLastOrder").value) || null;
+
+    const isStackable = document.getElementById("isStackable").value === "true";
+    const stackPriority =
+      parseInt(document.getElementById("stackPriority").value) || 0;
+
     const payload = {
       couponCode,
       couponType,
-      discountType,
-      discountValue,
       minOrderValue,
       expiryDate,
+
+      maxUsageCount,
+      maxUsagePerUser,
+      isActive,
+
+      firstTimeUserOnly,
+      description,
+
+      maxDiscountAmount,
+      applicablePaymentMethods,
+
+      isWinBackCoupon,
+      minDaysSinceLastOrder,
+
+      isStackable,
+      stackPriority,
     };
 
+    // Only include discount fields for NON-milestone
+    if (couponType !== "MILESTONE_REWARD") {
+      payload.discountType = discountType;
+      payload.discountValue = discountValue;
+    }
+
+    // Milestone-only fields
     if (couponType === "MILESTONE_REWARD") {
       payload.rewardCondition = rewardCondition;
       payload.rewardValue = rewardValue;
@@ -177,6 +337,67 @@ document.addEventListener("DOMContentLoaded", function () {
       showMessage("danger", "Error saving coupon: " + err.message);
     }
   });
+  // ===============================
+  // CREATE REFERRAL COUPON
+  // ===============================
+  const referralForm = document.getElementById("referralCouponForm");
+
+  if (referralForm) {
+    referralForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        userId: document.getElementById("referralUserSelect").value,
+        discountType: document.getElementById("referralDiscountType").value,
+        discountValue: Number(
+          document.getElementById("referralDiscountValue").value,
+        ),
+        commissionPercent: Number(
+          document.getElementById("referralCommissionPercent").value || 10,
+        ),
+        expiryDays: Number(
+          document.getElementById("referralExpiryDays").value || 365,
+        ),
+        maxUsageCount:
+          Number(document.getElementById("referralMaxUsageCount").value) ||
+          null,
+        description: document.getElementById("referralDescription").value || "",
+      };
+
+      if (!payload.userId) {
+        showMessage("danger", "Please select a referrer user");
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("epi_admin_token");
+
+        const res = await fetch(`${BASE_URL}/coupons/admin/create-referral`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        const result = await res.json();
+
+        showMessage(
+          "success",
+          `Referral coupon created: ${result.coupon?.code || "Success"}`,
+        );
+
+        referralForm.reset();
+        loadRecentCoupons();
+      } catch (err) {
+        console.error("Create referral coupon failed:", err);
+        showMessage("danger", "Failed to create referral coupon");
+      }
+    });
+  }
 
   // ===============================
   // HELPERS
