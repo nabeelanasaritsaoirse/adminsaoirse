@@ -106,6 +106,7 @@
             <h5 class="mb-3">Create / Edit Coupon</h5>
 
             <form id="couponForm">
+              <!-- BASIC INFO -->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Coupon Code</label>
@@ -132,6 +133,19 @@
                     id="discountValue"
                     class="form-control"
                     required
+                  />
+                </div>
+              </div>
+
+              <!-- PERCENTAGE CAP -->
+              <div class="row" id="percentageCapRow" style="display: none">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Max Discount Amount (Cap)</label>
+                  <input
+                    type="number"
+                    id="maxDiscountAmount"
+                    class="form-control"
+                    placeholder="Optional cap for %"
                   />
                 </div>
               </div>
@@ -167,6 +181,132 @@
                 </div>
               </div>
 
+              <!-- USAGE LIMITS -->
+              <hr />
+              <h6>Usage Limits</h6>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Max Total Usage</label>
+                  <input
+                    type="number"
+                    id="maxUsageCount"
+                    class="form-control"
+                    placeholder="Leave empty = unlimited"
+                  />
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Max Usage Per User</label>
+                  <input
+                    type="number"
+                    id="maxUsagePerUser"
+                    class="form-control"
+                    placeholder="Leave empty = unlimited"
+                  />
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Active</label>
+                  <select id="isActive" class="form-select">
+                    <option value="true" selected>Active</option>
+                    <option value="false">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- RESTRICTIONS -->
+              <hr />
+              <h6>Coupon Restrictions</h6>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">First Time Users Only</label>
+                  <select id="firstTimeUserOnly" class="form-select">
+                    <option value="false" selected>No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Applicable Payment Methods</label>
+                  <select
+                    id="applicablePaymentMethods"
+                    class="form-select"
+                    multiple
+                  >
+                    <option value="ALL">ALL</option>
+                    <option value="WALLET">WALLET</option>
+                    <option value="RAZORPAY">RAZORPAY</option>
+                  </select>
+                  <small class="text-muted"
+                    >Ctrl + Click to select multiple</small
+                  >
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Description</label>
+                  <input type="text" id="description" class="form-control" />
+                </div>
+              </div>
+
+              <!-- WIN-BACK -->
+              <hr />
+              <h6>Win-back Coupon</h6>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Is Win-back Coupon?</label>
+                  <select id="isWinBackCoupon" class="form-select">
+                    <option value="false" selected>No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+
+                <div
+                  class="col-md-4 mb-3"
+                  id="winbackDaysRow"
+                  style="display: none"
+                >
+                  <label class="form-label">Min Days Since Last Order</label>
+                  <input
+                    type="number"
+                    id="minDaysSinceLastOrder"
+                    class="form-control"
+                  />
+                </div>
+              </div>
+
+              <!-- STACKABLE -->
+              <hr />
+              <h6>Stackable Coupon</h6>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Is Stackable?</label>
+                  <select id="isStackable" class="form-select">
+                    <option value="false" selected>No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+
+                <div
+                  class="col-md-4 mb-3"
+                  id="stackPriorityRow"
+                  style="display: none"
+                >
+                  <label class="form-label"
+                    >Stack Priority (Lower = applied first)</label
+                  >
+                  <input
+                    type="number"
+                    id="stackPriority"
+                    class="form-control"
+                    value="0"
+                  />
+                </div>
+              </div>
+
               <!-- MILESTONE FIELDS -->
               <div id="milestoneFields" style="display: none">
                 <hr />
@@ -193,7 +333,7 @@
                 </div>
               </div>
 
-              <!-- FORM ACTIONS (INSIDE FORM) -->
+              <!-- FORM ACTIONS -->
               <div class="d-flex justify-content-end gap-2 mt-3">
                 <button
                   type="button"
@@ -212,6 +352,94 @@
                 </button>
               </div>
             </form>
+            <!-- =============================== -->
+            <!-- CREATE REFERRAL COUPON CARD -->
+            <!-- =============================== -->
+            <div class="card shadow-sm mt-4">
+              <div class="card-body">
+                <h5 class="mb-3">Create Referral Coupon</h5>
+
+                <form id="referralCouponForm">
+                  <div class="row">
+                    <div class="col-md-6 mb-3">
+                      <label class="form-label">Select Referrer User</label>
+                      <select
+                        id="referralUserSelect"
+                        class="form-select"
+                        required
+                      >
+                        <option value="">Loading users...</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="form-label">Discount Type</label>
+                      <select id="referralDiscountType" class="form-select">
+                        <option value="flat">Flat</option>
+                        <option value="percentage">Percentage</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="form-label">Discount Value</label>
+                      <input
+                        type="number"
+                        id="referralDiscountValue"
+                        class="form-control"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="col-md-3 mb-3">
+                      <label class="form-label">Commission %</label>
+                      <input
+                        type="number"
+                        id="referralCommissionPercent"
+                        class="form-control"
+                        value="10"
+                      />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="form-label">Expiry (Days)</label>
+                      <input
+                        type="number"
+                        id="referralExpiryDays"
+                        class="form-control"
+                        value="365"
+                      />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="form-label">Max Usage Count</label>
+                      <input
+                        type="number"
+                        id="referralMaxUsageCount"
+                        class="form-control"
+                        placeholder="Optional"
+                      />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                      <label class="form-label">Description</label>
+                      <input
+                        type="text"
+                        id="referralDescription"
+                        class="form-control"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-success">
+                      Generate Referral Coupon
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
 
             <!-- RECENT COUPONS -->
             <div class="card shadow-sm mt-4">
