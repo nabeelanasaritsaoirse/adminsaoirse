@@ -75,7 +75,7 @@ function togglePaymentPlan(enabled) {
       if (!el) return;
       el.disabled = !enabled;
       if (!enabled) el.value = "";
-    }
+    },
   );
 }
 
@@ -166,7 +166,7 @@ function initProductFormDOM() {
         regionalSettingsSection.classList.remove("d-none");
         buildRegionalRowsFromConfig(
           { regionalPricing: [], regionalAvailability: [], regionalSeo: [] },
-          true
+          true,
         );
       }
     });
@@ -273,7 +273,7 @@ function renderVariantField(variant = {}, idx = 0) {
                    alt="variant image"
                    style="width:70px;height:70px;object-fit:cover">
             </div>
-          `
+          `,
             )
             .join("")}
         </div>
@@ -324,13 +324,13 @@ function collectVariantsFromDOM() {
     const color = card.querySelector("[data-variant-color]")?.value.trim();
     const storage = card.querySelector("[data-variant-storage]")?.value.trim();
     const price = Number(
-      card.querySelector("[data-variant-price]")?.value || 0
+      card.querySelector("[data-variant-price]")?.value || 0,
     );
     const salePrice = Number(
-      card.querySelector("[data-variant-sale-price]")?.value || 0
+      card.querySelector("[data-variant-sale-price]")?.value || 0,
     );
     const stock = Number(
-      card.querySelector("[data-variant-stock]")?.value || 0
+      card.querySelector("[data-variant-stock]")?.value || 0,
     );
 
     // ⚠️ HARD VALIDATION (no bullshit)
@@ -470,7 +470,7 @@ async function uploadVariantImages(productId, variantsFromBackend) {
           Authorization: `Bearer ${AUTH.getToken()}`,
         },
         body: formData,
-      }
+      },
     );
 
     const json = await res.json();
@@ -523,7 +523,7 @@ async function loadCategories() {
 function buildRegionalRowsFromConfig(
   product = null,
   forceAllOff = false,
-  forceAllOn = false
+  forceAllOn = false,
 ) {
   const tbody = document.getElementById("regionalSettingsTableBody");
   if (!tbody || !Array.isArray(window.SUPPORTED_REGIONS)) return;
@@ -586,7 +586,7 @@ function buildRegionalRowsFromConfig(
       const enabled = toggle.checked;
       row
         .querySelectorAll(
-          ".regional-stock, .regional-price, .regional-sale-price"
+          ".regional-stock, .regional-price, .regional-sale-price",
         )
         .forEach((i) => (i.disabled = !enabled));
     });
@@ -610,7 +610,7 @@ function collectRegionalPayloadFromUI() {
 
     const price = Number(row.querySelector(".regional-price")?.value || 0);
     const salePrice = Number(
-      row.querySelector(".regional-sale-price")?.value || 0
+      row.querySelector(".regional-sale-price")?.value || 0,
     );
     const stock = Number(row.querySelector(".regional-stock")?.value || 0);
 
@@ -671,7 +671,7 @@ async function editProduct(productId) {
       "productDescription",
       typeof product.description === "object"
         ? product.description.short
-        : product.description
+        : product.description,
     );
 
     set("productSku", product.sku);
@@ -682,7 +682,7 @@ async function editProduct(productId) {
 
     set(
       "productAvailability",
-      mapBackendStockStatusToUI(product.availability?.stockStatus)
+      mapBackendStockStatusToUI(product.availability?.stockStatus),
     );
 
     document
@@ -823,7 +823,7 @@ async function editProduct(productId) {
             const row = [
               ...document.querySelectorAll("#regionalSettingsTableBody tr"),
             ].find(
-              (r) => r.querySelector(".regional-region")?.value === seo.region
+              (r) => r.querySelector(".regional-region")?.value === seo.region,
             );
 
             if (!row) return;
@@ -869,7 +869,7 @@ async function editProduct(productId) {
 
 function buildProductPayload() {
   const availability = mapUIAvailabilityToBackend(
-    productForm.productAvailability.value
+    productForm.productAvailability.value,
   );
 
   const isGlobal = isGlobalProductCheckbox?.checked === true;
@@ -1119,7 +1119,7 @@ function addCustomPlan() {
 
   plansList.insertAdjacentHTML(
     "beforeend",
-    renderPlanField(plan, window.planCount - 1)
+    renderPlanField(plan, window.planCount - 1),
   );
 
   wirePlanLogic(document.getElementById(`plan-${window.planCount}`));
@@ -1239,7 +1239,7 @@ function renderFaqItem(faq = {}, index) {
       <div class="mb-2">
         <label class="form-label">Answer</label>
         <textarea class="form-control faq-answer" rows="3">${escapeHtml(
-          faq.answer || ""
+          faq.answer || "",
         )}</textarea>
       </div>
 
@@ -1322,7 +1322,7 @@ async function saveProduct() {
 
     // If any region is checked, product cannot be global
     const anyRegionChecked = document.querySelector(
-      "#regionalSettingsTableBody .regional-available:checked"
+      "#regionalSettingsTableBody .regional-available:checked",
     );
 
     if (anyRegionChecked && isGlobalProductCheckbox?.checked) {
@@ -1336,7 +1336,7 @@ async function saveProduct() {
     ["isFeatured", "isPopular", "isBestSeller", "isTrending"].forEach(
       (flag) => {
         payload[flag] = payload[flag] === true;
-      }
+      },
     );
 
     /* ================= UPDATE ================= */
@@ -1369,7 +1369,7 @@ async function saveProduct() {
       const currentIds = currentFaqs.map((f) => f._id).filter(Boolean);
 
       const deletedIds = originalFaqIds.filter(
-        (oldId) => !currentIds.includes(oldId)
+        (oldId) => !currentIds.includes(oldId),
       );
 
       for (const faqId of deletedIds) {
@@ -1389,6 +1389,7 @@ async function saveProduct() {
         await uploadVariantImages(window.currentProductId, fresh.data.variants);
       }
 
+      showLoading(false); // ✅ STOP LOADER
       showProductSuccess("Product Updated Successfully");
       return;
     }
