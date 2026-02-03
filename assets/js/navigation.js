@@ -153,6 +153,14 @@ const NAV_CONFIG = {
       permission: "payments",
     },
     {
+      id: "autopay",
+      label: "Autopay",
+      icon: "bi-arrow-repeat",
+      href: "autopay.html",
+      hrefFromRoot: "pages/autopay.html",
+      permission: "autopay",
+    },
+    {
       id: "faq_management",
       label: "FAQ Management",
       icon: "bi-question-circle",
