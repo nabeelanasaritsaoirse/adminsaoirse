@@ -1,490 +1,557 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Privacy Policy - Epielio</title>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #f5f7fb;
+        color: #1a202c;
+      }
 
-        .container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 800px;
-            width: 100%;
-            padding: 40px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
+      /* TOP BAR */
+      .top-bar {
+        background: #000;
+        color: #fff;
+        text-align: center;
+        font-size: 13px;
+        padding: 8px;
+      }
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+      /* NAVBAR */
+      .navbar {
+        background: #0b1c74;
+        padding: 16px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #fff;
+      }
 
-        .logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            margin: 0 auto 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 36px;
-            color: white;
-        }
+      .navbar .logo {
+        font-weight: 700;
+        font-size: 18px;
+      }
 
-        h1 {
-            color: #2d3748;
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
+      .navbar .nav-right {
+        display: flex;
+        gap: 20px;
+        font-size: 14px;
+      }
 
-        .subtitle {
-            color: #718096;
-            font-size: 16px;
-        }
+      /* PAGE */
+      .page-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
 
-        .last-updated {
-            color: #667eea;
-            font-size: 14px;
-            margin-top: 10px;
-            font-weight: 500;
-        }
+      .page-header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
 
-        .section {
-            background: #f7fafc;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
+      .page-header h1 {
+        font-size: 34px;
+        margin-bottom: 8px;
+      }
 
-        .section h2 {
-            color: #2d3748;
-            font-size: 20px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+      .page-header p {
+        color: #718096;
+        font-size: 16px;
+      }
 
-        .section h3 {
-            color: #4a5568;
-            font-size: 16px;
-            margin: 15px 0 10px 0;
-        }
+      .last-updated {
+        color: #667eea;
+        font-size: 14px;
+        margin-top: 10px;
+        font-weight: 500;
+      }
 
-        .section p {
-            color: #4a5568;
-            font-size: 14px;
-            line-height: 1.7;
-            margin-bottom: 10px;
-        }
+      /* CONTENT SECTIONS */
+      .section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 28px;
+        margin-bottom: 24px;
+      }
 
-        .data-list {
-            list-style: none;
-            margin: 15px 0;
-        }
+      .section h2 {
+        font-size: 20px;
+        margin-bottom: 14px;
+      }
 
-        .data-list li {
-            padding: 10px 0;
-            border-bottom: 1px solid #e2e8f0;
-            color: #4a5568;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            font-size: 14px;
-            line-height: 1.6;
-        }
+      .section h3 {
+        font-size: 16px;
+        margin: 16px 0 10px;
+      }
 
-        .data-list li:last-child {
-            border-bottom: none;
-        }
+      .section p {
+        font-size: 14px;
+        color: #4a5568;
+        line-height: 1.7;
+        margin-bottom: 10px;
+      }
 
-        .data-list li::before {
-            content: "•";
-            color: #667eea;
-            font-weight: bold;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
+      .data-list {
+        list-style: none;
+        margin-top: 12px;
+      }
 
-        .info-box {
-            background: #ebf8ff;
-            border: 2px solid #63b3ed;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-        }
+      .data-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 14px;
+        color: #4a5568;
+      }
 
-        .info-box p {
-            color: #2c5282;
-            font-size: 14px;
-            margin: 0;
-        }
+      .data-list li:last-child {
+        border-bottom: none;
+      }
 
-        .warning-box {
-            background: #fffaf0;
-            border: 2px solid #ed8936;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-        }
+      /* INFO / WARNING */
+      .info-box {
+        background: #ebf8ff;
+        border: 1px solid #63b3ed;
+        border-radius: 8px;
+        padding: 14px;
+        margin-top: 16px;
+      }
 
-        .warning-box p {
-            color: #744210;
-            font-size: 14px;
-            margin: 0;
-        }
+      .warning-box {
+        background: #fffaf0;
+        border: 1px solid #ed8936;
+        border-radius: 8px;
+        padding: 14px;
+        margin-top: 16px;
+      }
 
-        .table-container {
-            overflow-x: auto;
-            margin: 15px 0;
-        }
+      /* TABLE */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        margin-top: 10px;
+      }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+      }
 
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-        }
+      th {
+        background: #667eea;
+        color: #fff;
+      }
 
-        th {
-            background: #667eea;
-            color: white;
-            font-weight: 600;
-        }
+      /* BUTTONS */
+      .button-container {
+        text-align: center;
+        margin-top: 40px;
+      }
 
-        td {
-            color: #4a5568;
-        }
+      .btn {
+        display: inline-block;
+        padding: 12px 26px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        margin: 5px;
+      }
 
-        tr:hover {
-            background: #f7fafc;
-        }
+      /* FOOTER */
+      footer {
+        background: #fff;
+        border-top: 1px solid #e2e8f0;
+        padding: 40px 20px;
+        margin-top: 60px;
+      }
 
-        .contact-info {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #e2e8f0;
-            color: #718096;
-            font-size: 14px;
-        }
+      .footer-grid {
+        max-width: 1200px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 30px;
+        font-size: 14px;
+      }
 
-        .contact-info a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
+      footer h4 {
+        margin-bottom: 12px;
+      }
 
-        .contact-info a:hover {
-            text-decoration: underline;
-        }
+      footer a,
+      footer p {
+        color: #4a5568;
+        text-decoration: none;
+        margin-bottom: 6px;
+        display: block;
+      }
 
-        .btn {
-            display: inline-block;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            margin: 5px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .button-container {
-            text-align: center;
-            margin-top: 30px;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 30px 20px;
-            }
-
-            h1 {
-                font-size: 24px;
-            }
-
-            .section h2 {
-                font-size: 18px;
-            }
-
-            table {
-                font-size: 12px;
-            }
-
-            th, td {
-                padding: 8px;
-            }
-        }
+      .footer-bottom {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 13px;
+        color: #718096;
+      }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">🔒</div>
-            <h1>Privacy Policy</h1>
-            <p class="subtitle">Your privacy is important to us</p>
-            <p class="last-updated">Last Updated: January 19, 2026</p>
-        </div>
+  </head>
 
-        <!-- Introduction -->
-        <div class="section">
-            <h2>📋 Introduction</h2>
-            <p>
-                Welcome to Epielio ("we," "our," or "us"). This Privacy Policy explains how we collect, use, disclose,
-                and safeguard your information when you use our mobile application and services. Please read this
-                privacy policy carefully. By using the Epielio app, you agree to the collection and use of information
-                in accordance with this policy.
-            </p>
-        </div>
+  <body>
 
-        <!-- Information We Collect -->
-        <div class="section">
-            <h2>📱 Information We Collect</h2>
-
-            <h3>Personal Information</h3>
-            <p>We collect information that you provide directly to us:</p>
-            <ul class="data-list">
-                <li><strong>Contact Information:</strong> Name, email address, phone number</li>
-                <li><strong>Account Information:</strong> Username, password, profile picture</li>
-                <li><strong>Identity Verification:</strong> KYC documents (ID proof, address proof) for compliance purposes</li>
-                <li><strong>Financial Information:</strong> Bank account details, UPI ID, wallet transactions</li>
-                <li><strong>Address Information:</strong> Delivery addresses, billing addresses</li>
-                <li><strong>Order Information:</strong> Purchase history, order preferences</li>
-            </ul>
-
-            <h3>Automatically Collected Information</h3>
-            <p>When you use our app, we automatically collect:</p>
-            <ul class="data-list">
-                <li><strong>Device Information:</strong> Device type, operating system, unique device identifiers</li>
-                <li><strong>Usage Data:</strong> App interactions, features used, time spent on app</li>
-                <li><strong>Location Data:</strong> Approximate location for delivery services (with your permission)</li>
-                <li><strong>Log Data:</strong> IP address, access times, app crashes and errors</li>
-            </ul>
-        </div>
-
-        <!-- How We Use Your Information -->
-        <div class="section">
-            <h2>🎯 How We Use Your Information</h2>
-            <p>We use the collected information for the following purposes:</p>
-            <ul class="data-list">
-                <li>To create and manage your account</li>
-                <li>To process orders and transactions</li>
-                <li>To provide customer support and respond to inquiries</li>
-                <li>To send order updates, notifications, and promotional communications</li>
-                <li>To verify your identity and prevent fraud</li>
-                <li>To improve our app and services</li>
-                <li>To comply with legal obligations</li>
-                <li>To process referral rewards and wallet transactions</li>
-            </ul>
-        </div>
-
-        <!-- Data Collection Summary Table -->
-        <div class="section">
-            <h2>📊 Data Collection Summary</h2>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Data Type</th>
-                            <th>Purpose</th>
-                            <th>Shared with Third Parties</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Contact Info (Email, Phone)</td>
-                            <td>Account creation, Communication</td>
-                            <td>No</td>
-                        </tr>
-                        <tr>
-                            <td>User Identifiers</td>
-                            <td>Authentication, Analytics</td>
-                            <td>Analytics providers only</td>
-                        </tr>
-                        <tr>
-                            <td>Financial Data</td>
-                            <td>Payment processing, Wallet</td>
-                            <td>Payment processors only</td>
-                        </tr>
-                        <tr>
-                            <td>Location Data</td>
-                            <td>Delivery services</td>
-                            <td>Delivery partners only</td>
-                        </tr>
-                        <tr>
-                            <td>Usage Data</td>
-                            <td>App improvement, Analytics</td>
-                            <td>Analytics providers</td>
-                        </tr>
-                        <tr>
-                            <td>KYC Documents</td>
-                            <td>Identity verification, Compliance</td>
-                            <td>No</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Data Sharing -->
-        <div class="section">
-            <h2>🤝 Data Sharing and Disclosure</h2>
-            <p>We may share your information with:</p>
-            <ul class="data-list">
-                <li><strong>Service Providers:</strong> Third-party vendors who assist in providing our services (payment processors, delivery partners, cloud storage providers)</li>
-                <li><strong>Legal Requirements:</strong> When required by law, legal process, or government request</li>
-                <li><strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
-                <li><strong>With Your Consent:</strong> When you have given explicit permission</li>
-            </ul>
-
-            <div class="info-box">
-                <p><strong>Note:</strong> We do NOT sell your personal information to third parties for marketing purposes.</p>
-            </div>
-        </div>
-
-        <!-- Data Security -->
-        <div class="section">
-            <h2>🔐 Data Security</h2>
-            <p>
-                We implement appropriate technical and organizational security measures to protect your personal
-                information against unauthorized access, alteration, disclosure, or destruction. These measures include:
-            </p>
-            <ul class="data-list">
-                <li>Encryption of data in transit and at rest</li>
-                <li>Secure authentication mechanisms</li>
-                <li>Regular security assessments and updates</li>
-                <li>Limited access to personal information by employees</li>
-                <li>Secure data centers with physical security measures</li>
-            </ul>
-        </div>
-
-        <!-- Data Retention -->
-        <div class="section">
-            <h2>⏱️ Data Retention</h2>
-            <p>
-                We retain your personal information for as long as necessary to fulfill the purposes outlined in this
-                privacy policy, unless a longer retention period is required by law. Specifically:
-            </p>
-            <ul class="data-list">
-                <li><strong>Account Data:</strong> Retained until you delete your account</li>
-                <li><strong>Transaction Records:</strong> Retained for 7 years for legal/tax compliance</li>
-                <li><strong>KYC Documents:</strong> Retained as required by regulatory requirements</li>
-                <li><strong>Usage Data:</strong> Retained for 2 years for analytics purposes</li>
-            </ul>
-
-            <div class="warning-box">
-                <p><strong>Account Deletion:</strong> When you request account deletion, your data will be permanently removed within 30 days, except where retention is required by law.</p>
-            </div>
-        </div>
-
-        <!-- Your Rights -->
-        <div class="section">
-            <h2>⚖️ Your Rights</h2>
-            <p>You have the following rights regarding your personal information:</p>
-            <ul class="data-list">
-                <li><strong>Access:</strong> Request a copy of your personal data</li>
-                <li><strong>Correction:</strong> Request correction of inaccurate data</li>
-                <li><strong>Deletion:</strong> Request deletion of your account and data</li>
-                <li><strong>Portability:</strong> Request transfer of your data in a machine-readable format</li>
-                <li><strong>Opt-out:</strong> Opt out of marketing communications at any time</li>
-                <li><strong>Withdraw Consent:</strong> Withdraw consent for data processing where applicable</li>
-            </ul>
-            <p>
-                To exercise any of these rights, please contact us at <a href="mailto:support@epielio.com" style="color: #667eea;">support@epielio.com</a>
-            </p>
-        </div>
-
-        <!-- Third-Party Services -->
-        <div class="section">
-            <h2>🔗 Third-Party Services</h2>
-            <p>Our app may contain links to third-party websites or integrate with third-party services. We use the following third-party services:</p>
-            <ul class="data-list">
-                <li><strong>Firebase:</strong> For authentication, analytics, and push notifications</li>
-                <li><strong>Payment Gateways:</strong> For processing payments securely</li>
-                <li><strong>Cloud Services:</strong> For data storage and hosting</li>
-            </ul>
-            <p>
-                These third-party services have their own privacy policies, and we encourage you to review them.
-                We are not responsible for the privacy practices of third-party services.
-            </p>
-        </div>
-
-        <!-- Children's Privacy -->
-        <div class="section">
-            <h2>👶 Children's Privacy</h2>
-            <p>
-                Our services are not intended for children under 18 years of age. We do not knowingly collect
-                personal information from children under 18. If you are a parent or guardian and believe your
-                child has provided us with personal information, please contact us immediately.
-            </p>
-        </div>
-
-        <!-- Updates to Privacy Policy -->
-        <div class="section">
-            <h2>📝 Changes to This Policy</h2>
-            <p>
-                We may update this Privacy Policy from time to time. We will notify you of any changes by posting
-                the new Privacy Policy on this page and updating the "Last Updated" date. You are advised to review
-                this Privacy Policy periodically for any changes.
-            </p>
-        </div>
-
-        <!-- Contact Information -->
-        <div class="section">
-            <h2>📞 Contact Us</h2>
-            <p>If you have any questions about this Privacy Policy or our data practices, please contact us:</p>
-            <ul class="data-list">
-                <li><strong>Email:</strong> <a href="mailto:support@epielio.com" style="color: #667eea;">support@epielio.com</a></li>
-                <li><strong>Website:</strong> <a href="https://epielio.com" style="color: #667eea;">https://epielio.com</a></li>
-            </ul>
-        </div>
-
-        <div class="button-container">
-            <a href="https://epielio.com" class="btn btn-primary">Go to Homepage</a>
-            <a href="delete_user.html" class="btn btn-primary">Delete My Account</a>
-        </div>
-
-        <div class="contact-info">
-            <p>&copy; 2026 Epielio. All rights reserved.</p>
-            <p>This privacy policy is effective as of January 19, 2026</p>
-        </div>
+    <div class="navbar">
+      <div class="logo">EPI • Easy Purchase Investment</div>
+      <div class="nav-right">
+        <!-- <span>Cart</span>
+        <span>My Orders</span>
+        <span>Login / Register</span> -->
+      </div>
     </div>
-</body>
+
+    <div class="page-container">
+      <div class="page-header">
+        <h1>Privacy Policy</h1>
+        <p>Your privacy is important to us</p>
+        <p class="last-updated">Last Updated: January 19, 2026</p>
+      </div>
+
+      <!-- Introduction -->
+      <div class="section">
+        <h2>📋 Introduction</h2>
+        <p>
+          Welcome to Epielio ("we," "our," or "us"). This Privacy Policy
+          explains how we collect, use, disclose, and safeguard your information
+          when you use our mobile application and services. Please read this
+          privacy policy carefully. By using the Epielio app, you agree to the
+          collection and use of information in accordance with this policy.
+        </p>
+      </div>
+
+      <!-- Information We Collect -->
+      <div class="section">
+        <h2>📱 Information We Collect</h2>
+
+        <h3>Personal Information</h3>
+        <p>We collect information that you provide directly to us:</p>
+        <ul class="data-list">
+          <li>
+            <strong>Contact Information:</strong> Name, email address, phone
+            number
+          </li>
+          <li>
+            <strong>Account Information:</strong> Username, password, profile
+            picture
+          </li>
+          <li>
+            <strong>Identity Verification:</strong> KYC documents (ID proof,
+            address proof) for compliance purposes
+          </li>
+          <li>
+            <strong>Financial Information:</strong> Bank account details, UPI
+            ID, wallet transactions
+          </li>
+          <li>
+            <strong>Address Information:</strong> Delivery addresses, billing
+            addresses
+          </li>
+          <li>
+            <strong>Order Information:</strong> Purchase history, order
+            preferences
+          </li>
+        </ul>
+
+        <h3>Automatically Collected Information</h3>
+        <p>When you use our app, we automatically collect:</p>
+        <ul class="data-list">
+          <li>
+            <strong>Device Information:</strong> Device type, operating system,
+            unique device identifiers
+          </li>
+          <li>
+            <strong>Usage Data:</strong> App interactions, features used, time
+            spent on app
+          </li>
+          <li>
+            <strong>Location Data:</strong> Approximate location for delivery
+            services (with your permission)
+          </li>
+          <li>
+            <strong>Log Data:</strong> IP address, access times, app crashes and
+            errors
+          </li>
+        </ul>
+      </div>
+
+      <!-- How We Use Your Information -->
+      <div class="section">
+        <h2>🎯 How We Use Your Information</h2>
+        <p>We use the collected information for the following purposes:</p>
+        <ul class="data-list">
+          <li>To create and manage your account</li>
+          <li>To process orders and transactions</li>
+          <li>To provide customer support and respond to inquiries</li>
+          <li>
+            To send order updates, notifications, and promotional communications
+          </li>
+          <li>To verify your identity and prevent fraud</li>
+          <li>To improve our app and services</li>
+          <li>To comply with legal obligations</li>
+          <li>To process referral rewards and wallet transactions</li>
+        </ul>
+      </div>
+
+      <!-- Data Collection Summary Table -->
+      <div class="section">
+        <h2>📊 Data Collection Summary</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Data Type</th>
+                <th>Purpose</th>
+                <th>Shared with Third Parties</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Contact Info (Email, Phone)</td>
+                <td>Account creation, Communication</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td>User Identifiers</td>
+                <td>Authentication, Analytics</td>
+                <td>Analytics providers only</td>
+              </tr>
+              <tr>
+                <td>Financial Data</td>
+                <td>Payment processing, Wallet</td>
+                <td>Payment processors only</td>
+              </tr>
+              <tr>
+                <td>Location Data</td>
+                <td>Delivery services</td>
+                <td>Delivery partners only</td>
+              </tr>
+              <tr>
+                <td>Usage Data</td>
+                <td>App improvement, Analytics</td>
+                <td>Analytics providers</td>
+              </tr>
+              <tr>
+                <td>KYC Documents</td>
+                <td>Identity verification, Compliance</td>
+                <td>No</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Data Sharing -->
+      <div class="section">
+        <h2>🤝 Data Sharing and Disclosure</h2>
+        <p>We may share your information with:</p>
+        <ul class="data-list">
+          <li>
+            <strong>Service Providers:</strong> Third-party vendors who assist
+            in providing our services (payment processors, delivery partners,
+            cloud storage providers)
+          </li>
+          <li>
+            <strong>Legal Requirements:</strong> When required by law, legal
+            process, or government request
+          </li>
+          <li>
+            <strong>Business Transfers:</strong> In connection with a merger,
+            acquisition, or sale of assets
+          </li>
+          <li>
+            <strong>With Your Consent:</strong> When you have given explicit
+            permission
+          </li>
+        </ul>
+
+        <div class="info-box">
+          <p>
+            <strong>Note:</strong> We do NOT sell your personal information to
+            third parties for marketing purposes.
+          </p>
+        </div>
+      </div>
+
+      <!-- Data Security -->
+      <div class="section">
+        <h2>🔐 Data Security</h2>
+        <p>
+          We implement appropriate technical and organizational security
+          measures to protect your personal information against unauthorized
+          access, alteration, disclosure, or destruction. These measures
+          include:
+        </p>
+        <ul class="data-list">
+          <li>Encryption of data in transit and at rest</li>
+          <li>Secure authentication mechanisms</li>
+          <li>Regular security assessments and updates</li>
+          <li>Limited access to personal information by employees</li>
+          <li>Secure data centers with physical security measures</li>
+        </ul>
+      </div>
+
+      <!-- Data Retention -->
+      <div class="section">
+        <h2>⏱️ Data Retention</h2>
+        <p>
+          We retain your personal information for as long as necessary to
+          fulfill the purposes outlined in this privacy policy, unless a longer
+          retention period is required by law. Specifically:
+        </p>
+        <ul class="data-list">
+          <li>
+            <strong>Account Data:</strong> Retained until you delete your
+            account
+          </li>
+          <li>
+            <strong>Transaction Records:</strong> Retained for 7 years for
+            legal/tax compliance
+          </li>
+          <li>
+            <strong>KYC Documents:</strong> Retained as required by regulatory
+            requirements
+          </li>
+          <li>
+            <strong>Usage Data:</strong> Retained for 2 years for analytics
+            purposes
+          </li>
+        </ul>
+
+        <div class="warning-box">
+          <p>
+            <strong>Account Deletion:</strong> When you request account
+            deletion, your data will be permanently removed within 30 days,
+            except where retention is required by law.
+          </p>
+        </div>
+      </div>
+
+      <!-- Your Rights -->
+      <div class="section">
+        <h2>⚖️ Your Rights</h2>
+        <p>
+          You have the following rights regarding your personal information:
+        </p>
+        <ul class="data-list">
+          <li><strong>Access:</strong> Request a copy of your personal data</li>
+          <li>
+            <strong>Correction:</strong> Request correction of inaccurate data
+          </li>
+          <li>
+            <strong>Deletion:</strong> Request deletion of your account and data
+          </li>
+          <li>
+            <strong>Portability:</strong> Request transfer of your data in a
+            machine-readable format
+          </li>
+          <li>
+            <strong>Opt-out:</strong> Opt out of marketing communications at any
+            time
+          </li>
+          <li>
+            <strong>Withdraw Consent:</strong> Withdraw consent for data
+            processing where applicable
+          </li>
+        </ul>
+        <p>
+          To exercise any of these rights, please contact us at
+          <a href="mailto:support@epielio.com" style="color: #667eea"
+            >support@epielio.com</a
+          >
+        </p>
+      </div>
+
+      <!-- Third-Party Services -->
+      <div class="section">
+        <h2>🔗 Third-Party Services</h2>
+        <p>
+          Our app may contain links to third-party websites or integrate with
+          third-party services. We use the following third-party services:
+        </p>
+        <ul class="data-list">
+          <li>
+            <strong>Firebase:</strong> For authentication, analytics, and push
+            notifications
+          </li>
+          <li>
+            <strong>Payment Gateways:</strong> For processing payments securely
+          </li>
+          <li><strong>Cloud Services:</strong> For data storage and hosting</li>
+        </ul>
+        <p>
+          These third-party services have their own privacy policies, and we
+          encourage you to review them. We are not responsible for the privacy
+          practices of third-party services.
+        </p>
+      </div>
+
+      <!-- Children's Privacy -->
+      <div class="section">
+        <h2>👶 Children's Privacy</h2>
+        <p>
+          Our services are not intended for children under 18 years of age. We
+          do not knowingly collect personal information from children under 18.
+          If you are a parent or guardian and believe your child has provided us
+          with personal information, please contact us immediately.
+        </p>
+      </div>
+
+      <!-- Updates to Privacy Policy -->
+      <div class="section">
+        <h2>📝 Changes to This Policy</h2>
+        <p>
+          We may update this Privacy Policy from time to time. We will notify
+          you of any changes by posting the new Privacy Policy on this page and
+          updating the "Last Updated" date. You are advised to review this
+          Privacy Policy periodically for any changes.
+        </p>
+      </div>
+
+      <div class="button-container">
+        <a href="https://epielio.com" class="btn">Go to Homepage</a>
+        <a href="delete_user.html" class="btn">Delete My Account</a>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-grid">
+        <div>
+          <h4>EPI - Easy Purchase Investment</h4>
+          <p>(+91) 98567 1748</p>
+          <p>Kerala, India</p>
+        </div>
+
+        <div>
+          <h4>Help Center</h4>
+          <a href="privacy_policy.html">Privacy Policy</a>
+          <a href="terms_and_conditions.html">Terms & Conditions</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">© 2026 epielio.com — All rights reserved</div>
+    </footer>
+  </body>
 </html>

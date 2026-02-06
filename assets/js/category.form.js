@@ -221,20 +221,25 @@ function renderTypedImagePreview(categoryImages = []) {
               <div class="badge bg-secondary text-capitalize">${img.type}</div>
             </div>
           </div>
-        `
+        `,
         )
         .join("")}
     </div>
   `;
 
-  // 🔥 APPLY PREVIEW TO INPUT CARDS
+  // ✅ MARK INPUT CARDS AS HAVING IMAGE (NO CSS BACKGROUND PREVIEW)
   document.querySelectorAll(".category-image-card").forEach((card) => {
     const type = card.dataset.imageType;
+
     if (imageMap[type]?.url) {
-      card.style.setProperty("--preview-image", `url(${imageMap[type].url})`);
+      // Keep class ONLY for label/state logic
       card.classList.add("has-image");
+
+      // 🔥 IMPORTANT: remove any leftover inline preview vars
+      card.style.removeProperty("--preview-image");
     } else {
       card.classList.remove("has-image");
+      card.style.removeProperty("--preview-image");
     }
   });
 
@@ -267,7 +272,7 @@ function renderBannerPreview(banners = []) {
               <div class="badge bg-dark">Banner</div>
             </div>
           </div>
-        `
+        `,
         )
         .join("")}
     </div>
@@ -358,7 +363,7 @@ async function saveCategory() {
     console.error(err);
     adminPanel.showNotification(
       err?.response?.data?.message || "Image upload failed",
-      "error"
+      "error",
     );
   } finally {
     showLoading(false);
@@ -414,7 +419,7 @@ async function uploadCategoryImages(categoryId) {
         Authorization: `Bearer ${token}`,
       },
       body: fd,
-    }
+    },
   );
 
   if (!res.ok) {
@@ -445,7 +450,7 @@ async function uploadCategoryBanners(categoryId) {
         Authorization: `Bearer ${token}`,
       },
       body: fd,
-    }
+    },
   );
 
   if (!res.ok) {

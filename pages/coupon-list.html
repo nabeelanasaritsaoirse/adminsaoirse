@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel - Coupon List</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <link rel="stylesheet" href="../assets/css/responsive.css" />
+  </head>
+
+  <body>
+    <!-- Config -->
+    <script src="../assets/js/config.js"></script>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <button class="btn btn-dark" id="sidebarToggle">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <a class="navbar-brand ms-3" href="../index.html">
+          <i class="bi bi-gear-fill"></i> Admin Panel
+        </a>
+      </div>
+    </nav>
+
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h1 class="h2">All Coupons</h1>
+          <a href="coupons.html" class="btn btn-primary">
+            + Create New Coupon
+          </a>
+        </div>
+
+        <div id="couponAlert"></div>
+
+        <!-- 🔎 SEARCH + FILTERS (ADDED) -->
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-4">
+                <label class="form-label">Search Coupon Code</label>
+                <input
+                  type="text"
+                  id="couponSearch"
+                  class="form-control"
+                  placeholder="Search by code..."
+                  oninput="applySearchAndFilters()"
+                />
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select
+                  id="filterStatus"
+                  class="form-select"
+                  onchange="applySearchAndFilters()"
+                >
+                  <option value="ALL">All</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label">Type</label>
+                <select
+                  id="filterType"
+                  class="form-select"
+                  onchange="applySearchAndFilters()"
+                >
+                  <option value="ALL">All</option>
+                  <option value="REFERRAL">Referral</option>
+                  <option value="PERSONAL">Personal</option>
+                </select>
+              </div>
+
+              <div class="col-md-2">
+                <button
+                  class="btn btn-outline-secondary w-100"
+                  onclick="applySearchAndFilters()"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 🔎 END SEARCH + FILTERS -->
+
+        <!-- COUPON TABLE -->
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Discount</th>
+                    <th>Usage</th>
+                    <th>Expiry</th>
+                    <th>Status</th>
+                    <th>Flags</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="couponListTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center text-muted">
+                      Loading coupons...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USAGE HISTORY MODAL -->
+    <div class="modal fade" id="usageModal" tabindex="-1">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Coupon Usage History</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <div id="usageModalAlert"></div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <thead class="table-light">
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Order ID</th>
+                    <th>Product</th>
+                    <th>Discount</th>
+                    <th>Used At</th>
+                  </tr>
+                </thead>
+                <tbody id="usageHistoryTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center text-muted">
+                      Loading usage history...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- VIEW COUPON DETAILS MODAL (API #5) -->
+    <div class="modal fade" id="couponDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Coupon Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+
+          <div class="modal-body">
+            <div id="couponDetailsAlert"></div>
+
+            <div class="row">
+              <div class="col-md-6 mb-2">
+                <strong>Coupon Code:</strong>
+                <div id="detailCouponCode"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Coupon Type:</strong>
+                <div id="detailCouponType"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Discount:</strong>
+                <div id="detailDiscount"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Min Order Value:</strong>
+                <div id="detailMinOrder"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Max Usage:</strong>
+                <div id="detailMaxUsage"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Usage Per User:</strong>
+                <div id="detailUsagePerUser"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Payment Methods:</strong>
+                <div id="detailPaymentMethods"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Stackable:</strong>
+                <div id="detailStackable"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Win-Back Coupon:</strong>
+                <div id="detailWinBack"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>First-Time Only:</strong>
+                <div id="detailFirstTime"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Expiry Date:</strong>
+                <div id="detailExpiry"></div>
+              </div>
+
+              <div class="col-md-6 mb-2">
+                <strong>Status:</strong>
+                <div id="detailStatus"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/navigation.js"></script>
+    <script src="../assets/js/coupon-list.js"></script>
+  </body>
+</html>
