@@ -563,3 +563,16 @@ body.welcome-page #sidebar {
     #categoryImagesPreview .border {
   background: #fafafa;
 }
+.card h6 {
+  font-weight: 600;
+}
+
+.badge {
+  font-weight: 500;
+}
+
+.table th {
+  color: #6c757d;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
