@@ -54,37 +54,96 @@ document.addEventListener("DOMContentLoaded", function () {
   const isStackableInput = document.getElementById("isStackable");
   const stackPriorityRow = document.getElementById("stackPriorityRow");
   // ===============================
-  // REFERRAL COUPON - LOAD USERS
+  // ASYNC SEARCHABLE USER DROPDOWN
   // ===============================
-  loadReferralUsers();
 
-  async function loadReferralUsers() {
-    const select = document.getElementById("referralUserSelect");
-    if (!select) return;
+  const userSearchInput = document.getElementById("referralUserSearch");
+  const userDropdown = document.getElementById("referralUserDropdown");
+  const hiddenUserInput = document.getElementById("referralUserSelect");
+
+  let userSearchTimeout = null;
+  let isLoadingUsers = false;
+
+  if (userSearchInput) {
+    userSearchInput.addEventListener("input", () => {
+      clearTimeout(userSearchTimeout);
+
+      const query = userSearchInput.value.trim();
+
+      if (query.length < 2) {
+        userDropdown.style.display = "none";
+        return;
+      }
+
+      userSearchTimeout = setTimeout(() => {
+        searchUsers(query);
+      }, 400);
+    });
+  }
+
+  async function searchUsers(searchQuery) {
+    if (isLoadingUsers) return;
+    isLoadingUsers = true;
 
     try {
-      const res = await API.request(
-        API.buildURL(API_CONFIG.endpoints.users.getAll),
-        { method: "GET", headers: AUTH.getAuthHeaders() },
+      const token = localStorage.getItem("epi_admin_token");
+
+      const res = await fetch(
+        `${BASE_URL}/users/admin?page=1&limit=10&search=${encodeURIComponent(searchQuery)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
-      const users = res.data || res || [];
+      if (!res.ok) throw new Error("Failed to fetch users");
 
-      select.innerHTML = `<option value="">Select a user</option>`;
+      const result = await res.json();
+      const users = Array.isArray(result.data)
+        ? result.data
+        : result.data?.users || result.users || [];
 
-      users
-        .filter((u) => u.role === "user" && u.isActive)
-        .forEach((u) => {
-          select.innerHTML += `
-          <option value="${u._id}">
-            ${u.name} — ${u.email}
-          </option>
-        `;
-        });
+      renderUserDropdown(users);
     } catch (err) {
-      console.error("Failed to load referral users:", err);
-      select.innerHTML = `<option value="">Failed to load users</option>`;
+      console.error("User search failed:", err);
+      userDropdown.innerHTML = `<div class="list-group-item text-danger">Error loading users</div>`;
+      userDropdown.style.display = "block";
+    } finally {
+      isLoadingUsers = false;
     }
+  }
+
+  function renderUserDropdown(users) {
+    if (!users.length) {
+      userDropdown.innerHTML = `<div class="list-group-item text-muted">No users found</div>`;
+      userDropdown.style.display = "block";
+      return;
+    }
+
+    userDropdown.innerHTML = users
+      .map(
+        (u) => `
+        <button type="button"
+          class="list-group-item list-group-item-action"
+          data-id="${u._id}"
+          data-name="${u.name}"
+          data-email="${u.email}">
+          ${u.name} — ${u.email}
+        </button>
+      `,
+      )
+      .join("");
+
+    userDropdown.style.display = "block";
+
+    document.querySelectorAll("#referralUserDropdown button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        hiddenUserInput.value = btn.dataset.id;
+        userSearchInput.value = `${btn.dataset.name} — ${btn.dataset.email}`;
+        userDropdown.style.display = "none";
+      });
+    });
   }
 
   couponTypeInput.addEventListener("change", () => {

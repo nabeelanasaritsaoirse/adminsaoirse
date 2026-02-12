@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       successType === "created"
         ? "Category created successfully"
         : "Category updated successfully",
-      "success"
+      "success",
     );
 
     sessionStorage.removeItem("categorySuccess");
@@ -41,7 +41,7 @@ async function loadCategories() {
     const response = await API.get(
       "/categories/admin/all",
       {},
-      { isActive: "all" }
+      { isActive: "all" },
     );
 
     let data = [];
@@ -81,13 +81,13 @@ function updateStats() {
 
   document.getElementById("totalCategoriesCount").textContent = list.length;
   document.getElementById("activeCategoriesCount").textContent = list.filter(
-    (c) => c.isActive
+    (c) => c.isActive,
   ).length;
   document.getElementById("featuredCategoriesCount").textContent = list.filter(
-    (c) => c.isFeatured && c.isActive
+    (c) => c.isFeatured && c.isActive,
   ).length;
   document.getElementById("rootCategoriesCount").textContent = list.filter(
-    (c) => !c.parentCategoryId
+    (c) => !c.parentCategoryId,
   ).length;
 }
 
@@ -105,7 +105,7 @@ function getFilteredCategories() {
   if (q) {
     list = list.filter(
       (c) =>
-        c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q)
+        c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q),
     );
   }
 
@@ -149,12 +149,24 @@ function renderCategories() {
    ========================= */
 
 function renderTreeView(container, data) {
-  const roots = data.filter((c) => !c.parentCategoryId);
-
   const ul = document.createElement("ul");
   ul.className = "list-unstyled";
 
-  roots.forEach((r) => ul.appendChild(renderTreeNode(r, data)));
+  const selectedLevel = document.getElementById("levelFilter")?.value;
+
+  let roots;
+
+  if (!selectedLevel) {
+    // Normal behavior → build real tree
+    roots = data.filter((c) => !c.parentCategoryId);
+  } else {
+    // When filtering by level → render flat list
+    roots = data;
+  }
+
+  roots.forEach((r) => {
+    ul.appendChild(renderTreeNode(r, data));
+  });
 
   container.innerHTML = "";
   container.appendChild(ul);
@@ -272,7 +284,7 @@ function renderListView(container, data) {
                 <i class="bi bi-pencil"></i>
               </button>
             </td>
-          </tr>`
+          </tr>`,
           )
           .join("")}
       </tbody>
@@ -295,7 +307,7 @@ async function toggleCategoryStatus(id) {
   await API.put(
     "/categories/:categoryId",
     { isActive: !cat.isActive },
-    { categoryId: id }
+    { categoryId: id },
   );
   await loadCategories();
   updateStats();
@@ -306,7 +318,7 @@ async function toggleCategoryFeatured(id) {
   await API.put(
     "/categories/:categoryId/toggle-featured",
     {},
-    { categoryId: id }
+    { categoryId: id },
   );
   await loadCategories();
   updateStats();
@@ -338,12 +350,12 @@ async function deleteCategory(id) {
       await API.delete(
         "/categories/:categoryId",
         { categoryId: id },
-        { force: true }
+        { force: true },
       );
 
       adminPanel.showNotification(
         "Category and subcategories deleted",
-        "success"
+        "success",
       );
 
       await loadCategories();
@@ -354,11 +366,23 @@ async function deleteCategory(id) {
 
     adminPanel.showNotification(
       message || "Failed to delete category",
-      "error"
+      "error",
     );
   }
 }
+function resetFilters() {
+  const search = document.getElementById("searchInput");
+  const status = document.getElementById("statusFilter");
+  const level = document.getElementById("levelFilter");
+  const view = document.getElementById("viewMode");
 
+  if (search) search.value = "";
+  if (status) status.value = "";
+  if (level) level.value = "";
+  if (view) view.value = "tree";
+
+  renderCategories();
+}
 /* =========================
    EXPOSE
    ========================= */
@@ -368,3 +392,4 @@ window.filterCategories = filterCategories;
 window.toggleCategoryStatus = toggleCategoryStatus;
 window.toggleCategoryFeatured = toggleCategoryFeatured;
 window.deleteCategory = deleteCategory;
+window.resetFilters = resetFilters;
