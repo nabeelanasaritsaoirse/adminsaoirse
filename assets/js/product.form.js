@@ -1424,7 +1424,7 @@ async function saveProduct() {
     if (fresh?.data?.variants?.length) {
       await uploadVariantImages(productId, fresh.data.variants);
     }
-
+    showLoading(false);
     showProductSuccess("Product Created Successfully");
   } catch (err) {
     console.error("Save failed:", err);
