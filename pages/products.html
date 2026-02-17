@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -19,6 +19,10 @@
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"
     />
 
     <!-- Custom CSS -->
@@ -58,7 +62,7 @@
 
         if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
           alert(
-            "Access Denied! You do not have permission to access Products."
+            "Access Denied! You do not have permission to access Products.",
           );
           window.location.href = "dashboard.html";
         }
@@ -189,9 +193,19 @@
           </div>
 
           <div class="col-md-3">
-            <select class="form-select" id="productCategoryFilter">
-              <option value="">All Categories</option>
-            </select>
+            <div class="dropdown w-100">
+              <button
+                class="btn btn-light border w-100 text-start dropdown-toggle"
+                type="button"
+                id="productCategoryDropdown"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="true"
+              >
+                All Categories
+              </button>
+
+              <ul class="dropdown-menu w-100" id="productCategoryMenu"></ul>
+            </div>
           </div>
 
           <div class="col-md-2">
@@ -307,7 +321,7 @@
                   <div class="row mb-3">
                     <div class="col-md-4">
                       <label class="form-label">Availability *</label>
-                      <select id="productAvailability" class="form-control">
+                      <select id="productAvailability" class="form-select">
                         <option value="in-stock">In Stock</option>
                         <option value="out-of-stock">Out of Stock</option>
                         <option value="pre-order">Pre Order</option>
@@ -652,7 +666,7 @@
     <script src="../assets/js/main.js"></script>
     <script src="../assets/js/navigation.js"></script>
     <script src="../assets/js/product.shared.js"></script>
-    <script src="../assets/js/product.list.js"></script>
+    <script src="../assets/js/product.list.js?v=5"></script>
     <script src="../assets/js/product.form.js"></script>
     <script src="../assets/js/product.view.js"></script>
   </body>

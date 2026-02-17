@@ -153,15 +153,21 @@ function renderTreeView(container, data) {
   ul.className = "list-unstyled";
 
   const selectedLevel = document.getElementById("levelFilter")?.value;
+  const searchQuery = document.getElementById("searchInput")?.value?.trim();
 
   let roots;
 
-  if (!selectedLevel) {
-    // Normal behavior → build real tree
-    roots = data.filter((c) => !c.parentCategoryId);
-  } else {
-    // When filtering by level → render flat list
+  // 🔥 If searching → render flat list
+  if (searchQuery) {
     roots = data;
+  }
+  // If filtering by level → flat list
+  else if (selectedLevel) {
+    roots = data;
+  }
+  // Normal behavior → build tree
+  else {
+    roots = data.filter((c) => !c.parentCategoryId);
   }
 
   roots.forEach((r) => {

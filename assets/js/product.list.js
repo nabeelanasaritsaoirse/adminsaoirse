@@ -3,7 +3,6 @@
    Product listing, filters, pagination, rendering
    (NO form / modal logic here)
 ============================================================ */
-
 /* ---------- Pagination state (SAFE DEFAULT) ---------- */
 window.pagination = window.pagination || {
   page: 1,
@@ -11,7 +10,7 @@ window.pagination = window.pagination || {
   pages: 1,
   total: 0,
 };
-
+let selectedCategoryId = "";
 /* ---------- Products state (OLD CODE COMPATIBLE) ---------- */
 window.products = window.products || [];
 
@@ -25,12 +24,19 @@ let searchInput,
 let totalProductsCount, publishedCount, variantsCount, totalStockCount;
 
 /* ---------- Init ---------- */
-document.addEventListener("DOMContentLoaded", () => {
+function initPage() {
   initListDOM();
   initListEvents();
-  loadCategories();
+  loadListCategories();
   loadProducts();
-});
+}
+
+// If DOM already loaded → run immediately
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initPage);
+} else {
+  initPage();
+}
 
 /* ---------- DOM Init ---------- */
 function initListDOM() {
@@ -54,7 +60,7 @@ function initListEvents() {
       "input",
       window.utils
         ? window.utils.debounce(filterProducts, 300)
-        : debounce(filterProducts, 300)
+        : debounce(filterProducts, 300),
     );
   }
 
@@ -113,41 +119,74 @@ if (typeof window.showNotification !== "function") {
 }
 
 /* ---------- Load Categories ---------- */
-async function loadCategories() {
+async function loadListCategories() {
   try {
-    const response = await API.get("/categories/dropdown/all", {}, {});
-    const filterEl = document.getElementById("productCategoryFilter");
-    if (!filterEl) return;
+    const res = await API.get("/categories/dropdown/all");
+    const menu = document.getElementById("productCategoryMenu");
+    const btn = document.getElementById("productCategoryDropdown");
 
-    let categories = [];
-    if (Array.isArray(response?.data)) categories = response.data;
-    else if (Array.isArray(response)) categories = response;
+    if (!menu || !btn) return;
 
-    filterEl.innerHTML = '<option value="">All Categories</option>';
+    menu.innerHTML = "";
+
+    // All Categories
+    const allItem = document.createElement("li");
+    allItem.innerHTML = `
+      <a class="dropdown-item" href="#" data-id="">
+        All Categories
+      </a>
+    `;
+    menu.appendChild(allItem);
+
+    const categories = Array.isArray(res?.data) ? res.data : [];
 
     categories.forEach((cat) => {
-      const id = cat._id || cat.id || cat.categoryId;
-      const name = cat.name || cat.categoryName;
+      const mainId = cat._id; // ✅ FIXED
+      const mainName = cat.name;
 
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = name;
-      opt.setAttribute("data-category-name", name);
-      filterEl.appendChild(opt);
+      if (!mainId || !mainName) return;
+
+      const mainItem = document.createElement("li");
+      mainItem.innerHTML = `
+        <a class="dropdown-item fw-semibold" href="#" data-id="${mainId}">
+          ${mainName}
+        </a>
+      `;
+      menu.appendChild(mainItem);
 
       if (Array.isArray(cat.subCategories)) {
         cat.subCategories.forEach((sub) => {
-          const subOpt = document.createElement("option");
-          subOpt.value = sub._id || sub.id || sub.categoryId;
-          subOpt.textContent = `→ ${sub.name}`;
-          subOpt.setAttribute("data-parent-id", id);
-          subOpt.setAttribute("data-parent-name", name);
-          filterEl.appendChild(subOpt);
+          const subId = sub._id; // ✅ FIXED
+          const subName = sub.name;
+
+          if (!subId || !subName) return;
+
+          const subItem = document.createElement("li");
+          subItem.innerHTML = `
+            <a class="dropdown-item ps-4" href="#" data-id="${subId}">
+              → ${subName}
+            </a>
+          `;
+          menu.appendChild(subItem);
         });
       }
     });
+
+    // Click handler
+    menu.querySelectorAll(".dropdown-item").forEach((item) => {
+      item.addEventListener("click", function (e) {
+        e.preventDefault();
+
+        selectedCategoryId = this.dataset.id || null;
+        btn.textContent = this.textContent;
+
+        console.log("Selected Category ID:", selectedCategoryId);
+
+        loadProducts();
+      });
+    });
   } catch (err) {
-    console.error("❌ Category load failed:", err);
+    showNotification?.("Failed to load categories", "error");
   }
 }
 
@@ -160,34 +199,60 @@ async function loadProducts() {
       page: window.pagination.page,
       limit: window.pagination.limit,
       region: "global",
-
-      // 🔥 CRITICAL FIX
-      showDeleted: false, // force-hide deleted products in list
+      showDeleted: false,
     };
 
-    if (searchInput?.value.trim()) qp.search = searchInput.value.trim();
-    if (statusFilter?.value) qp.status = statusFilter.value;
-    if (variantsFilter?.value !== "") qp.hasVariants = variantsFilter.value;
+    // 🔎 Search
+    if (searchInput?.value?.trim()) {
+      qp.search = searchInput.value.trim();
+    }
 
-    if (categoryFilter?.value) {
-      const opt = categoryFilter.options[categoryFilter.selectedIndex];
-      const parentId = opt.getAttribute("data-parent-id");
-      if (parentId) qp.subCategoryId = categoryFilter.value;
-      else qp.mainCategoryId = categoryFilter.value;
+    // 📦 Status filter
+    if (statusFilter?.value) {
+      qp.status = statusFilter.value;
+    }
+
+    // 🔁 Variants filter
+    if (variantsFilter?.value !== "") {
+      qp.hasVariants = variantsFilter.value;
     }
 
     const res = await API.get("/products/admin/all", {}, qp);
     const data = Array.isArray(res?.data) ? res.data : [];
 
-    window.products = data
-      .filter((p) => p.isDeleted !== true)
-      .map(normalizeProduct);
+    // 🚫 Remove deleted
+    let filteredData = data.filter((p) => p.isDeleted !== true);
+    console.log("Selected Category ID:", selectedCategoryId);
+    console.log("First Product:", data[0]);
 
-    if (res?.pagination) {
-      window.pagination.page = res.pagination.current || 1;
-      window.pagination.pages = res.pagination.pages || 1;
-      window.pagination.total = res.pagination.total || 0;
+    // 🔥 CATEGORY FILTER (fully robust)
+    if (selectedCategoryId) {
+      filteredData = filteredData.filter((p) => {
+        const cat = p.category || {};
+
+        const valuesToCheck = [
+          cat.mainCategoryId,
+          cat.subCategoryId,
+          cat._id,
+          p.mainCategoryId,
+          p.subCategoryId,
+          cat.categoryId, // fallback
+          p.categoryId, // fallback
+        ]
+          .filter(Boolean)
+          .map(String); // force string compare
+
+        return valuesToCheck.includes(String(selectedCategoryId));
+      });
     }
+
+    // 🧠 Normalize
+    window.products = filteredData.map(normalizeProduct);
+
+    // 📊 Pagination adjust (frontend filter)
+    window.pagination.total = filteredData.length;
+    window.pagination.pages = 1;
+    window.pagination.page = 1;
 
     updateStats();
     renderProducts();
@@ -229,7 +294,7 @@ function updateStats() {
 
   if (publishedCount)
     publishedCount.textContent = list.filter(
-      (p) => p.status === "published"
+      (p) => p.status === "published",
     ).length;
 
   if (variantsCount)
@@ -238,7 +303,7 @@ function updateStats() {
   if (totalStockCount)
     totalStockCount.textContent = list.reduce(
       (s, p) => s + (p.availability?.stockQuantity || 0),
-      0
+      0,
     );
 }
 
@@ -412,7 +477,7 @@ async function deleteProduct(productId) {
     "Are you sure you want to delete this product?\n\n" +
       "• Product will be hidden from users\n" +
       "• You can restore it later from deleted products\n\n" +
-      "This action is reversible."
+      "This action is reversible.",
   );
 
   if (!confirmed) return;
