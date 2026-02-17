@@ -991,10 +991,7 @@ function buildProductPayload() {
 
   /* ================= VARIANTS ================= */
 
-  if (!window.currentProductId) {
-    // CREATE → send variants
-    payload.variants = collectVariantsFromDOM();
-  }
+  payload.variants = collectVariantsFromDOM();
 
   /* ================= PLANS ================= */
 
@@ -1342,10 +1339,6 @@ async function saveProduct() {
     /* ================= UPDATE ================= */
 
     if (window.currentProductId) {
-      if (window.hasUploadedVariantImages) {
-        delete payload.variants;
-      }
-
       // 1️⃣ Update product data (NO image mutation here)
       await API.put("/products/:productId", payload, {
         productId: window.currentProductId,
