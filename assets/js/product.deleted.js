@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
       deletedState.search = e.target.value.trim();
       deletedState.page = 1;
       loadDeletedProducts();
-    }, 400)
+    }, 400),
   );
 
   restoreAllBtn?.addEventListener("click", restoreSelectedProducts);
@@ -50,7 +50,7 @@ async function loadDeletedProducts() {
         page: deletedState.page,
         limit: deletedState.limit,
         showDeleted: true,
-      }
+      },
     );
 
     // 🔒 HARD GUARANTEE — deleted page shows ONLY deleted
@@ -146,16 +146,18 @@ function updateRestoreButton() {
 
 /* ---------- PAGINATION ---------- */
 function renderDeletedPagination() {
-  const { page, pages } = deletedState;
-
-  if (pages <= 1) return;
+  const { page, pages, total } = deletedState;
 
   let el = document.getElementById("deletedPagination");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "deletedPagination";
-    el.className = "d-flex justify-content-center mt-4";
-    productsContainer.after(el);
+  if (!el) return;
+
+  if (pages <= 1) {
+    el.innerHTML = `
+      <div class="small text-muted text-center mt-3">
+        ${total} deleted products
+      </div>
+    `;
+    return;
   }
 
   let numbers = "";
@@ -172,7 +174,8 @@ function renderDeletedPagination() {
 
   el.innerHTML = `
     <nav>
-      <ul class="pagination">
+      <ul class="pagination justify-content-center mt-4">
+
         <li class="page-item ${page === 1 ? "disabled" : ""}">
           <button class="page-link" onclick="changeDeletedPage(${page - 1})">
             Prev
@@ -186,10 +189,11 @@ function renderDeletedPagination() {
             Next
           </button>
         </li>
+
       </ul>
 
-      <div class="small text-muted text-center mt-1">
-        ${deletedState.total} deleted products
+      <div class="small text-muted text-center mt-2">
+        ${total} deleted products
       </div>
     </nav>
   `;

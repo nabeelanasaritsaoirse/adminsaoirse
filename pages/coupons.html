@@ -363,13 +363,26 @@
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Select Referrer User</label>
-                      <select
-                        id="referralUserSelect"
-                        class="form-select"
-                        required
-                      >
-                        <option value="">Loading users...</option>
-                      </select>
+                      <input
+                        type="text"
+                        id="referralUserSearch"
+                        class="form-control"
+                        placeholder="Search user by name or email..."
+                        autocomplete="off"
+                      />
+
+                      <div
+                        id="referralUserDropdown"
+                        class="list-group position-absolute w-100 shadow"
+                        style="
+                          z-index: 1000;
+                          display: none;
+                          max-height: 250px;
+                          overflow-y: auto;
+                        "
+                      ></div>
+
+                      <input type="hidden" id="referralUserSelect" required />
                     </div>
 
                     <div class="col-md-3 mb-3">

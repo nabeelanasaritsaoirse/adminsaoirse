@@ -38,17 +38,128 @@ async function loadSalesDashboardStats() {
     }
 
     const {
+      user = {},
       teamStats = {},
       orderStats = {},
       revenueStats = {},
+      commissionStats = {},
+      conversionRate = 0,
     } = response.data || {};
 
-    setText("totalUsers", teamStats.totalTeamSize || 0);
-    setText("activeOrders", orderStats.activeOrders || 0);
-    setText("pendingKYC", teamStats.activeMembers || 0);
+    // Team health
+    setText(
+      "totalUsers",
+      `${teamStats.activeMembers || 0} / ${teamStats.totalTeamSize || 0}`,
+    );
+    const teamHealthCard = document
+      .getElementById("totalUsers")
+      ?.closest(".card");
+
+    if (teamHealthCard) {
+      teamHealthCard.classList.remove(
+        "border-danger",
+        "border-warning",
+        "border-success",
+      );
+
+      const healthRatio =
+        (teamStats.activeMembers || 0) / (teamStats.totalTeamSize || 1);
+
+      if (healthRatio >= 0.8) {
+        teamHealthCard.classList.add("border-success");
+      } else if (healthRatio >= 0.5) {
+        teamHealthCard.classList.add("border-warning");
+      } else {
+        teamHealthCard.classList.add("border-danger");
+      }
+    }
+
+    // Orders health
+    setText(
+      "activeOrders",
+      `${orderStats.completedOrders || 0} / ${orderStats.totalOrders || 0}`,
+    );
+
+    // Revenue reality
     setText(
       "totalRevenue",
-      "₹" + formatCurrency(revenueStats.totalPaidAmount || 0)
+      `₹${formatCurrency(revenueStats.totalPaidAmount || 0)}`,
+    );
+    const adjustmentEl = document.getElementById("revenueAdjustment");
+    if (adjustmentEl && revenueStats.pendingAmount) {
+      adjustmentEl.textContent = `Adjustment: ₹${formatCurrency(
+        revenueStats.pendingAmount,
+      )}`;
+
+      adjustmentEl.classList.remove("d-none");
+
+      // Visual severity
+      if (Math.abs(revenueStats.pendingAmount) <= 10) {
+        adjustmentEl.classList.add("text-muted");
+      } else {
+        adjustmentEl.classList.add("text-danger");
+      }
+    }
+
+    setText("conversionRate", `${conversionRate || 0}%`);
+
+    const conversionEl = document.getElementById("conversionRate");
+    if (conversionEl) {
+      conversionEl.classList.add("fw-bold");
+
+      if (conversionRate >= 80) {
+        conversionEl.classList.add("text-success");
+      } else if (conversionRate >= 50) {
+        conversionEl.classList.add("text-warning");
+      } else {
+        conversionEl.classList.add("text-danger");
+      }
+    }
+
+    setText(
+      "totalCommission",
+      `₹${formatCurrency(commissionStats.totalEarned || 0)}`,
+    );
+
+    setText(
+      "pendingCommission",
+      `Pending: ₹${formatCurrency(commissionStats.pendingCommission || 0)}`,
+    );
+    const usedReferrals =
+      (user.referralLimit || 0) - (user.remainingReferrals || 0);
+
+    setText("referralUsage", `${usedReferrals} / ${user.referralLimit || 0}`);
+
+    // Inactive team members
+    const inactiveCount =
+      (teamStats.totalTeamSize || 0) - (teamStats.activeMembers || 0);
+
+    setText("pendingKYC", inactiveCount);
+
+    // Color logic: 0 inactive = GOOD, >0 = RISK
+    const inactiveCard = document
+      .getElementById("pendingKYC")
+      ?.closest(".card");
+
+    if (inactiveCard) {
+      inactiveCard.classList.remove(
+        "border-danger",
+        "border-secondary",
+        "border-success",
+      );
+
+      if (inactiveCount === 0) {
+        inactiveCard.classList.add("border-success");
+      } else {
+        inactiveCard.classList.add("border-danger");
+      }
+    }
+
+    setText(
+      "teamBreakdown",
+      `L1: ${teamStats.totalL1Members || 0} | L2: ${
+        teamStats.totalL2Users || 0
+      }`,
     );
   } catch (err) {
     console.error("Sales dashboard error:", err);
@@ -75,7 +186,7 @@ async function loadRecentUsers() {
     const response = await API.get(
       "/sales/my-team/users",
       {},
-      { page: 1, limit: 10 }
+      { page: 1, limit: 10 },
     );
 
     if (!response?.success || !Array.isArray(response.data?.users)) {
@@ -98,26 +209,58 @@ async function loadRecentUsers() {
       .map((user) => {
         const name = user.name || "—";
         const emailOrPhone = user.email || user.phoneNumber || "—";
-        const wallet = user.wallet?.balance || 0;
-        const level = user.level === 1 ? "L1" : "L2";
+        const joinedDate = new Date(user.createdAt);
+        const isNew = Date.now() - joinedDate.getTime() < 24 * 60 * 60 * 1000;
+
+        const totalOrders = user.orderStats?.totalOrders || 0;
+        const totalPaid = user.orderStats?.totalPaid || 0;
+
+        let statusBadge = "secondary";
+        let statusText = "Dormant";
+
+        if (totalOrders > 0) {
+          statusBadge = "success";
+          statusText = "Active";
+        } else if (isNew) {
+          statusBadge = "primary";
+          statusText = "New";
+        }
 
         return `
-          <tr>
-            <td>${escapeHtml(name)}</td>
-            <td>${escapeHtml(emailOrPhone)}</td>
-            <td>₹${formatCurrency(wallet)}</td>
-            <td>${level}</td>
-            <td class="text-end">
-              <a
-                href="sales-user-detail.html?id=${user._id}"
-                class="btn btn-sm btn-outline-secondary"
-                title="View User"
-              >
-                <i class="bi bi-eye"></i>
-              </a>
-            </td>
-          </tr>
-        `;
+<tr>
+  <td>
+    <strong>${escapeHtml(name)}</strong><br/>
+    <small class="text-muted">${escapeHtml(emailOrPhone)}</small>
+  </td>
+
+  <td>
+    <small class="text-muted">
+      ${joinedDate.toLocaleDateString()}
+    </small>
+  </td>
+
+  <td>
+    <span class="fw-semibold">${totalOrders} orders</span><br/>
+    <small class="text-success">₹${formatCurrency(totalPaid)}</small>
+  </td>
+
+  <td>
+    <span class="badge bg-${statusBadge}">
+      ${statusText}
+    </span>
+  </td>
+
+  <td class="text-end">
+    <a
+      href="sales-user-detail.html?id=${user._id}"
+      class="btn btn-sm btn-outline-secondary"
+      title="View User"
+    >
+      <i class="bi bi-eye"></i>
+    </a>
+  </td>
+</tr>
+`;
       })
       .join("");
   } catch (err) {
@@ -144,6 +287,6 @@ function escapeHtml(text) {
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;",
-      }[m])
+      })[m],
   );
 }

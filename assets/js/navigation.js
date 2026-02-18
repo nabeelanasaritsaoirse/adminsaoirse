@@ -169,6 +169,14 @@ const NAV_CONFIG = {
       permission: "faq_management",
     },
     {
+      id: "reviews",
+      label: "Reviews",
+      icon: "bi-star-fill",
+      href: "reviews.html",
+      hrefFromRoot: "reviews.html",
+      permission: "reviews",
+    },
+    {
       id: "notifications",
       label: "Notifications",
       icon: "bi-bell",

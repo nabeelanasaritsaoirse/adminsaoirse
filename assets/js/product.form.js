@@ -991,10 +991,7 @@ function buildProductPayload() {
 
   /* ================= VARIANTS ================= */
 
-  if (!window.currentProductId) {
-    // CREATE → send variants
-    payload.variants = collectVariantsFromDOM();
-  }
+  payload.variants = collectVariantsFromDOM();
 
   /* ================= PLANS ================= */
 
@@ -1342,10 +1339,6 @@ async function saveProduct() {
     /* ================= UPDATE ================= */
 
     if (window.currentProductId) {
-      if (window.hasUploadedVariantImages) {
-        delete payload.variants;
-      }
-
       // 1️⃣ Update product data (NO image mutation here)
       await API.put("/products/:productId", payload, {
         productId: window.currentProductId,
@@ -1424,7 +1417,7 @@ async function saveProduct() {
     if (fresh?.data?.variants?.length) {
       await uploadVariantImages(productId, fresh.data.variants);
     }
-
+    showLoading(false);
     showProductSuccess("Product Created Successfully");
   } catch (err) {
     console.error("Save failed:", err);
