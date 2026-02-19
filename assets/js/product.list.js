@@ -250,9 +250,9 @@ async function loadProducts() {
     window.products = filteredData.map(normalizeProduct);
 
     // 📊 Pagination adjust (frontend filter)
-    window.pagination.total = filteredData.length;
-    window.pagination.pages = 1;
-    window.pagination.page = 1;
+    window.pagination.total = res.pagination?.total || 0;
+    window.pagination.pages = res.pagination?.pages || 1;
+    window.pagination.page = res.pagination?.current || 1;
 
     updateStats();
     renderProducts();
