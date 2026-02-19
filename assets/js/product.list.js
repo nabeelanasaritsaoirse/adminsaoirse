@@ -217,44 +217,35 @@ async function loadProducts() {
       qp.hasVariants = variantsFilter.value;
     }
 
-    const res = await API.get("/products/admin/all", {}, qp);
-    const data = Array.isArray(res?.data) ? res.data : [];
-
-    // 🚫 Remove deleted
-    let filteredData = data.filter((p) => p.isDeleted !== true);
-    console.log("Selected Category ID:", selectedCategoryId);
-    console.log("First Product:", data[0]);
-
-    // 🔥 CATEGORY FILTER (fully robust)
+    // 📂 Category filter → send to backend (IMPORTANT)
     if (selectedCategoryId) {
-      filteredData = filteredData.filter((p) => {
-        const cat = p.category || {};
-
-        const valuesToCheck = [
-          cat.mainCategoryId,
-          cat.subCategoryId,
-          cat._id,
-          p.mainCategoryId,
-          p.subCategoryId,
-          cat.categoryId, // fallback
-          p.categoryId, // fallback
-        ]
-          .filter(Boolean)
-          .map(String); // force string compare
-
-        return valuesToCheck.includes(String(selectedCategoryId));
-      });
+      qp.category = selectedCategoryId;
     }
 
-    // 🧠 Normalize
-    window.products = filteredData.map(normalizeProduct);
+    const res = await API.get("/products/admin/all", {}, qp);
 
-    // 📊 Pagination adjust (frontend filter)
-    window.pagination.total = res.pagination?.total || 0;
-    window.pagination.pages = res.pagination?.pages || 1;
-    window.pagination.page = res.pagination?.current || 1;
+    const data = Array.isArray(res?.data) ? res.data : [];
+    const stats = res?.stats || {};
+    const pagination = res?.pagination || {};
 
-    updateStats();
+    // 🧠 Normalize (NO frontend filtering now)
+    window.products = data.map(normalizeProduct);
+
+    // 📊 Proper backend pagination
+    window.pagination.total = pagination.total || 0;
+    window.pagination.pages = pagination.pages || 1;
+    window.pagination.page = pagination.current || 1;
+
+    // 📈 GLOBAL STATS (from backend — NOT page-based)
+    if (totalProductsCount)
+      totalProductsCount.textContent = stats.totalProducts || 0;
+
+    if (publishedCount) publishedCount.textContent = stats.totalPublished || 0;
+
+    if (variantsCount) variantsCount.textContent = stats.totalWithVariants || 0;
+
+    if (totalStockCount) totalStockCount.textContent = stats.totalStock || 0;
+
     renderProducts();
   } catch (err) {
     console.error("❌ Load products error:", err);
