@@ -673,6 +673,7 @@ async function editProduct(productId) {
         ? product.description.short
         : product.description,
     );
+    set("productLongDescription", product.description?.long || "");
 
     set("productSku", product.sku);
     set("productCategory", product.category?.mainCategoryId);
@@ -903,7 +904,11 @@ function buildProductPayload() {
   const payload = {
     name: productForm.productName.value.trim(),
     brand: productForm.productBrand.value.trim(),
-    description: { short: productForm.productDescription.value.trim() },
+    description: {
+      short: productForm.productDescription.value.trim(),
+      long:
+        document.getElementById("productLongDescription")?.value.trim() || "",
+    },
     sku: productForm.productSku.value.trim(),
 
     category,
@@ -1024,7 +1029,11 @@ function buildProductPayload() {
     payload.regionalAvailability = [];
     payload.regionalSeo = [];
   }
+  /* ================= LONG DESCRIPTION VALIDATION ================= */
 
+  if (payload.status === "published" && !payload.description.long) {
+    throw new Error("Long description is required before publishing");
+  }
   return payload;
 }
 
