@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -94,13 +94,32 @@
                 </div>
               </div>
 
+              <!-- SHORT DESCRIPTION -->
               <div class="mb-3">
-                <label class="form-label">Description *</label>
+                <label class="form-label">Short Description *</label>
                 <textarea
                   id="productDescription"
                   class="form-control"
-                  rows="4"
+                  rows="3"
+                  placeholder="Enter a short summary (2–3 lines)"
                 ></textarea>
+                <small class="text-muted">
+                  This will appear in product cards and preview sections.
+                </small>
+              </div>
+
+              <!-- LONG DESCRIPTION -->
+              <div class="mb-3">
+                <label class="form-label">Long Description</label>
+                <textarea
+                  id="productLongDescription"
+                  class="form-control"
+                  rows="6"
+                  placeholder="Enter detailed product description..."
+                ></textarea>
+                <small class="text-muted">
+                  Full detailed explanation shown on product details page.
+                </small>
               </div>
 
               <div class="row mb-3">
