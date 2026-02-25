@@ -65,7 +65,7 @@ const ReviewsAdmin = (() => {
     try {
       currentPage = page;
 
-      let url = `${BASE_URL}/reviews/admin/all?page=${page}&limit=20`;
+      let url = `${BASE_URL}/reviews/admin/all?page=${page}&limit=10`;
       if (currentStatus) url += `&status=${currentStatus}`;
 
       const res = await fetch(url, { headers });
@@ -131,7 +131,64 @@ const ReviewsAdmin = (() => {
   // ===============================
 
   function renderPagination(pagination) {
-    // Optional: add pagination UI if needed
+    const container = document.getElementById("paginationContainer");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (pagination.totalPages <= 1) return;
+
+    const ul = document.createElement("ul");
+    ul.className = "pagination justify-content-center";
+
+    // « First
+    ul.innerHTML += `
+    <li class="page-item ${pagination.page === 1 ? "disabled" : ""}">
+      <button class="page-link" onclick="ReviewsAdmin.goToPage(1)">
+        &laquo;
+      </button>
+    </li>
+  `;
+
+    // ‹ Previous
+    ul.innerHTML += `
+    <li class="page-item ${pagination.page === 1 ? "disabled" : ""}">
+      <button class="page-link" onclick="ReviewsAdmin.goToPage(${pagination.page - 1})">
+        &lsaquo;
+      </button>
+    </li>
+  `;
+
+    // Page Numbers
+    for (let i = 1; i <= pagination.totalPages; i++) {
+      ul.innerHTML += `
+      <li class="page-item ${i === pagination.page ? "active" : ""}">
+        <button class="page-link" onclick="ReviewsAdmin.goToPage(${i})">
+          ${i}
+        </button>
+      </li>
+    `;
+    }
+
+    // › Next
+    ul.innerHTML += `
+    <li class="page-item ${pagination.page === pagination.totalPages ? "disabled" : ""}">
+      <button class="page-link" onclick="ReviewsAdmin.goToPage(${pagination.page + 1})">
+        &rsaquo;
+      </button>
+    </li>
+  `;
+
+    // » Last
+    ul.innerHTML += `
+    <li class="page-item ${pagination.page === pagination.totalPages ? "disabled" : ""}">
+      <button class="page-link" onclick="ReviewsAdmin.goToPage(${pagination.totalPages})">
+        &raquo;
+      </button>
+    </li>
+  `;
+
+    container.appendChild(ul);
   }
 
   // ===============================
@@ -247,7 +304,10 @@ const ReviewsAdmin = (() => {
   function showError(message) {
     alert(message);
   }
-
+  function goToPage(page) {
+    if (page < 1) return;
+    loadReviews(page);
+  }
   // ===============================
   // 🔵 PUBLIC API
   // ===============================
@@ -259,6 +319,7 @@ const ReviewsAdmin = (() => {
     unpublish,
     delete: deleteReview,
     respond,
+    goToPage,
   };
 })();
 

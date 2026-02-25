@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -34,16 +34,18 @@
     <script>
       // Permission Guard - Check if user has access to wallet module
       (function () {
-        const REQUIRED_PERMISSION = 'wallet';
+        const REQUIRED_PERMISSION = "wallet";
 
         if (!AUTH.getToken() || !AUTH.isAuthenticated()) {
-          alert('Please login first');
+          alert("Please login first");
           window.location.href = "login.html";
           return;
         }
 
         if (!AUTH.hasModule(REQUIRED_PERMISSION)) {
-          alert('Access Denied! You do not have permission to access User Wallets module.');
+          alert(
+            "Access Denied! You do not have permission to access User Wallets module.",
+          );
           window.location.href = "dashboard.html";
           return;
         }
@@ -105,64 +107,86 @@
                   Search
                 </button>
               </div>
+              <div class="col-md-2">
+                <button
+                  class="btn btn-outline-secondary w-100"
+                  id="resetUserBtn"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- NAV TABS -->
-        <ul class="nav nav-tabs" id="walletTabs">
-          <li class="nav-item">
-            <button
-              id="walletTabBtn"
-              class="nav-link active"
-              data-bs-toggle="tab"
-              data-bs-target="#walletTab"
-            >
-              Wallet Details
+        <!-- ========================= -->
+        <!-- WALLET DETAILS SECTION -->
+        <!-- ========================= -->
+
+        <div id="walletSection" class="mb-5">
+          <!-- User View Indicator -->
+          <div
+            id="userViewAlert"
+            class="alert alert-info d-none d-flex justify-content-between align-items-center"
+          >
+            <div>
+              Viewing wallet for:
+              <strong id="selectedUserLabel"></strong>
+            </div>
+            <button class="btn btn-sm btn-outline-dark" id="backToGlobalBtn">
+              Back to All Withdrawals
             </button>
-
-            <button
-              id="withdrawTabBtn"
-              class="nav-link"
-              data-bs-toggle="tab"
-              data-bs-target="#withdrawTab"
-            >
-              Withdrawal Requests
-            </button>
-          </li>
-        </ul>
-
-        <div class="tab-content pt-3">
-          <!-- TAB 1 • WALLET DETAILS -->
-          <div class="tab-pane fade show active" id="walletTab">
-            <div id="walletCard" class="d-none">
-              <h4 class="mb-3">Wallet Details</h4>
-
-              <div class="row">
-                <div class="col-md-6">
-                  <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between">
-                      <span>Wallet Balance</span>
-                      <strong id="walletBalance">₹0</strong>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                      <span>Hold Balance</span>
-                      <strong id="holdBalance">₹0</strong>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                      <span>Referral Bonus</span>
-                      <strong id="referralBonus">₹0</strong>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between">
-                      <span>Invested Amount</span>
-                      <strong id="investedAmount">₹0</strong>
-                    </li>
-                  </ul>
+          </div>
+          <div id="walletCard" class="d-none">
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-4"
+                >
+                  <div>
+                    <h4 class="mb-1">
+                      <i class="bi bi-wallet2 me-2"></i>
+                      Wallet Details
+                    </h4>
+                    <small class="text-muted">
+                      View and manage selected user's wallet
+                    </small>
+                  </div>
                 </div>
 
-                <div class="col-md-6">
-                  <h6>Adjust Wallet</h6>
-                  <div class="input-group mb-3">
+                <div class="row g-3 mb-4">
+                  <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                      <small class="text-muted">Available Balance</small>
+                      <h5 class="mb-0 mt-1" id="walletBalance">₹0</h5>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                      <small class="text-muted">Hold Balance</small>
+                      <h5 class="mb-0 mt-1" id="holdBalance">₹0</h5>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                      <small class="text-muted">Referral Bonus</small>
+                      <h5 class="mb-0 mt-1" id="referralBonus">₹0</h5>
+                    </div>
+                  </div>
+
+                  <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                      <small class="text-muted">Invested Amount</small>
+                      <h5 class="mb-0 mt-1" id="investedAmount">₹0</h5>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <h6 class="mb-3">Adjust Wallet</h6>
+                  <div class="input-group" style="max-width: 400px">
                     <input
                       type="number"
                       id="adjustAmount"
@@ -177,48 +201,107 @@
                     </button>
                   </div>
                 </div>
+
+                <hr />
+
+                <h5 class="mb-3">Transactions</h5>
+
+                <div class="table-responsive">
+                  <table class="table table-striped align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th class="text-end">Amount</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody id="txnTable"></tbody>
+                  </table>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
 
-              <hr />
+        <!-- ========================= -->
+        <!-- WITHDRAWAL REQUESTS SECTION -->
+        <!-- ========================= -->
 
-              <h5>Transactions</h5>
+        <div id="withdrawSection">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h4 class="mb-1">
+                <i class="bi bi-cash-stack me-2"></i>
+                Withdrawal Requests
+              </h4>
+              <small class="text-muted">
+                Review and approve user withdrawal requests
+              </small>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="card shadow-sm mb-3">
+            <div class="card-body">
+              <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                  <label class="form-label">Search</label>
+                  <input
+                    type="text"
+                    id="withdrawSearchInput"
+                    class="form-control"
+                    placeholder="Search name, email, phone..."
+                  />
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Status</label>
+                  <select id="withdrawStatusFilter" class="form-select">
+                    <option value="all">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="failed">Failed</option>
+                  </select>
+                </div>
+
+                <div class="col-md-3">
+                  <label class="form-label">Date Range</label>
+                  <select id="withdrawDateFilter" class="form-select">
+                    <option value="">All Time</option>
+                    <option value="7">Last 7 Days</option>
+                    <option value="30">Last 30 Days</option>
+                    <option value="90">Last 3 Months</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="card shadow-sm">
+            <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-striped">
-                  <thead>
+                <table class="table table-bordered align-middle mb-0">
+                  <thead class="table-light">
                     <tr>
                       <th>Date</th>
-                      <th>Type</th>
-                      <th>Amount</th>
-                      <th>Description</th>
+                      <th>User</th>
+                      <th class="text-end">Amount</th>
+                      <th>Method</th>
+                      <th>Details</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
-                  <tbody id="txnTable"></tbody>
+                  <tbody id="withdrawTable"></tbody>
                 </table>
               </div>
             </div>
           </div>
 
-          <!-- TAB 2 • WITHDRAWAL REQUESTS -->
-          <div class="tab-pane fade" id="withdrawTab">
-            <h4 class="mb-3">Withdrawal Requests</h4>
-
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>User</th>
-                    <th>Amount</th>
-                    <th>Method</th>
-                    <th>Details</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="withdrawTable"></tbody>
-              </table>
-            </div>
-          </div>
+          <div id="withdrawalPagination" class="mt-3"></div>
         </div>
 
         <!-- CREDIT MODAL -->

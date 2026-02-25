@@ -590,4 +590,6 @@ body.welcome-page #sidebar {
   border-radius: 4px;
 }
 
-
+#userViewAlert {
+  border-radius: 10px;
+}
