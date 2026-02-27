@@ -227,6 +227,14 @@ const NAV_CONFIG = {
       permission: "admin_management",
       superAdminOnly: true,
     },
+    {
+      id: "backup-manager",
+      label: "Database Backup",
+      icon: "bi-database-fill-gear",
+      href: "backup-manager.html",
+      hrefFromRoot: "backup-manager.html",
+      superAdminOnly: true,
+    },
   ],
 };
 
