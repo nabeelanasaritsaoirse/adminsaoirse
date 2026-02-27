@@ -420,45 +420,108 @@ function renderProducts() {
 }
 
 /* ---------- Pagination ---------- */
-function renderPagination() {
-  const { page, pages, total } = window.pagination;
-  if (pages <= 1) return;
 
-  let el = document.getElementById("productsPagination");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "productsPagination";
-    el.className = "d-flex justify-content-center mt-3";
-    productsContainer.after(el);
+function renderPagination() {
+  const containerId = "productsPagination";
+
+  let container = document.getElementById(containerId);
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = containerId;
+    container.className = "mt-4";
+    productsContainer.after(container);
   }
 
-  el.innerHTML = `
-    <nav>
-      <ul class="pagination">
-        <li class="page-item ${page === 1 ? "disabled" : ""}">
-          <button class="page-link" onclick="changeProductPage(${
-            page - 1
-          })">Prev</button>
-        </li>
-        <li class="page-item active">
-          <span class="page-link">${page}</span>
-        </li>
-        <li class="page-item ${page === pages ? "disabled" : ""}">
-          <button class="page-link" onclick="changeProductPage(${
-            page + 1
-          })">Next</button>
-        </li>
-      </ul>
-      <div class="small text-muted text-center">${total} total products</div>
-    </nav>
-  `;
-}
+  const totalPages = window.pagination.pages;
+  const currentPage = window.pagination.page;
 
-function changeProductPage(p) {
-  if (p < 1 || p > window.pagination.pages) return;
-  window.pagination.page = p;
-  loadProducts();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  container.innerHTML = "";
+  if (totalPages <= 1) return;
+
+  const PAGE_WINDOW = 10;
+
+  const windowStart =
+    Math.floor((currentPage - 1) / PAGE_WINDOW) * PAGE_WINDOW + 1;
+
+  const windowEnd = Math.min(windowStart + PAGE_WINDOW - 1, totalPages);
+
+  let html = `<ul class="pagination justify-content-center mb-0">`;
+
+  /* << Jump Back */
+  html += `
+    <li class="page-item ${windowStart === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowStart - PAGE_WINDOW}">
+        &laquo;
+      </a>
+    </li>
+  `;
+
+  /* < Previous */
+  html += `
+    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage - 1}">
+        &lsaquo;
+      </a>
+    </li>
+  `;
+
+  /* Page Numbers */
+  for (let p = windowStart; p <= windowEnd; p++) {
+    html += `
+      <li class="page-item ${p === currentPage ? "active" : ""}">
+        <a class="page-link" href="#" data-page="${p}">
+          ${p}
+        </a>
+      </li>
+    `;
+  }
+
+  /* > Next */
+  html += `
+    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage + 1}">
+        &rsaquo;
+      </a>
+    </li>
+  `;
+
+  /* >> Jump Forward */
+  html += `
+    <li class="page-item ${windowEnd === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowEnd + 1}">
+        &raquo;
+      </a>
+    </li>
+  `;
+
+  html += `</ul>
+  <div class="small text-muted text-center mt-2">
+    ${window.pagination.total} total products
+  </div>`;
+
+  container.innerHTML = html;
+
+  /* Click Events */
+  container.querySelectorAll("a.page-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const targetPage = parseInt(a.getAttribute("data-page"), 10);
+
+      if (isNaN(targetPage) || targetPage < 1 || targetPage > totalPages)
+        return;
+
+      window.pagination.page = targetPage;
+
+      loadProducts();
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    });
+  });
 }
 /* ---------- Delete Product (Soft Delete) ---------- */
 async function deleteProduct(productId) {
@@ -510,5 +573,4 @@ window.resetFilters = function () {
 };
 
 /* ---------- Expose ---------- */
-window.changeProductPage = changeProductPage;
 window.deleteProduct = deleteProduct;
