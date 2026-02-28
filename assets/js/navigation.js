@@ -153,6 +153,14 @@ const NAV_CONFIG = {
       permission: "payments",
     },
     {
+      id: "razorpay",
+      label: "Razorpay Payments",
+      icon: "bi-credit-card-2-front",
+      href: "razorpay.html",
+      hrefFromRoot: "razorpay.html",
+      permission: "payments",
+    },
+    {
       id: "autopay",
       label: "Autopay",
       icon: "bi-arrow-repeat",
