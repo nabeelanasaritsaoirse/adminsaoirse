@@ -87,6 +87,22 @@ async function loadCategories() {
       isActive: c.isActive !== false,
       isFeatured: !!c.isFeatured,
       displayOrder: Number(c.displayOrder || 0),
+
+      /* =========================
+     MARKETPLACE SAFE EXTENSION
+  ========================= */
+
+      commissionRate: c.commissionRate ?? 0,
+      isRestricted: !!c.isRestricted,
+
+      attributeSchema: Array.isArray(c.attributeSchema)
+        ? c.attributeSchema
+        : [],
+
+      /* SEO COMPATIBILITY */
+      metaTitle: c.metaTitle || c.meta?.title || "",
+      metaDescription: c.metaDescription || c.meta?.description || "",
+      keywords: c.keywords || c.meta?.keywords || [],
     }));
 
     /* =============================

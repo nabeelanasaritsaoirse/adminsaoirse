@@ -16,6 +16,8 @@ const PAYMENT_API = {
 let currentPage = 1;
 let currentFilters = {};
 let paymentModal;
+let refundModal;
+let selectedPayment = null;
 
 /*************************************************
  * INIT
@@ -24,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   paymentModal = new bootstrap.Modal(
     document.getElementById("paymentDetailModal"),
   );
+  refundModal = new bootstrap.Modal(document.getElementById("refundModal"));
 
   loadAnalytics();
   loadPayments();
@@ -324,25 +327,48 @@ async function openPaymentDetail(paymentId) {
 
     const p = res.data.payment;
 
+    selectedPayment = p;
+
+    const remainingRefund = (p.razorpayAmount - p.razorpayAmountRefunded) / 100;
+
+    const canRefund =
+      p.status === "COMPLETED" &&
+      p.paymentMethod === "RAZORPAY" &&
+      remainingRefund > 0;
+
     document.getElementById("paymentDetailContent").innerHTML = `
-      <h6>Payment Info</h6>
-      <p><b>ID:</b> ${p.paymentId}</p>
-      <p><b>Status:</b> ${p.status}</p>
-      <p><b>Amount:</b> ₹${p.amount}</p>
+<h6>Payment Info</h6>
+<p><b>ID:</b> ${p.paymentId}</p>
+<p><b>Status:</b> ${p.status}</p>
+<p><b>Amount:</b> ₹${p.amount}</p>
 
-      <hr/>
+<hr/>
 
-      <h6>Customer</h6>
-      <p>${p.user?.name}</p>
-      <p>${p.user?.email}</p>
+<h6>Customer</h6>
+<p>${p.user?.name}</p>
+<p>${p.user?.email}</p>
+<p>${p.user?.phoneNumber || "-"}</p>
 
-      <hr/>
+<hr/>
 
-      <h6>Razorpay</h6>
-      <p><b>Payment:</b> ${p.razorpayPaymentId}</p>
-      <p><b>Method:</b> ${p.razorpayMethod}</p>
-      <p><b>Fee:</b> ${paiseToRupees(p.razorpayFee)}</p>
-    `;
+<h6>Razorpay</h6>
+<p><b>Payment:</b> ${p.razorpayPaymentId}</p>
+<p><b>Method:</b> ${p.razorpayMethod}</p>
+<p><b>Fee:</b> ${paiseToRupees(p.razorpayFee)}</p>
+
+${
+  canRefund
+    ? `
+<hr/>
+<button class="btn btn-danger"
+onclick="openRefundModal(${remainingRefund})">
+<i class="bi bi-arrow-counterclockwise"></i>
+Initiate Refund
+</button>
+`
+    : ""
+}
+`;
 
     paymentModal.show();
   } catch (err) {
@@ -390,4 +416,54 @@ function debounce(fn, delay = 500) {
       fn.apply(this, args);
     }, delay);
   };
+}
+/*************************************************
+ * REFUND SYSTEM
+ *************************************************/
+
+function openRefundModal(maxAmount) {
+  document.getElementById("maxRefundInfo").innerText =
+    `Up to ₹${maxAmount.toFixed(2)} refundable`;
+
+  document.getElementById("refundAmount").value = "";
+  document.getElementById("refundReason").value = "";
+
+  refundModal.show();
+}
+
+async function submitRefund() {
+  if (!selectedPayment) return;
+
+  try {
+    const amountInput = document.getElementById("refundAmount").value;
+
+    const reason = document.getElementById("refundReason").value;
+
+    const speed = document.getElementById("refundSpeed").value;
+
+    const body = {
+      reason,
+      speed,
+    };
+
+    if (amountInput) {
+      body.amount = Math.round(Number(amountInput) * 100); // rupees → paise
+    }
+
+    await API.post(
+      `${PAYMENT_API.REFUND}/${selectedPayment.paymentId}/refund`,
+      body,
+    );
+
+    alert("Refund initiated successfully");
+
+    refundModal.hide();
+    paymentModal.hide();
+
+    loadPayments(currentPage);
+    loadAnalytics();
+  } catch (err) {
+    alert(err.message || "Refund failed");
+    console.error(err);
+  }
 }

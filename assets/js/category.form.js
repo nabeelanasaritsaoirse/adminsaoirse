@@ -1,3 +1,8 @@
+/* =========================
+   MARKETPLACE STATE
+========================= */
+
+CategoryStore.attributeSchema = CategoryStore.attributeSchema || [];
 document.addEventListener("DOMContentLoaded", async () => {
   resetRegionalState();
 
@@ -67,10 +72,11 @@ function fillFormForEditFromApi(cat) {
   isFeatured.checked = !!cat.isFeatured;
   showInMenu.checked = !!cat.showInMenu;
 
-  metaTitle.value = cat.meta?.title || "";
-  metaDescription.value = cat.meta?.description || "";
-  metaKeywords.value = cat.meta?.keywords?.join(", ") || "";
+  metaTitle.value = cat.metaTitle || cat.meta?.title || "";
 
+  metaDescription.value = cat.metaDescription || cat.meta?.description || "";
+
+  metaKeywords.value = (cat.keywords || cat.meta?.keywords || []).join(", ");
   /* =========================
      ✅ FIX: RESTORE PARENT CATEGORY
      ========================= */
@@ -128,6 +134,17 @@ function fillFormForEditFromApi(cat) {
     globalCheckbox.checked = true;
     regionalSection.classList.add("d-none");
   }
+  /* =========================
+   MARKETPLACE DATA
+========================= */
+
+  document.getElementById("commissionRate").value = cat.commissionRate ?? "";
+
+  document.getElementById("isRestricted").checked = !!cat.isRestricted;
+
+  CategoryStore.attributeSchema = cat.attributeSchema || [];
+
+  renderAttributeSchemaUI();
 }
 
 /* =========================
@@ -300,9 +317,11 @@ async function saveCategory() {
     description: categoryDescription.value.trim(),
     parentCategoryId: parentCategory.value || null,
     displayOrder: Number(displayOrder.value || 0),
+
     isActive: isActive.checked,
     isFeatured: isFeatured.checked,
     showInMenu: showInMenu.checked,
+
     meta: {
       title: metaTitle.value.trim(),
       description: metaDescription.value.trim(),
@@ -311,6 +330,15 @@ async function saveCategory() {
         .map((k) => k.trim())
         .filter(Boolean),
     },
+
+    commissionRate:
+      Number(document.getElementById("commissionRate").value) || 0,
+
+    isRestricted: document.getElementById("isRestricted").checked,
+
+    attributeSchema: (CategoryStore.attributeSchema || []).filter(
+      (a) => a.name,
+    ),
   };
 
   /* 🌍 REGIONAL PAYLOAD */
@@ -457,5 +485,117 @@ async function uploadCategoryBanners(categoryId) {
     throw new Error("Banner image upload failed");
   }
 }
+function renderAttributeSchemaUI() {
+  const container = document.getElementById("attributeSchemaContainer");
+  if (!container) return;
 
+  container.innerHTML = "";
+
+  CategoryStore.attributeSchema.forEach((attr, index) => {
+    container.innerHTML += `
+<div class="border rounded p-2 mb-2">
+  <div class="row align-items-center g-2">
+
+    <!-- ATTRIBUTE NAME -->
+    <div class="col-md-3">
+      <input class="form-control form-control-sm"
+        placeholder="Attribute Name"
+        value="${attr.name || ""}"
+        onchange="updateAttributeName(${index}, this.value)"
+      />
+    </div>
+
+    <!-- TYPE -->
+    <div class="col-md-2">
+      <select class="form-select form-select-sm"
+        onchange="updateAttributeType(${index}, this.value)">
+        <option value="text" ${
+          attr.type === "text" ? "selected" : ""
+        }>Text</option>
+        <option value="color_swatch" ${
+          attr.type === "color_swatch" ? "selected" : ""
+        }>Color</option>
+        <option value="number" ${
+          attr.type === "number" ? "selected" : ""
+        }>Number</option>
+      </select>
+    </div>
+
+    <!-- OPTIONS -->
+    <div class="col-md-4">
+      <input class="form-control form-control-sm"
+        placeholder="Options (comma separated)"
+        value="${(attr.options || []).join(",")}"
+        onchange="updateAttributeOptions(${index}, this.value)"
+      />
+    </div>
+
+    <!-- REQUIRED -->
+    <div class="col-md-1 text-center">
+      <input type="checkbox"
+        ${attr.isRequired ? "checked" : ""}
+        onchange="updateAttributeRequired(${index}, this.checked)">
+      <div style="font-size:12px;">Req</div>
+    </div>
+
+    <!-- FILTER -->
+    <div class="col-md-1 text-center">
+      <input type="checkbox"
+        ${attr.isFilterable !== false ? "checked" : ""}
+        onchange="updateAttributeFilterable(${index}, this.checked)">
+      <div style="font-size:12px;">Filter</div>
+    </div>
+
+    <!-- REMOVE -->
+    <div class="col-md-1 text-end">
+      <button type="button"
+        class="btn btn-sm btn-danger"
+        onclick="removeAttribute(${index})">
+        Remove
+      </button>
+    </div>
+
+  </div>
+</div>
+`;
+  });
+}
+function addAttributeRow() {
+  CategoryStore.attributeSchema.push({
+    name: "",
+    type: "text",
+    options: [],
+    isFilterable: true,
+    isRequired: false,
+  });
+
+  renderAttributeSchemaUI();
+}
+
+function removeAttribute(index) {
+  CategoryStore.attributeSchema.splice(index, 1);
+  renderAttributeSchemaUI();
+}
+
+function updateAttributeName(index, value) {
+  CategoryStore.attributeSchema[index].name = value;
+}
+
+function updateAttributeType(index, value) {
+  CategoryStore.attributeSchema[index].type = value;
+}
+
+function updateAttributeOptions(index, value) {
+  CategoryStore.attributeSchema[index].options = value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+function updateAttributeRequired(index, value) {
+  CategoryStore.attributeSchema[index].isRequired = value;
+}
+
+function updateAttributeFilterable(index, value) {
+  CategoryStore.attributeSchema[index].isFilterable = value;
+}
 window.saveCategory = saveCategory;
