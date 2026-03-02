@@ -118,7 +118,38 @@
                   Full detailed explanation shown on product details page.
                 </small>
               </div>
+              <!-- PRODUCT FEATURES -->
+              <h5 class="mt-4 mb-3">Key Features</h5>
 
+              <div id="featuresList"></div>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary mt-2"
+                id="addFeatureBtn"
+              >
+                + Add Feature
+              </button>
+
+              <small class="text-muted d-block mt-1">
+                Example: Noise Cancellation, Fast Charging, AMOLED Display
+              </small>
+              <!-- PRODUCT SPECIFICATIONS -->
+              <h5 class="mt-4 mb-3">Specifications</h5>
+
+              <div id="specificationsList"></div>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary mt-2"
+                id="addSpecificationBtn"
+              >
+                + Add Specification
+              </button>
+
+              <small class="text-muted d-block mt-1">
+                Example: Material = Polyester, Capacity = 30L, Weight = 800g
+              </small>
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label class="form-label">Category *</label>
@@ -131,6 +162,17 @@
                   <label class="form-label">SKU</label>
                   <input type="text" id="productSku" class="form-control" />
                 </div>
+              </div>
+              <!-- PRODUCT ATTRIBUTES (AUTO FROM CATEGORY) -->
+              <h5 class="mt-4 mb-3">Product Attributes</h5>
+
+              <div
+                id="dynamicAttributesContainer"
+                class="border rounded p-3 bg-light"
+              >
+                <small class="text-muted">
+                  Attributes will load automatically based on selected category.
+                </small>
               </div>
 
               <!-- PRICING -->

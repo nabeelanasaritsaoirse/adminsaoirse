@@ -55,7 +55,9 @@ let variantEventsBound = false;
 
 let productFaqs = []; // current working FAQs
 let originalFaqIds = []; // used only in EDIT mode
-
+let productFeatures = [];
+let productSpecifications = [];
+let productCategoryAttributes = [];
 /* ================= INIT DOM ================= */
 /* ================= REFERRAL HELPERS ================= */
 
@@ -78,6 +80,130 @@ function togglePaymentPlan(enabled) {
     },
   );
 }
+/* ================= FEATURES ================= */
+
+function renderFeatureItem(feature = "", index) {
+  return `
+    <div class="input-group mb-2 feature-item" data-feature-index="${index}">
+      <input type="text"
+        class="form-control feature-input"
+        placeholder="Enter feature"
+        value="${escapeHtml(feature)}">
+
+      <button type="button"
+        class="btn btn-outline-danger"
+        onclick="removeFeature(${index})">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  `;
+}
+
+function renderFeatures() {
+  const container = document.getElementById("featuresList");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  productFeatures.forEach((f, i) => {
+    container.insertAdjacentHTML("beforeend", renderFeatureItem(f, i));
+  });
+}
+
+function addFeature() {
+  productFeatures.push("");
+  renderFeatures();
+}
+
+function removeFeature(index) {
+  productFeatures.splice(index, 1);
+  renderFeatures();
+}
+
+function collectFeaturesFromDOM() {
+  const features = [];
+
+  document.querySelectorAll(".feature-input").forEach((input) => {
+    const val = input.value.trim();
+    if (val) features.push(val);
+  });
+
+  return features;
+}
+
+window.removeFeature = removeFeature;
+
+/* ================= SPECIFICATIONS ================= */
+
+function renderSpecificationItem(spec = {}, index) {
+  return `
+    <div class="row mb-2 specification-item" data-spec-index="${index}">
+      
+      <div class="col-md-5">
+        <input type="text"
+          class="form-control specification-key"
+          placeholder="Specification Name"
+          value="${escapeHtml(spec.key || "")}">
+      </div>
+
+      <div class="col-md-5">
+        <input type="text"
+          class="form-control specification-value"
+          placeholder="Specification Value"
+          value="${escapeHtml(spec.value || "")}">
+      </div>
+
+      <div class="col-md-2">
+        <button type="button"
+          class="btn btn-outline-danger w-100"
+          onclick="removeSpecification(${index})">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+
+    </div>
+  `;
+}
+
+function renderSpecifications() {
+  const container = document.getElementById("specificationsList");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  productSpecifications.forEach((s, i) => {
+    container.insertAdjacentHTML("beforeend", renderSpecificationItem(s, i));
+  });
+}
+
+function addSpecification() {
+  productSpecifications.push({ key: "", value: "" });
+
+  renderSpecifications();
+}
+
+function removeSpecification(index) {
+  productSpecifications.splice(index, 1);
+  renderSpecifications();
+}
+
+function collectSpecificationsFromDOM() {
+  const specs = [];
+
+  document.querySelectorAll(".specification-item").forEach((row) => {
+    const key = row.querySelector(".specification-key")?.value.trim();
+
+    const value = row.querySelector(".specification-value")?.value.trim();
+
+    if (key && value) {
+      specs.push({ key, value });
+    }
+  });
+
+  return specs;
+}
+
+window.removeSpecification = removeSpecification;
 
 function initProductFormDOM() {
   productForm = document.getElementById("productForm");
@@ -174,6 +300,22 @@ function initProductFormDOM() {
   // 🔒 Initial safe state for CREATE flow
   if (referralEnabled) toggleReferral(referralEnabled.checked);
   if (paymentPlanEnabled) togglePaymentPlan(paymentPlanEnabled.checked);
+  /* ================= CATEGORY ATTRIBUTE LOADER ================= */
+
+  const categorySelect = document.getElementById("productCategory");
+
+  if (categorySelect) {
+    categorySelect.addEventListener("change", async () => {
+      const categoryId = categorySelect.value;
+
+      if (!categoryId) {
+        renderProductAttributes([]);
+        return;
+      }
+
+      await loadCategoryAttributes(categoryId);
+    });
+  }
 }
 
 /* ================= VARIANT RENDERER ================= */
@@ -348,7 +490,6 @@ function collectVariantsFromDOM() {
       stock,
     });
   });
-
   return variants;
 }
 
@@ -518,7 +659,54 @@ async function loadCategories() {
     showNotification("Failed to load categories", "error");
   }
 }
+/* ================= CATEGORY ATTRIBUTE FETCH ================= */
 
+async function loadCategoryAttributes(categoryId) {
+  try {
+    const res = await API.get(`/categories/${categoryId}`);
+
+    const category = res?.data;
+    const attributes = category?.attributeSchema || [];
+
+    productCategoryAttributes = attributes;
+
+    renderProductAttributes(attributes);
+  } catch (err) {
+    console.error("Failed loading category attributes", err);
+  }
+}
+function renderProductAttributes(attributes = []) {
+  const container = document.getElementById("dynamicAttributesContainer");
+
+  if (!container) return;
+
+  if (!attributes.length) {
+    container.innerHTML =
+      '<div class="text-muted">No attributes for this category</div>';
+    return;
+  }
+
+  container.innerHTML = attributes
+    .map((attr, index) => {
+      return `
+        <div class="row mb-2 align-items-center">
+
+          <div class="col-md-3">
+            <strong>${escapeHtml(attr.name)}</strong>
+          </div>
+
+          <div class="col-md-9">
+            <input type="text"
+              class="form-control product-attribute-input"
+              data-attr-name="${escapeHtml(attr.name)}"
+              placeholder="Enter ${escapeHtml(attr.name)}">
+          </div>
+
+        </div>
+      `;
+    })
+    .join("");
+}
 /* ================= REGIONAL SETTINGS ================= */
 function buildRegionalRowsFromConfig(
   product = null,
@@ -674,9 +862,30 @@ async function editProduct(productId) {
         : product.description,
     );
     set("productLongDescription", product.description?.long || "");
+    productFeatures = product.description?.features || [];
+    renderFeatures();
+    productSpecifications = (product.description?.specifications || []).map(
+      (spec) => {
+        // already correct object
+        if (typeof spec === "object") return spec;
 
+        // old string format fallback
+        if (typeof spec === "string") {
+          const parts = spec.split(":");
+          return {
+            key: parts[0]?.trim() || "",
+            value: parts[1]?.trim() || "",
+          };
+        }
+
+        return { key: "", value: "" };
+      },
+    );
+
+    renderSpecifications();
     set("productSku", product.sku);
     set("productCategory", product.category?.mainCategoryId);
+    await loadCategoryAttributes(product.category?.mainCategoryId);
     set("productPrice", product.pricing?.regularPrice);
     set("productSalePrice", product.pricing?.salePrice);
     set("productStock", product.availability?.stockQuantity);
@@ -908,6 +1117,8 @@ function buildProductPayload() {
       short: productForm.productDescription.value.trim(),
       long:
         document.getElementById("productLongDescription")?.value.trim() || "",
+      features: collectFeaturesFromDOM(),
+      specifications: collectSpecificationsFromDOM(),
     },
     sku: productForm.productSku.value.trim(),
 
@@ -1406,16 +1617,23 @@ async function saveProduct() {
     }
 
     const productId = createdProduct.productId;
-    const mongoProductId = createdProduct._id;
+
+    /* ✅ FETCH FULL PRODUCT TO GET MONGO _id */
+    const freshProduct = await API.get("/products/:productId", {
+      productId,
+    });
+
+    const mongoProductId = freshProduct?.data?._id;
 
     /* ================= SAVE PRODUCT FAQs ================= */
 
     const faqsToSave = collectFaqsFromDOM();
 
-    for (const faq of faqsToSave) {
-      await API.post(`/faqs/admin/product/${mongoProductId}`, faq);
+    if (mongoProductId && faqsToSave.length) {
+      for (const faq of faqsToSave) {
+        await API.post(`/faqs/admin/product/${mongoProductId}`, faq);
+      }
     }
-
     // 1️⃣ Upload primary product images
     await uploadPrimaryProductImages(productId);
 
@@ -1429,6 +1647,7 @@ async function saveProduct() {
     showLoading(false);
     showProductSuccess("Product Created Successfully");
   } catch (err) {
+    showLoading(false); // ✅ STOP INFINITE LOADER
     console.error("Save failed:", err);
 
     // Try to extract backend error message safely
@@ -1468,6 +1687,15 @@ function initAddProductPage() {
   window.planCount = 0;
 
   initProductFormDOM();
+  const addFeatureBtn = document.getElementById("addFeatureBtn");
+  if (addFeatureBtn) {
+    addFeatureBtn.addEventListener("click", addFeature);
+  }
+  const addSpecificationBtn = document.getElementById("addSpecificationBtn");
+
+  if (addSpecificationBtn) {
+    addSpecificationBtn.addEventListener("click", addSpecification);
+  }
   /* ================= FAQ INIT ================= */
 
   const addFaqBtn = document.getElementById("addFaqBtn");
@@ -1492,6 +1720,15 @@ async function initEditProductPage() {
   window.__IS_EDIT_MODE__ = true;
 
   initProductFormDOM();
+  const addFeatureBtn = document.getElementById("addFeatureBtn");
+  if (addFeatureBtn) {
+    addFeatureBtn.addEventListener("click", addFeature);
+  }
+  const addSpecificationBtn = document.getElementById("addSpecificationBtn");
+
+  if (addSpecificationBtn) {
+    addSpecificationBtn.addEventListener("click", addSpecification);
+  }
   productFaqs = [];
   renderFaqs();
   originalFaqIds = [];
