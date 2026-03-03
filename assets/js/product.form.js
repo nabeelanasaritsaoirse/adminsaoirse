@@ -231,16 +231,12 @@ function initProductFormDOM() {
 
   if (hasVariantsCheckbox && generateMatrixBtn) {
     hasVariantsCheckbox.addEventListener("change", () => {
-      // Must save product first
+      // 🔹 ADD MODE → just allow toggle, no restriction
       if (!window.currentProductId) {
-        showNotification(
-          "Please save product first before creating variants",
-          "warning",
-        );
-        hasVariantsCheckbox.checked = false;
-        return;
+        return; // do nothing, just allow checkbox
       }
 
+      // 🔹 EDIT MODE → control matrix button
       if (hasVariantsCheckbox.checked) {
         generateMatrixBtn.classList.remove("d-none");
       } else {
@@ -898,8 +894,19 @@ async function editProduct(productId) {
 
     renderSpecifications();
     set("productSku", product.sku);
-    set("productCategory", product.category?.mainCategoryId);
-    await loadCategoryAttributes(product.category?.mainCategoryId);
+    const categorySelect = document.getElementById("productCategory");
+
+    if (categorySelect) {
+      if (product.category?.subCategoryId) {
+        categorySelect.value = product.category.subCategoryId;
+      } else if (product.category?.mainCategoryId) {
+        categorySelect.value = product.category.mainCategoryId;
+      }
+    }
+    const categoryIdToLoad =
+      product.category?.subCategoryId || product.category?.mainCategoryId;
+
+    await loadCategoryAttributes(categoryIdToLoad);
     if (product.attributes) {
       setTimeout(() => {
         document
@@ -1721,6 +1728,11 @@ async function saveProduct() {
       await uploadVariantImages(productId, fresh.data.variants);
     }
     showLoading(false);
+    // 🔥 If product has variants → redirect to edit with autoMatrix
+    if (payload.hasVariants === true) {
+      window.location.href = `./product-edit.html?id=${productId}&autoMatrix=true`;
+      return;
+    }
     showProductSuccess("Product Created Successfully");
   } catch (err) {
     showLoading(false); // ✅ STOP INFINITE LOADER
@@ -1833,10 +1845,23 @@ async function initEditProductPage() {
     applyBtn.addEventListener("click", applyVariantMatrix);
   }
 
-  const id = new URLSearchParams(location.search).get("id");
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
+  const autoMatrix = params.get("autoMatrix");
+
   if (!id) return alert("Missing product id");
 
   await editProduct(id);
+
+  // 🔥 AUTO GENERATE MATRIX AFTER LOAD
+  if (autoMatrix === "true") {
+    setTimeout(() => {
+      const generateBtn = document.getElementById("generateVariantMatrixBtn");
+      if (generateBtn && !generateBtn.classList.contains("d-none")) {
+        generateBtn.click();
+      }
+    }, 500); // wait for editProduct to finish rendering
+  }
 }
 
 /* ================= GENERATE MATRIX ================= */
