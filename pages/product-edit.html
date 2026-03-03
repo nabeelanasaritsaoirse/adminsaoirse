@@ -479,20 +479,42 @@
                 + Add FAQ
               </button>
 
-              <!-- VARIANTS -->
               <h5 class="mt-4 mb-3">Variants</h5>
+
               <div class="mb-2">
-                <input type="checkbox" id="hasVariants" /> This product has
-                variants
+                <input type="checkbox" id="hasVariants" />
+                This product has variants
               </div>
-              <div id="variantsSection" class="d-none">
-                <div id="variantsList"></div>
+
+              <!-- 🔹 SAVED VARIANTS -->
+              <div id="savedVariantsSection" class="d-none mt-3">
+                <h6>Saved Variants</h6>
+                <div id="savedVariantsWrapper"></div>
+              </div>
+
+              <!-- 🔹 GENERATE NEW -->
+              <div class="mt-3">
                 <button
                   type="button"
-                  id="addVariantBtn"
-                  class="btn btn-sm btn-primary mt-2"
+                  id="generateVariantMatrixBtn"
+                  class="btn btn-warning btn-sm d-none"
                 >
-                  + Add Variant
+                  Generate Missing Combinations
+                </button>
+              </div>
+
+              <!-- 🔹 PREVIEW VARIANTS -->
+              <div id="previewVariantsSection" class="d-none mt-3">
+                <h6>New Variant Combinations (Preview)</h6>
+
+                <div id="previewVariantsWrapper"></div>
+
+                <button
+                  type="button"
+                  id="applyVariantMatrixBtn"
+                  class="btn btn-success btn-sm mt-3"
+                >
+                  Save Selected Variants
                 </button>
               </div>
 

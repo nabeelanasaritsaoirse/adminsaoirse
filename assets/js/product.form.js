@@ -58,6 +58,10 @@ let originalFaqIds = []; // used only in EDIT mode
 let productFeatures = [];
 let productSpecifications = [];
 let productCategoryAttributes = [];
+let generatedVariantMatrix = [];
+let previewCurrentPage = 1;
+const PREVIEW_PAGE_SIZE = 20;
+let previewFullMatrix = [];
 /* ================= INIT DOM ================= */
 /* ================= REFERRAL HELPERS ================= */
 
@@ -222,31 +226,32 @@ function initProductFormDOM() {
 
   /* ================= VARIANTS ================= */
 
-  if (!variantEventsBound) {
-    if (hasVariantsCheckbox && variantsSection) {
-      hasVariantsCheckbox.addEventListener("change", () => {
-        if (hasVariantsCheckbox.checked) {
-          variantsSection.classList.remove("d-none");
-          variantsSection.style.display = "block";
+  const generateMatrixBtn = document.getElementById("generateVariantMatrixBtn");
+  const matrixContainer = document.getElementById("variantMatrixContainer");
 
-          if (variantsList.children.length === 0) {
-            window.variantCount = 0;
-            addVariantField();
-          }
-        } else {
-          variantsSection.classList.add("d-none");
-          variantsSection.style.display = "none";
-          variantsList.innerHTML = "";
-          window.variantCount = 0;
+  if (hasVariantsCheckbox && generateMatrixBtn) {
+    hasVariantsCheckbox.addEventListener("change", () => {
+      // Must save product first
+      if (!window.currentProductId) {
+        showNotification(
+          "Please save product first before creating variants",
+          "warning",
+        );
+        hasVariantsCheckbox.checked = false;
+        return;
+      }
+
+      if (hasVariantsCheckbox.checked) {
+        generateMatrixBtn.classList.remove("d-none");
+      } else {
+        generateMatrixBtn.classList.add("d-none");
+
+        if (matrixContainer) {
+          matrixContainer.classList.add("d-none");
+          document.getElementById("variantMatrixTableWrapper").innerHTML = "";
         }
-      });
-    }
-
-    if (addVariantBtn) {
-      addVariantBtn.addEventListener("click", addVariantField);
-    }
-
-    variantEventsBound = true;
+      }
+    });
   }
 
   /* ================= REFERRAL BONUS ================= */
@@ -316,6 +321,15 @@ function initProductFormDOM() {
       await loadCategoryAttributes(categoryId);
     });
   }
+  /* ================= MATRIX BUTTON BINDINGS ================= */
+
+  document
+    .getElementById("generateVariantMatrixBtn")
+    ?.addEventListener("click", generateVariantMatrix);
+
+  document
+    .getElementById("applyVariantMatrixBtn")
+    ?.addEventListener("click", applyVariantMatrix);
 }
 
 /* ================= VARIANT RENDERER ================= */
@@ -844,7 +858,7 @@ async function editProduct(productId) {
     const product = res?.data;
     if (!product) throw new Error("Product not found");
 
-    window.currentProductId = product._id;
+    window.currentProductId = product.productId;
 
     const set = (id, val = "") => {
       const el = document.getElementById(id);
@@ -886,6 +900,18 @@ async function editProduct(productId) {
     set("productSku", product.sku);
     set("productCategory", product.category?.mainCategoryId);
     await loadCategoryAttributes(product.category?.mainCategoryId);
+    if (product.attributes) {
+      setTimeout(() => {
+        document
+          .querySelectorAll(".product-attribute-input")
+          .forEach((input) => {
+            const name = input.dataset.attrName;
+            if (product.attributes[name]) {
+              input.value = product.attributes[name];
+            }
+          });
+      }, 200);
+    }
     set("productPrice", product.pricing?.regularPrice);
     set("productSalePrice", product.pricing?.salePrice);
     set("productStock", product.availability?.stockQuantity);
@@ -942,15 +968,53 @@ async function editProduct(productId) {
 
     /* ================= VARIANTS ================= */
 
-    if (product.hasVariants && Array.isArray(product.variants)) {
+    if (product.hasVariants) {
       hasVariantsCheckbox.checked = true;
-      variantsSection.classList.remove("d-none");
-      variantsSection.style.display = "block";
 
-      variantsList.innerHTML = "";
-      window.variantCount = 0;
+      try {
+        const variantRes = await API.get(
+          `/products/${product.productId}/variants`,
+        );
 
-      product.variants.forEach((v) => addVariantField(v));
+        const variants = variantRes?.data?.variants || [];
+
+        const generateBtn = document.getElementById("generateVariantMatrixBtn");
+        const previewSection = document.getElementById(
+          "previewVariantsSection",
+        );
+        const savedSection = document.getElementById("savedVariantsSection");
+
+        if (variants.length > 0) {
+          // ✅ PERSISTED MODE (variants already saved)
+
+          // Render saved variants
+          renderSavedVariantsTable(variants);
+
+          // Show saved section
+          savedSection?.classList.remove("d-none");
+
+          // Hide preview section initially
+          previewSection?.classList.add("d-none");
+
+          // 🔥 Always show generate button in edit mode
+          if (generateBtn) {
+            generateBtn.classList.remove("d-none");
+            generateBtn.innerText = "Generate Missing Combinations";
+          }
+        } else {
+          // 🟡 NO SAVED VARIANTS YET (fresh product)
+
+          savedSection?.classList.add("d-none");
+          previewSection?.classList.add("d-none");
+
+          if (generateBtn) {
+            generateBtn.classList.remove("d-none");
+            generateBtn.innerText = "Generate Variant Matrix";
+          }
+        }
+      } catch (err) {
+        console.error("Failed loading variants", err);
+      }
     }
 
     /* ================= PLANS ================= */
@@ -1074,7 +1138,22 @@ async function editProduct(productId) {
     showLoading(false);
   }
 }
+/* ================= PRODUCT ATTRIBUTES ================= */
 
+function collectProductAttributesFromDOM() {
+  const attributes = {};
+
+  document.querySelectorAll(".product-attribute-input").forEach((input) => {
+    const name = input.dataset.attrName;
+    const value = input.value.trim();
+
+    if (name && value) {
+      attributes[name] = value;
+    }
+  });
+
+  return attributes;
+}
 /* ================= PAYLOAD BUILDER ================= */
 
 function buildProductPayload() {
@@ -1123,6 +1202,7 @@ function buildProductPayload() {
     sku: productForm.productSku.value.trim(),
 
     category,
+    attributes: collectProductAttributesFromDOM(),
 
     status: document.querySelector('input[name="status"]:checked')?.value,
 
@@ -1204,10 +1284,6 @@ function buildProductPayload() {
     const el = document.getElementById(flag);
     payload[flag] = el ? el.checked === true : false;
   });
-
-  /* ================= VARIANTS ================= */
-
-  payload.variants = collectVariantsFromDOM();
 
   /* ================= PLANS ================= */
 
@@ -1720,15 +1796,17 @@ async function initEditProductPage() {
   window.__IS_EDIT_MODE__ = true;
 
   initProductFormDOM();
+
   const addFeatureBtn = document.getElementById("addFeatureBtn");
   if (addFeatureBtn) {
     addFeatureBtn.addEventListener("click", addFeature);
   }
-  const addSpecificationBtn = document.getElementById("addSpecificationBtn");
 
+  const addSpecificationBtn = document.getElementById("addSpecificationBtn");
   if (addSpecificationBtn) {
     addSpecificationBtn.addEventListener("click", addSpecification);
   }
+
   productFaqs = [];
   renderFaqs();
   originalFaqIds = [];
@@ -1743,12 +1821,435 @@ async function initEditProductPage() {
     saveBtn.addEventListener("click", saveProduct);
   }
 
+  // 🔥 ADD THIS (Generate Button Binding)
+  const generateBtn = document.getElementById("generateVariantMatrixBtn");
+  if (generateBtn) {
+    generateBtn.addEventListener("click", generateVariantMatrix);
+  }
+
+  // 🔥 ADD THIS (Save Selected Variants Binding)
+  const applyBtn = document.getElementById("applyVariantMatrixBtn");
+  if (applyBtn) {
+    applyBtn.addEventListener("click", applyVariantMatrix);
+  }
+
   const id = new URLSearchParams(location.search).get("id");
   if (!id) return alert("Missing product id");
 
   await editProduct(id);
 }
 
+/* ================= GENERATE MATRIX ================= */
+
+async function generateVariantMatrix() {
+  if (!window.currentProductId) {
+    showNotification("Save product first", "warning");
+    return;
+  }
+
+  try {
+    showLoading(true);
+
+    // 🔹 1. Generate full matrix from backend
+    const matrixRes = await API.post(
+      `/products/${window.currentProductId}/generate-variant-matrix`,
+    );
+
+    const matrixBody = matrixRes?.data?.data || matrixRes?.data || [];
+    const fullMatrix = matrixBody?.variants || matrixBody || [];
+
+    // 🔹 2. Fetch already saved variants
+    const savedRes = await API.get(
+      `/products/${window.currentProductId}/variants`,
+    );
+
+    const savedVariants = savedRes?.data?.variants || [];
+
+    // 🔹 3. Collect existing attributeKeys
+    const existingKeys = savedVariants.map((v) => v.attributeKey);
+
+    // 🔹 4. Filter only missing combinations
+    const missingCombinations = fullMatrix.filter(
+      (combo) => !existingKeys.includes(combo.attributeKey),
+    );
+
+    if (missingCombinations.length === 0) {
+      showNotification("No new combinations available", "info");
+      return;
+    }
+    previewFullMatrix = missingCombinations;
+    previewCurrentPage = 1;
+
+    renderPreviewPage();
+  } catch (err) {
+    console.error(err);
+    showNotification("Matrix generation failed", "error");
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ================= APPLY MATRIX ================= */
+
+async function applyVariantMatrix() {
+  if (!window.currentProductId) return;
+
+  const rows = document.querySelectorAll("#previewVariantsWrapper tbody tr");
+
+  const variantsPayload = [];
+
+  rows.forEach((row) => {
+    const isChecked = row.querySelector(".matrix-active")?.checked;
+    if (!isChecked) return;
+
+    const matrixIndex = Number(row.dataset.matrixIndex);
+    const baseVariant = previewFullMatrix[matrixIndex];
+
+    if (!baseVariant) return;
+
+    const price = Number(row.querySelector(".matrix-price")?.value);
+    const salePriceRaw = row.querySelector(".matrix-sale-price")?.value;
+    const stock = Number(row.querySelector(".matrix-stock")?.value);
+
+    const salePrice = salePriceRaw === "" ? null : Number(salePriceRaw);
+
+    variantsPayload.push({
+      variantId: null,
+      attributes: baseVariant.attributes,
+      attributeKey: baseVariant.attributeKey,
+      price,
+      salePrice,
+      stock,
+      isActive: true,
+    });
+  });
+
+  if (variantsPayload.length === 0) {
+    return showNotification(
+      "Please select at least one variant to save",
+      "warning",
+    );
+  }
+
+  try {
+    showLoading(true);
+
+    await API.post(
+      `/products/${window.currentProductId}/apply-variant-matrix`,
+      { variants: variantsPayload },
+    );
+
+    showNotification(
+      `${variantsPayload.length} variant(s) saved successfully`,
+      "success",
+    );
+
+    // Reload saved
+    const updated = await API.get(
+      `/products/${window.currentProductId}/variants`,
+    );
+
+    renderSavedVariantsTable(updated?.data?.variants || []);
+
+    // Refresh preview
+    generateVariantMatrix();
+  } catch (err) {
+    console.error("Variant Save Error:", err);
+    showNotification("Failed to save variants", "error");
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ================= RENDER MATRIX TABLE ================= */
+
+function renderSavedVariantsTable(variants) {
+  const wrapper = document.getElementById("savedVariantsWrapper");
+  const section = document.getElementById("savedVariantsSection");
+
+  if (!wrapper || !section) return;
+
+  if (!Array.isArray(variants) || variants.length === 0) {
+    section.classList.add("d-none");
+    return;
+  }
+
+  section.classList.remove("d-none");
+
+  wrapper.innerHTML = `
+    <table class="table table-bordered table-sm">
+      <thead>
+        <tr>
+          <th>Attributes</th>
+          <th width="120">Price</th>
+          <th width="120">Sale Price</th>
+          <th width="100">Stock</th>
+          <th width="80">Active</th>
+          <th width="100">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${variants
+          .map((variant) => {
+            const attributeText = (variant.attributes || [])
+              .map((a) => `${a.name}: ${a.value}`)
+              .join(", ");
+
+            return `
+              <tr data-variant-id="${variant.variantId}">
+                <td>${attributeText}</td>
+
+                <td>
+                  <input 
+                    type="number"
+                    min="0"
+                    class="form-control form-control-sm saved-price"
+                    data-field="price"
+                    value="${variant.price ?? 0}">
+                </td>
+
+                <td>
+                  <input 
+                    type="number"
+                    min="0"
+                    class="form-control form-control-sm saved-sale-price"
+                    data-field="salePrice"
+                    value="${variant.salePrice ?? ""}">
+                </td>
+
+                <td>
+                  <input 
+                    type="number"
+                    min="0"
+                    class="form-control form-control-sm saved-stock"
+                    data-field="stock"
+                    value="${variant.stock ?? 0}">
+                </td>
+
+                <td class="text-center">
+                  <input 
+                    type="checkbox"
+                    class="saved-active"
+                    data-field="isActive"
+                    ${variant.isActive ? "checked" : ""}>
+                </td>
+
+                <td>
+                  <button 
+                    type="button" 
+                    class="btn btn-sm btn-outline-danger delete-variant-btn">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderPreviewVariantsTable(matrix) {
+  const wrapper = document.getElementById("previewVariantsWrapper");
+  const section = document.getElementById("previewVariantsSection");
+
+  if (!wrapper || !section) return;
+
+  if (!Array.isArray(matrix) || matrix.length === 0) {
+    section.classList.add("d-none");
+    return;
+  }
+
+  section.classList.remove("d-none");
+
+  wrapper.innerHTML = `
+    <table class="table table-bordered table-sm">
+      <thead>
+        <tr>
+          <th>Attributes</th>
+          <th>Price</th>
+          <th>Sale Price</th>
+          <th>Stock</th>
+          <th>Select</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${matrix
+          .map((variant, idx) => {
+            const attributeText = (variant.attributes || [])
+              .map((a) => `${a.name}: ${a.value}`)
+              .join(", ");
+
+            return `
+              <tr data-matrix-index="${idx}">
+                <td>${attributeText}</td>
+
+                <td>
+                  <input type="number"
+                    class="form-control form-control-sm matrix-price"
+                    value="0">
+                </td>
+
+                <td>
+                  <input type="number"
+                    class="form-control form-control-sm matrix-sale-price">
+                </td>
+
+                <td>
+                  <input type="number"
+                    class="form-control form-control-sm matrix-stock"
+                    value="0">
+                </td>
+
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="matrix-active">
+                </td>
+              </tr>
+            `;
+          })
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderPreviewPage() {
+  const start = (previewCurrentPage - 1) * PREVIEW_PAGE_SIZE;
+  const end = start + PREVIEW_PAGE_SIZE;
+
+  const pageData = previewFullMatrix.slice(start, end);
+
+  renderPreviewVariantsTable(pageData);
+
+  renderPreviewPagination();
+}
+
+function renderPreviewPagination() {
+  const wrapper = document.getElementById("previewVariantsWrapper");
+  if (!wrapper) return;
+
+  const totalPages = Math.ceil(previewFullMatrix.length / PREVIEW_PAGE_SIZE);
+
+  if (totalPages <= 1) return;
+
+  const paginationHTML = `
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button 
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        id="previewPrevBtn"
+        ${previewCurrentPage === 1 ? "disabled" : ""}
+      >
+        Previous
+      </button>
+
+      <span>
+        Page ${previewCurrentPage} of ${totalPages}
+      </span>
+
+      <button 
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        id="previewNextBtn"
+        ${previewCurrentPage === totalPages ? "disabled" : ""}
+      >
+        Next
+      </button>
+    </div>
+  `;
+
+  wrapper.insertAdjacentHTML("beforeend", paginationHTML);
+}
+
+document.addEventListener("click", function (e) {
+  if (e.target.id === "previewPrevBtn") {
+    if (previewCurrentPage > 1) {
+      previewCurrentPage--;
+      renderPreviewPage();
+    }
+  }
+
+  if (e.target.id === "previewNextBtn") {
+    const totalPages = Math.ceil(previewFullMatrix.length / PREVIEW_PAGE_SIZE);
+
+    if (previewCurrentPage < totalPages) {
+      previewCurrentPage++;
+      renderPreviewPage();
+    }
+  }
+});
+
+document.addEventListener("change", async function (e) {
+  const input = e.target;
+
+  if (!input.dataset?.field) return;
+
+  const row = input.closest("tr");
+  const variantId = row?.dataset?.variantId;
+
+  if (!variantId) return;
+
+  const price = Number(row.querySelector(".saved-price")?.value);
+  const salePriceRaw = row.querySelector(".saved-sale-price")?.value;
+  const salePrice = salePriceRaw === "" ? null : Number(salePriceRaw);
+  const stock = Number(row.querySelector(".saved-stock")?.value);
+  const isActive = row.querySelector(".saved-active")?.checked;
+
+  try {
+    await API.patch(
+      `/products/${window.currentProductId}/variants/${variantId}`,
+      {
+        price,
+        salePrice,
+        stock,
+        isActive,
+      },
+    );
+
+    showNotification("Variant updated", "success");
+  } catch (err) {
+    console.error("Update failed:", err);
+    showNotification("Update failed", "error");
+  }
+});
+/* ================= DELETE SAVED VARIANT ================= */
+
+document.addEventListener("click", async function (e) {
+  const btn = e.target.closest(".delete-variant-btn");
+  if (!btn) return;
+  // 🔥 THIS IS IMPORTANT
+  e.preventDefault();
+  e.stopPropagation();
+  const row = btn.closest("tr");
+  const variantId = row?.dataset?.variantId;
+
+  if (!variantId) return;
+
+  const confirmDelete = confirm(
+    "Are you sure you want to delete this variant?",
+  );
+  if (!confirmDelete) return;
+
+  try {
+    showLoading(true);
+
+    // 🔥 Adjust endpoint if needed
+    await API.delete(
+      `/products/${window.currentProductId}/variants/${variantId}`,
+    );
+
+    row.remove();
+
+    showNotification("Variant deleted successfully", "success");
+  } catch (err) {
+    console.error("Delete failed:", err);
+    showNotification("Failed to delete variant", "error");
+  } finally {
+    showLoading(false);
+  }
+});
 /* ================= EXPORTS ================= */
 
 window.initAddProductPage = initAddProductPage;
