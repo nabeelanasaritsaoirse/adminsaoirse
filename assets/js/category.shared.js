@@ -41,13 +41,13 @@ window.CategoryStore = {
   categories: [],
   currentCategoryId: null,
 
-  // 🔥 NOTE:
-  // We no longer store editable images here.
-  // Typed images come directly from backend (categoryImages).
+  /* MARKETPLACE */
+  attributeSchema: [],
 
   selectedRegions: [],
   isGlobalCategory: true,
   regionalMetaMap: {},
+
   pagination: { page: 1, limit: 50, total: 0 },
 };
 
@@ -245,7 +245,7 @@ window.handleRegionalCheckboxChange = function (code, checked) {
     };
   } else {
     CategoryStore.selectedRegions = CategoryStore.selectedRegions.filter(
-      (r) => r !== code
+      (r) => r !== code,
     );
   }
 };
@@ -277,7 +277,10 @@ async function loadCategories() {
     const response = await API.get(
       "/categories/admin/all",
       {},
-      { isActive: "all" }
+      {
+        isActive: "all",
+        includeAttributes: true,
+      },
     );
 
     let data = [];
@@ -297,10 +300,31 @@ async function loadCategories() {
       productCount: c.productCount || 0,
       displayOrder: Number(c.displayOrder || 0),
 
-      // 🔥 IMPORTANT
+      /* =========================
+     ✅ MARKETPLACE EXTENSION
+     (NON-BREAKING)
+  ========================= */
+
+      commissionRate: c.commissionRate ?? 0,
+      isRestricted: !!c.isRestricted,
+
+      attributeSchema: Array.isArray(c.attributeSchema)
+        ? c.attributeSchema
+        : [],
+
+      /* =========================
+     KEEP EXISTING SYSTEM SAFE
+  ========================= */
+
       categoryImages: Array.isArray(c.categoryImages) ? c.categoryImages : [],
 
       meta: c.meta || {},
+
+      // ✅ new SEO format support
+      metaTitle: c.metaTitle || c.meta?.title || "",
+      metaDescription: c.metaDescription || c.meta?.description || "",
+      keywords: c.keywords || c.meta?.keywords || [],
+
       availableInRegions: c.availableInRegions || [],
       regionalMeta: c.regionalMeta || [],
     }));
