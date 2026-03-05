@@ -274,18 +274,18 @@ async function loadCategories() {
   try {
     showLoading(true);
 
-    const response = await API.get(
-      "/categories/admin/all",
-      {},
-      {
-        isActive: "all",
-        includeAttributes: true,
-      },
-    );
+    const response = await API.get("/categories/admin/all", {
+      page: 1,
+      limit: 1000,
+      isActive: "all",
+    });
 
     let data = [];
-    if (Array.isArray(response?.data)) data = response.data;
-    else if (Array.isArray(response)) data = response;
+    if (Array.isArray(response?.data?.data)) {
+      data = response.data.data;
+    } else if (Array.isArray(response?.data)) {
+      data = response.data;
+    }
 
     CategoryStore.categories = data.map((c) => ({
       _id: c._id || c.id,
