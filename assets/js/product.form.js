@@ -326,6 +326,23 @@ function initProductFormDOM() {
   document
     .getElementById("applyVariantMatrixBtn")
     ?.addEventListener("click", applyVariantMatrix);
+  /* ================= SELLER FIELD LOGIC ================= */
+
+  const sellerEmailInput = document.getElementById("productSellerEmail");
+
+  if (sellerEmailInput) {
+    sellerEmailInput.addEventListener("input", () => {
+      const publishRadio = document.querySelector(
+        'input[name="status"][value="published"]',
+      );
+
+      if (sellerEmailInput.value.trim()) {
+        publishRadio?.setAttribute("disabled", true);
+      } else {
+        publishRadio?.removeAttribute("disabled");
+      }
+    });
+  }
 }
 
 /* ================= VARIANT RENDERER ================= */
@@ -1327,6 +1344,23 @@ function buildProductPayload() {
 
   if (payload.status === "published" && !payload.description.long) {
     throw new Error("Long description is required before publishing");
+  }
+  /* ================= SELLER ASSIGNMENT ================= */
+
+  const sellerEmail = document
+    .getElementById("productSellerEmail")
+    ?.value?.trim();
+
+  const sellerMobile = document
+    .getElementById("productSellerMobile")
+    ?.value?.trim();
+
+  if (sellerEmail) {
+    payload.sellerEmail = sellerEmail;
+  }
+
+  if (sellerMobile) {
+    payload.sellerMobile = sellerMobile;
   }
   return payload;
 }
