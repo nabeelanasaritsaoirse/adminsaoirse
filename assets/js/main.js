@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
  */
 function initializeTooltips() {
   const tooltipTriggerList = [].slice.call(
-    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    document.querySelectorAll('[data-bs-toggle="tooltip"]'),
   );
   tooltipTriggerList.map(function (tooltipTriggerEl) {
     return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -79,41 +79,6 @@ function initializeActivityTable() {
       });
     });
   }
-}
-
-/**
- * Show notification
- */
-function showNotification(message, type = "info") {
-  const notificationContainer = document.getElementById(
-    "notificationContainer"
-  );
-
-  if (!notificationContainer) {
-    const container = document.createElement("div");
-    container.id = "notificationContainer";
-    container.style.position = "fixed";
-    container.style.top = "70px";
-    container.style.right = "20px";
-    container.style.zIndex = "9999";
-    document.body.appendChild(container);
-  }
-
-  const alert = document.createElement("div");
-  alert.className = `alert alert-${type} alert-dismissible fade show`;
-  alert.role = "alert";
-  alert.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-
-  document.getElementById("notificationContainer").appendChild(alert);
-
-  // Auto remove after 5 seconds
-  setTimeout(() => {
-    alert.classList.remove("show");
-    setTimeout(() => alert.remove(), 300);
-  }, 5005);
 }
 
 /**
@@ -173,7 +138,7 @@ function exportTableToCSV(tableId) {
 
 // Global functions available to other scripts
 window.adminPanel = {
-  showNotification,
+  showNotification: window.utils.showNotification,
   confirmAction,
   formatNumber,
   loadData,
@@ -218,7 +183,6 @@ function getUserIdFromURL() {
 }
 document.addEventListener("DOMContentLoaded", () => {
   if (AUTH.isAuthenticated()) {
-
     setInterval(() => {
       Navigation.render(); // re-render sidebar
     }, 15000); // 15 seconds

@@ -107,7 +107,7 @@
 
               <!-- LONG DESCRIPTION -->
               <div class="mb-3">
-                <label class="form-label">Long Description</label>
+                <label class="form-label">Long Description *</label>
                 <textarea
                   id="productLongDescription"
                   class="form-control"
@@ -118,38 +118,7 @@
                   Full detailed explanation shown on product details page.
                 </small>
               </div>
-              <!-- PRODUCT FEATURES -->
-              <h5 class="mt-4 mb-3">Key Features</h5>
 
-              <div id="featuresList"></div>
-
-              <button
-                type="button"
-                class="btn btn-sm btn-secondary mt-2"
-                id="addFeatureBtn"
-              >
-                + Add Feature
-              </button>
-
-              <small class="text-muted d-block mt-1">
-                Example: Noise Cancellation, Fast Charging, AMOLED Display
-              </small>
-              <!-- PRODUCT SPECIFICATIONS -->
-              <h5 class="mt-4 mb-3">Specifications</h5>
-
-              <div id="specificationsList"></div>
-
-              <button
-                type="button"
-                class="btn btn-sm btn-secondary mt-2"
-                id="addSpecificationBtn"
-              >
-                + Add Specification
-              </button>
-
-              <small class="text-muted d-block mt-1">
-                Example: Material = Polyester, Capacity = 30L, Weight = 800g
-              </small>
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label class="form-label">Category *</label>
@@ -234,28 +203,11 @@
                 </div>
               </div>
 
-              <!-- FLAGS -->
-              <h5 class="mt-4 mb-3">Product Flags</h5>
-              <div class="row mb-3">
-                <div class="col-md-3">
-                  <input type="checkbox" id="isFeatured" /> Featured
-                </div>
-                <div class="col-md-3">
-                  <input type="checkbox" id="isPopular" /> Popular
-                </div>
-                <div class="col-md-3">
-                  <input type="checkbox" id="isBestSeller" /> Best Seller
-                </div>
-                <div class="col-md-3">
-                  <input type="checkbox" id="isTrending" /> Trending
-                </div>
-              </div>
-
               <!-- WARRANTY -->
               <h5 class="mt-4 mb-3">Warranty</h5>
               <div class="row mb-3">
                 <div class="col-md-6">
-                  <label class="form-label">Warranty Period (months)</label>
+                  <label class="form-label">Warranty Period (months) *</label>
                   <input
                     type="number"
                     id="warrantyPeriod"
@@ -264,7 +216,7 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label">Return Policy (days)</label>
+                  <label class="form-label">Return Policy (days) *</label>
                   <input
                     type="number"
                     id="warrantyReturnPolicy"
@@ -277,12 +229,12 @@
               <h5 class="mt-4 mb-3">Origin & Project</h5>
               <div class="row mb-3">
                 <div class="col-md-4">
-                  <label class="form-label">Origin Country</label>
+                  <label class="form-label">Origin Country *</label>
                   <input type="text" id="productOrigin" class="form-control" />
                 </div>
 
                 <div class="col-md-4">
-                  <label class="form-label">Manufacturer</label>
+                  <label class="form-label">Manufacturer *</label>
                   <input
                     type="text"
                     id="productOriginManufacturer"
@@ -290,15 +242,39 @@
                   />
                 </div>
 
-                <div class="col-md-4">
+                <!-- <div class="col-md-4">
                   <label class="form-label">Project</label>
                   <input type="hidden" id="productProjectId" />
                   <input type="text" id="productProject" class="form-control" />
-                </div>
+                </div> -->
+              </div>
+
+              <!-- SEO -->
+              <h5 class="mt-4 mb-3">SEO *</h5>
+              <div class="mb-3">
+                <label class="form-label">Meta Title</label>
+                <input type="text" id="productMetaTitle" class="form-control" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Meta Description</label>
+                <textarea
+                  id="productMetaDescription"
+                  class="form-control"
+                ></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label"
+                  >Meta Keywords (comma separated)</label
+                >
+                <input
+                  type="text"
+                  id="productMetaKeywords"
+                  class="form-control"
+                />
               </div>
 
               <!-- DIMENSIONS -->
-              <h5 class="mt-4 mb-3">Dimensions</h5>
+              <h5 class="mt-4 mb-3">Dimensions *</h5>
               <div class="row mb-3">
                 <div class="col-md-3">
                   <input
@@ -334,29 +310,38 @@
                 </div>
               </div>
 
-              <!-- SEO -->
-              <h5 class="mt-4 mb-3">SEO</h5>
-              <div class="mb-3">
-                <label class="form-label">Meta Title</label>
-                <input type="text" id="productMetaTitle" class="form-control" />
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Meta Description</label>
-                <textarea
-                  id="productMetaDescription"
-                  class="form-control"
-                ></textarea>
-              </div>
-              <div class="mb-3">
-                <label class="form-label"
-                  >Meta Keywords (comma separated)</label
-                >
-                <input
-                  type="text"
-                  id="productMetaKeywords"
-                  class="form-control"
-                />
-              </div>
+              <!-- PRODUCT FEATURES -->
+              <h5 class="mt-4 mb-3">Key Features</h5>
+
+              <div id="featuresList"></div>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary mt-2"
+                id="addFeatureBtn"
+              >
+                + Add Feature
+              </button>
+
+              <small class="text-muted d-block mt-1">
+                Example: Noise Cancellation, Fast Charging, AMOLED Display
+              </small>
+              <!-- PRODUCT SPECIFICATIONS -->
+              <h5 class="mt-4 mb-3">Specifications</h5>
+
+              <div id="specificationsList"></div>
+
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary mt-2"
+                id="addSpecificationBtn"
+              >
+                + Add Specification
+              </button>
+
+              <small class="text-muted d-block mt-1">
+                Example: Material = Polyester, Capacity = 30L, Weight = 800g
+              </small>
               <!-- REGIONAL AVAILABILITY & PRICING -->
               <h5 class="mt-4 mb-3">Regional Availability & Pricing</h5>
 
@@ -517,16 +502,99 @@
                   Save Selected Variants
                 </button>
               </div>
+              <!-- SELLER LISTING REVIEW (EDIT MODE ONLY) -->
+              <div id="sellerReviewSection" class="card mt-4 d-none">
+                <div class="card-body">
+                  <h5>Seller Listing Review</h5>
 
-              <!-- IMAGES -->
-              <h5 class="mt-4 mb-3">Product Images</h5>
-              <input
-                type="file"
-                id="productImages"
-                class="form-control"
-                multiple
-              />
-              <div class="row mt-3" id="imagePreviewContainer"></div>
+                  <p>
+                    <strong>Store:</strong>
+                    <span id="sellerStoreName">-</span>
+                  </p>
+
+                  <p>
+                    <strong>Seller Rating:</strong>
+                    <span id="sellerRating">-</span>
+                  </p>
+
+                  <p>
+                    <strong>Listing Status:</strong>
+                    <span id="productListingStatus">-</span>
+                  </p>
+
+                  <div class="mt-3">
+                    <button
+                      type="button"
+                      class="btn btn-success"
+                      id="approveProductBtn"
+                    >
+                      Approve Product
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn btn-danger"
+                      id="rejectProductBtn"
+                    >
+                      Reject Product
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <!-- FLAGS -->
+              <h5 class="mt-4 mb-3">Product Flags</h5>
+              <div class="row mb-3">
+                <div class="col-md-3">
+                  <input type="checkbox" id="isFeatured" /> Featured
+                </div>
+                <div class="col-md-3">
+                  <input type="checkbox" id="isPopular" /> Popular
+                </div>
+                <div class="col-md-3">
+                  <input type="checkbox" id="isBestSeller" /> Best Seller
+                </div>
+                <div class="col-md-3">
+                  <input type="checkbox" id="isTrending" /> Trending
+                </div>
+              </div>
+
+              <h5 class="mt-4 mb-3">Product Images *</h5>
+
+              <div
+                id="imageUploader"
+                class="image-uploader border rounded p-3 text-center"
+              >
+                <div
+                  id="dropZone"
+                  class="drop-zone mx-auto"
+                  style="max-width: 600px"
+                >
+                  <i class="bi bi-cloud-arrow-up fs-1 text-muted"></i>
+
+                  <p class="mt-2 mb-1">
+                    <strong>Drag & Drop images here</strong>
+                  </p>
+
+                  <p class="text-muted small mb-2">or</p>
+
+                  <label class="btn btn-outline-primary btn-sm">
+                    Choose Files
+                    <input
+                      type="file"
+                      id="productImages"
+                      multiple
+                      accept="image/*"
+                      hidden
+                    />
+                  </label>
+
+                  <p class="small text-muted mt-2">Max 10 images</p>
+                </div>
+              </div>
+
+              <div class="image-preview-grid mt-3" id="imagePreviewContainer">
+                <div class="text-muted small">No images available</div>
+              </div>
               <div class="text-end mt-4">
                 <button
                   type="button"
@@ -554,6 +622,7 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", () => {
+        initProductFormDOM();
         initEditProductPage();
       });
     </script>

@@ -9,9 +9,9 @@
  * @returns {string} Formatted date string
  */
 function formatDate(date) {
-    const d = new Date(date);
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return d.toLocaleDateString('en-US', options);
+  const d = new Date(date);
+  const options = { year: "numeric", month: "short", day: "numeric" };
+  return d.toLocaleDateString("en-US", options);
 }
 
 /**
@@ -20,15 +20,15 @@ function formatDate(date) {
  * @returns {string} Formatted date and time string
  */
 function formatDateTime(date) {
-    const d = new Date(date);
-    const options = {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    };
-    return d.toLocaleDateString('en-US', options);
+  const d = new Date(date);
+  const options = {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  return d.toLocaleDateString("en-US", options);
 }
 
 /**
@@ -37,11 +37,11 @@ function formatDateTime(date) {
  * @param {string} currency - Currency code (default: USD)
  * @returns {string} Formatted currency string
  */
-function formatCurrency(amount, currency = 'USD') {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency
-    }).format(amount);
+function formatCurrency(amount, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+  }).format(amount);
 }
 
 /**
@@ -51,8 +51,8 @@ function formatCurrency(amount, currency = 'USD') {
  * @returns {string} Truncated text
  */
 function truncateText(text, maxLength = 50) {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
 }
 
 /**
@@ -62,15 +62,15 @@ function truncateText(text, maxLength = 50) {
  * @returns {function} Debounced function
  */
 function debounce(func, wait = 300) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
     };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
 }
 
 /**
@@ -80,14 +80,14 @@ function debounce(func, wait = 300) {
  * @returns {function} Throttled function
  */
 function throttle(func, limit = 300) {
-    let inThrottle;
-    return function(...args) {
-        if (!inThrottle) {
-            func.apply(this, args);
-            inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
-        }
-    };
+  let inThrottle;
+  return function (...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => (inThrottle = false), limit);
+    }
+  };
 }
 
 /**
@@ -96,7 +96,9 @@ function throttle(func, limit = 300) {
  * @returns {string} Random ID
  */
 function generateId(length = 8) {
-    return Math.random().toString(36).substring(2, length + 2);
+  return Math.random()
+    .toString(36)
+    .substring(2, length + 2);
 }
 
 /**
@@ -105,8 +107,8 @@ function generateId(length = 8) {
  * @returns {boolean} True if valid email
  */
 function validateEmail(email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
 }
 
 /**
@@ -115,8 +117,8 @@ function validateEmail(email) {
  * @returns {boolean} True if valid phone
  */
 function validatePhone(phone) {
-    const re = /^[\d\s\-\+\(\)]+$/;
-    return re.test(phone) && phone.replace(/\D/g, '').length >= 10;
+  const re = /^[\d\s\-\+\(\)]+$/;
+  return re.test(phone) && phone.replace(/\D/g, "").length >= 10;
 }
 
 /**
@@ -124,14 +126,14 @@ function validatePhone(phone) {
  * @param {string} text - Text to copy
  */
 async function copyToClipboard(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        if (window.adminPanel) {
-            window.adminPanel.showNotification('Copied to clipboard!', 'success');
-        }
-    } catch (err) {
-        console.error('Failed to copy:', err);
+  try {
+    await navigator.clipboard.writeText(text);
+    if (window.adminPanel) {
+      window.adminPanel.showNotification("Copied to clipboard!", "success");
     }
+  } catch (err) {
+    console.error("Failed to copy:", err);
+  }
 }
 
 /**
@@ -140,8 +142,8 @@ async function copyToClipboard(text) {
  * @returns {string|null} Parameter value
  */
 function getQueryParam(param) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(param);
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(param);
 }
 
 /**
@@ -150,48 +152,48 @@ function getQueryParam(param) {
  * @param {string} value - Parameter value
  */
 function setQueryParam(param, value) {
-    const url = new URL(window.location);
-    url.searchParams.set(param, value);
-    window.history.pushState({}, '', url);
+  const url = new URL(window.location);
+  url.searchParams.set(param, value);
+  window.history.pushState({}, "", url);
 }
 
 /**
  * Local storage helper
  */
 const storage = {
-    set: function(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) {
-            console.error('Error saving to localStorage:', e);
-        }
-    },
-
-    get: function(key) {
-        try {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : null;
-        } catch (e) {
-            console.error('Error reading from localStorage:', e);
-            return null;
-        }
-    },
-
-    remove: function(key) {
-        try {
-            localStorage.removeItem(key);
-        } catch (e) {
-            console.error('Error removing from localStorage:', e);
-        }
-    },
-
-    clear: function() {
-        try {
-            localStorage.clear();
-        } catch (e) {
-            console.error('Error clearing localStorage:', e);
-        }
+  set: function (key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.error("Error saving to localStorage:", e);
     }
+  },
+
+  get: function (key) {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : null;
+    } catch (e) {
+      console.error("Error reading from localStorage:", e);
+      return null;
+    }
+  },
+
+  remove: function (key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.error("Error removing from localStorage:", e);
+    }
+  },
+
+  clear: function () {
+    try {
+      localStorage.clear();
+    } catch (e) {
+      console.error("Error clearing localStorage:", e);
+    }
+  },
 };
 
 /**
@@ -201,24 +203,24 @@ const storage = {
  * @returns {Promise} API response
  */
 async function apiCall(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('API call failed:', error);
-        throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    return await response.json();
+  } catch (error) {
+    console.error("API call failed:", error);
+    throw error;
+  }
 }
 
 /**
@@ -228,8 +230,8 @@ async function apiCall(url, options = {}) {
  * @returns {number} Percentage
  */
 function calculatePercentage(value, total) {
-    if (total === 0) return 0;
-    return ((value / total) * 100).toFixed(2);
+  if (total === 0) return 0;
+  return ((value / total) * 100).toFixed(2);
 }
 
 /**
@@ -239,32 +241,76 @@ function calculatePercentage(value, total) {
  * @param {string} order - Sort order (asc/desc)
  * @returns {Array} Sorted array
  */
-function sortByProperty(array, property, order = 'asc') {
-    return array.sort((a, b) => {
-        if (order === 'asc') {
-            return a[property] > b[property] ? 1 : -1;
-        } else {
-            return a[property] < b[property] ? 1 : -1;
-        }
-    });
+function sortByProperty(array, property, order = "asc") {
+  return array.sort((a, b) => {
+    if (order === "asc") {
+      return a[property] > b[property] ? 1 : -1;
+    } else {
+      return a[property] < b[property] ? 1 : -1;
+    }
+  });
+}
+function showNotification(message, type = "info") {
+  const colors = {
+    error: "bg-danger",
+    success: "bg-success",
+    info: "bg-primary",
+    warning: "bg-warning",
+  };
+
+  const toastContainerId = "globalToastContainer";
+
+  let container = document.getElementById(toastContainerId);
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = toastContainerId;
+    container.style.position = "fixed";
+    container.style.top = "20px";
+    container.style.right = "20px";
+    container.style.zIndex = "9999";
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `toast align-items-center text-white ${colors[type] || "bg-primary"} border-0 show`;
+  toast.style.minWidth = "260px";
+  toast.style.marginBottom = "10px";
+
+  toast.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body">
+        ${message}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"></button>
+    </div>
+  `;
+
+  toast.querySelector(".btn-close").onclick = () => toast.remove();
+
+  container.appendChild(toast);
+
+  setTimeout(() => toast.remove(), 4000);
 }
 
 // Export utilities
 window.utils = {
-    formatDate,
-    formatDateTime,
-    formatCurrency,
-    truncateText,
-    debounce,
-    throttle,
-    generateId,
-    validateEmail,
-    validatePhone,
-    copyToClipboard,
-    getQueryParam,
-    setQueryParam,
-    storage,
-    apiCall,
-    calculatePercentage,
-    sortByProperty
+  formatDate,
+  formatDateTime,
+  formatCurrency,
+  truncateText,
+  debounce,
+  throttle,
+  generateId,
+  validateEmail,
+  validatePhone,
+  copyToClipboard,
+  getQueryParam,
+  setQueryParam,
+  storage,
+  apiCall,
+  calculatePercentage,
+  sortByProperty,
+  showNotification,
 };
+window.showNotification = showNotification;
