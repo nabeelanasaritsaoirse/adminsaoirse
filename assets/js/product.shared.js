@@ -19,23 +19,46 @@ function escapeHtml(text) {
 }
 
 function showNotification(message, type = "info") {
-  const alertClass =
-    type === "error"
-      ? "alert-danger"
-      : type === "success"
-      ? "alert-success"
-      : "alert-info";
+  const colors = {
+    error: "bg-danger",
+    success: "bg-success",
+    info: "bg-primary",
+    warning: "bg-warning",
+  };
 
-  const alert = document.createElement("div");
-  alert.className = `alert ${alertClass} alert-dismissible fade show`;
-  alert.setAttribute("role", "alert");
-  alert.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  const toastContainerId = "globalToastContainer";
+
+  let container = document.getElementById(toastContainerId);
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = toastContainerId;
+    container.style.position = "fixed";
+    container.style.top = "20px";
+    container.style.right = "20px";
+    container.style.zIndex = "9999";
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = `toast align-items-center text-white ${colors[type] || "bg-primary"} border-0 show`;
+  toast.style.minWidth = "260px";
+  toast.style.marginBottom = "10px";
+
+  toast.innerHTML = `
+    <div class="d-flex">
+      <div class="toast-body">
+        ${message}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto"></button>
+    </div>
   `;
 
-  document.body.insertBefore(alert, document.body.firstChild);
-  setTimeout(() => alert.remove(), 5000);
+  toast.querySelector(".btn-close").onclick = () => toast.remove();
+
+  container.appendChild(toast);
+
+  setTimeout(() => toast.remove(), 4000);
 }
 
 /* ---------- Mapping helpers ---------- */
@@ -76,6 +99,7 @@ window.variantCount = 0;
 window.planCount = 0;
 window.selectedImageFiles = [];
 window.existingImages = [];
+window.tempUploadedImages = [];
 window.isUploadingImages = false;
 
 /* ---------- Pagination ---------- */
@@ -193,15 +217,18 @@ function wirePlanLogic(card) {
   const totalInput = card.querySelector("[data-plan-total]");
   const recommendedCheckbox = card.querySelector("[data-plan-recommended]");
 
+  // 🔒 per-day is always auto-calculated
+  perDayInput.readOnly = true;
+
   const isAuto = card.hasAttribute("data-auto");
 
-  // 🔒 Auto plans are locked
+  // 🔒 Auto plans locked
   if (isAuto) {
     daysInput.readOnly = true;
     nameInput.readOnly = true;
   }
 
-  // 🔁 AUTO-SYNC NAME ↔ DAYS (ONLY FOR CUSTOM PLANS)
+  // 🔁 Name sync for custom plans
   if (!isAuto) {
     daysInput.addEventListener("input", () => {
       const days = Number(daysInput.value || 0);
@@ -211,17 +238,13 @@ function wirePlanLogic(card) {
     });
   }
 
-  // 🔁 Auto-calc total
-  perDayInput.addEventListener("input", () => {
-    const days = Number(daysInput.value || 0);
-    const perDay = Number(perDayInput.value || 0);
+  // 🔁 recalc when days change
+  daysInput.addEventListener("input", recalcAllPlansFromPrice);
 
-    if (days && perDay) {
-      totalInput.value = (days * perDay).toFixed(2);
-    }
-  });
+  // run once on load
+  recalcAllPlansFromPrice();
 
-  // 🔒 Ensure only ONE recommended plan
+  // 🔒 Only one recommended plan
   recommendedCheckbox.addEventListener("change", () => {
     if (!recommendedCheckbox.checked) return;
 
@@ -231,6 +254,54 @@ function wirePlanLogic(card) {
   });
 }
 
+function recalcAllPlansFromPrice() {
+  const salePrice = Number(
+    document.getElementById("productSalePrice")?.value || 0,
+  );
+  const regularPrice = Number(
+    document.getElementById("productPrice")?.value || 0,
+  );
+
+  const effectivePrice = salePrice > 0 ? salePrice : regularPrice;
+  if (!effectivePrice) return;
+
+  document.querySelectorAll("[data-plan-days]").forEach((daysInput) => {
+    const card = daysInput.closest(".card");
+    const perDayInput = card.querySelector("[data-plan-amount]");
+    const totalInput = card.querySelector("[data-plan-total]");
+
+    let days = Number(daysInput.value || 0);
+    if (!days) return;
+
+    let perDay = effectivePrice / days;
+
+    // 🔹 ensure perDay >= 50
+    if (perDay < 50) {
+      const newDays = Math.floor(effectivePrice / 50);
+
+      if (newDays >= 5) {
+        days = newDays;
+        daysInput.value = newDays;
+        const nameInput = card.querySelector("[data-plan-name]");
+        if (nameInput) {
+          nameInput.value = `${newDays}-Day Plan`;
+        }
+        perDay = effectivePrice / newDays;
+      }
+    }
+
+    perDayInput.value = perDay.toFixed(2);
+    totalInput.value = effectivePrice.toFixed(2);
+  });
+}
+
+document
+  .getElementById("productPrice")
+  ?.addEventListener("input", recalcAllPlansFromPrice);
+
+document
+  .getElementById("productSalePrice")
+  ?.addEventListener("input", recalcAllPlansFromPrice);
 /* ============================================================
    EXISTING IMAGE LOADER
 ============================================================ */
@@ -240,7 +311,6 @@ function loadExistingImages(images = []) {
   if (!container) return;
 
   container.innerHTML = "";
-  window.existingImages = [];
 
   if (!Array.isArray(images) || images.length === 0) {
     container.innerHTML =
@@ -248,21 +318,53 @@ function loadExistingImages(images = []) {
     return;
   }
 
-  window.existingImages = images;
+  images.forEach((img, index) => {
+    const url = img.url || img.location || img;
 
-  images.forEach((img) => {
-    const url = img.url || img;
     container.insertAdjacentHTML(
       "beforeend",
       `
-      <div class="col-md-2 mb-2">
-        <img src="${url}" class="img-fluid rounded border"
-          style="height:80px;object-fit:cover" />
+      <div class="image-preview-card">
+
+        <button
+          type="button"
+          class="image-remove-btn"
+          data-index="${index}">
+          ×
+        </button>
+
+        <img src="${url}" alt="product image"/>
+
       </div>
-    `
+      `,
     );
   });
+
+  // remove image
+  document.querySelectorAll(".image-remove-btn").forEach((btn) => {
+    btn.onclick = function () {
+      const index = Number(this.dataset.index);
+
+      window.tempUploadedImages.splice(index, 1);
+
+      loadExistingImages(window.tempUploadedImages);
+    };
+  });
 }
+document.addEventListener("click", function (e) {
+  const btn = e.target.closest(".remove-image-btn");
+  if (!btn) return;
+
+  const index = Number(btn.dataset.index);
+
+  if (!Array.isArray(window.tempUploadedImages)) return;
+
+  window.tempUploadedImages.splice(index, 1);
+
+  loadExistingImages(window.tempUploadedImages);
+
+  showNotification("Image removed", "warning");
+});
 // ===============================
 // REGIONAL AVAILABILITY — SHARED
 // ===============================

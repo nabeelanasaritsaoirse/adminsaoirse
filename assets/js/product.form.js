@@ -57,6 +57,7 @@ let productFaqs = []; // current working FAQs
 let originalFaqIds = []; // used only in EDIT mode
 let productFeatures = [];
 let productSpecifications = [];
+window.variantImages = window.variantImages || {};
 let productCategoryAttributes = [];
 let generatedVariantMatrix = [];
 let previewCurrentPage = 1;
@@ -115,6 +116,9 @@ function renderFeatures() {
 }
 
 function addFeature() {
+  // preserve existing values from DOM
+  productFeatures = collectFeaturesFromDOM();
+
   productFeatures.push("");
   renderFeatures();
 }
@@ -181,6 +185,9 @@ function renderSpecifications() {
 }
 
 function addSpecification() {
+  // preserve existing values from DOM
+  productSpecifications = collectSpecificationsFromDOM();
+
   productSpecifications.push({ key: "", value: "" });
 
   renderSpecifications();
@@ -219,10 +226,6 @@ function initProductFormDOM() {
   variantsSection = document.getElementById("variantsSection");
   hasVariantsCheckbox = document.getElementById("hasVariants");
   addVariantBtn = document.getElementById("addVariantBtn");
-
-  if (productImagesInput) {
-    productImagesInput.addEventListener("change", handleImageSelect);
-  }
 
   /* ================= VARIANTS ================= */
 
@@ -343,8 +346,20 @@ function initProductFormDOM() {
       }
     });
   }
+  document.addEventListener("input", function (e) {
+    if (e.target.classList.contains("form-error")) {
+      e.target.classList.remove("form-error");
+    }
+  });
 }
 
+function highlightFieldError(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+
+  el.classList.add("form-error");
+  el.focus();
+}
 /* ================= VARIANT RENDERER ================= */
 
 function renderVariantField(variant = {}, idx = 0) {
@@ -526,13 +541,20 @@ async function handleImageSelect(e) {
   const files = Array.from(e.target.files || []);
   if (!files.length) return;
 
-  if (files.length > 10) {
+  const existing = window.tempUploadedImages?.length || 0;
+
+  if (existing + files.length > 10) {
     showNotification("Maximum 10 images allowed", "error");
     return;
   }
 
+  // store selected files for upload
   window.selectedImageFiles = files;
+
   await uploadTempImages();
+
+  // allow selecting same file again
+  e.target.value = "";
 }
 
 async function uploadTempImages() {
@@ -553,12 +575,18 @@ async function uploadTempImages() {
     const json = await res.json();
     if (!json.success) throw new Error();
 
+    if (!Array.isArray(window.tempUploadedImages)) {
+      window.tempUploadedImages = [];
+    }
+
     window.tempUploadedImages = [
-      ...(window.existingImages || []),
-      ...(json.data || []),
+      ...(window.tempUploadedImages || []),
+      ...(json.urls || []),
     ];
 
     loadExistingImages(window.tempUploadedImages);
+    window.selectedImageFiles = [];
+
     showNotification("Images uploaded", "success");
   } catch {
     showNotification("Image upload failed", "error");
@@ -612,23 +640,26 @@ async function uploadPrimaryProductImages(productId) {
 async function uploadVariantImages(productId, variantsFromBackend) {
   if (!Array.isArray(variantsFromBackend)) return;
 
-  const variantCards = document.querySelectorAll(".variant-card");
+  if (!window.variantImages) return;
 
-  for (const card of variantCards) {
-    const fileInput = card.querySelector("[data-variant-image]");
-    if (!fileInput || !fileInput.files.length) continue;
+  for (const variantId in window.variantImages) {
+    const files = window.variantImages[variantId];
 
-    // 🔥 SAFE MAPPING using index stored on card
-    const idx = Number(card.dataset.variantIndex);
-    const backendVariant = variantsFromBackend[idx];
+    if (!files || files.length === 0) continue;
+
+    // find correct backend variant
+    const backendVariant = variantsFromBackend.find(
+      (v) => v.variantId === variantId,
+    );
 
     if (!backendVariant?.variantId) continue;
 
-    // 🔒 Limit images per variant (max 3)
-    const files = Array.from(fileInput.files).slice(0, 3);
-
     const formData = new FormData();
-    files.forEach((file) => formData.append("images", file));
+
+    // 🔒 max 3 images safeguard
+    files.slice(0, 3).forEach((file) => {
+      formData.append("images", file);
+    });
 
     const res = await fetch(
       `${window.BASE_URL}/products/${productId}/variants/${backendVariant.variantId}/images`,
@@ -642,6 +673,7 @@ async function uploadVariantImages(productId, variantsFromBackend) {
     );
 
     const json = await res.json();
+
     if (!json.success) {
       throw new Error("Variant image upload failed");
     }
@@ -649,6 +681,66 @@ async function uploadVariantImages(productId, variantsFromBackend) {
 
   // 🔥 CRITICAL FLAG — prevents image wipe on update
   window.hasUploadedVariantImages = true;
+}
+/* =====================================================
+   DRAG & DROP IMAGE UPLOADER (ADMIN PANEL)
+===================================================== */
+
+function initImageUploader() {
+  const input = document.getElementById("productImages");
+  const dropZone = document.getElementById("dropZone");
+
+  if (!input || !dropZone) return;
+
+  /* FILE SELECT */
+
+  input.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    await processSelectedImages(files);
+
+    e.target.value = "";
+  });
+
+  /* DRAG OVER */
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drag-over");
+  });
+
+  dropZone.addEventListener("dragleave", () => {
+    dropZone.classList.remove("drag-over");
+  });
+
+  /* DROP FILES */
+
+  dropZone.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+
+    const files = Array.from(e.dataTransfer.files || []);
+
+    if (!files.length) return;
+
+    await processSelectedImages(files);
+  });
+}
+
+/* PROCESS SELECTED IMAGES */
+
+async function processSelectedImages(files) {
+  const existing = window.tempUploadedImages?.length || 0;
+
+  if (existing + files.length > 10) {
+    showNotification("Maximum 10 images allowed", "error");
+    return;
+  }
+
+  window.selectedImageFiles = files;
+
+  await uploadTempImages();
 }
 
 /* ================= CATEGORY LOADER ================= */
@@ -872,6 +964,7 @@ async function editProduct(productId) {
     if (!product) throw new Error("Product not found");
 
     window.currentProductId = product.productId;
+    window.currentMongoProductId = product._id;
 
     const set = (id, val = "") => {
       const el = document.getElementById(id);
@@ -972,9 +1065,6 @@ async function editProduct(productId) {
     set("productOrigin", product.origin?.country || "");
     set("productOriginManufacturer", product.origin?.manufacturer || "");
 
-    set("productProject", product.project?.projectName || "");
-    set("productProjectId", product.project?.projectId || "");
-
     set("dimensionLength", product.dimensions?.length);
     set("dimensionWidth", product.dimensions?.width);
     set("dimensionHeight", product.dimensions?.height);
@@ -986,9 +1076,14 @@ async function editProduct(productId) {
 
     /* ================= IMAGES ================= */
 
-    window.existingImages = product.images || [];
-    window.tempUploadedImages = product.images || [];
-    loadExistingImages(product.images || []);
+    window.existingImages = (product.images || []).map((img) => ({
+      url: img.url || img.location || img.tempUrl,
+      key: img.key || img.filename || "",
+    }));
+
+    window.tempUploadedImages = [...window.existingImages];
+
+    loadExistingImages(window.existingImages);
 
     /* ================= VARIANTS ================= */
 
@@ -1072,7 +1167,7 @@ async function editProduct(productId) {
       togglePaymentPlan(false);
     }
 
-    recalcAutoPlans();
+    recalcAllPlansFromPrice();
 
     /* ================= REGIONAL (FINAL FIX) ================= */
 
@@ -1246,11 +1341,6 @@ function buildProductPayload() {
       manufacturer: productOriginManufacturer.value.trim(),
     },
 
-    project: {
-      projectId: productProjectId.value || undefined,
-      projectName: productProject.value.trim(),
-    },
-
     dimensions: {
       length: Number(dimensionLength.value || 0),
       width: Number(dimensionWidth.value || 0),
@@ -1291,7 +1381,7 @@ function buildProductPayload() {
     },
 
     // 🔒 always send this
-    hasVariants: hasVariantsCheckbox.checked,
+    hasVariants: window.currentProductId ? hasVariantsCheckbox.checked : false,
 
     isGlobalProduct: isGlobal,
   };
@@ -1321,10 +1411,19 @@ function buildProductPayload() {
   // 🔥 Required for UPDATE flow
   /* ================= PRODUCT IMAGES ================= */
 
-  payload.images = (window.tempUploadedImages || []).map((img) => ({
-    url: img.url || img.location || img.tempUrl,
-    key: img.key || img.filename || "",
-  }));
+  payload.images = (window.tempUploadedImages || []).map((img) => {
+    if (typeof img === "string") {
+      return {
+        url: img,
+        key: "",
+      };
+    }
+
+    return {
+      url: img.url || img.location || img.tempUrl || "",
+      key: img.key || img.filename || "",
+    };
+  });
 
   /* ================= REGIONAL ================= */
 
@@ -1389,7 +1488,7 @@ function createDefaultPlans(isNewProduct = false) {
   plansList.innerHTML = "";
   window.planCount = 0;
 
-  [10, 20, 30].forEach((days, idx) => {
+  [10, 20].forEach((days, idx) => {
     window.planCount++;
 
     const plan = {
@@ -1484,23 +1583,6 @@ function removePlanField(idx) {
   }
 }
 
-/* ---------- Recalculate AUTO plans on price change ---------- */
-
-function recalcAutoPlans() {
-  const price = getEffectivePrice();
-  if (!price) return;
-
-  document.querySelectorAll("#plansList .card[data-auto]").forEach((card) => {
-    const days = Number(card.querySelector("[data-plan-days]").value || 0);
-    const perDayInput = card.querySelector("[data-plan-amount]");
-    const totalInput = card.querySelector("[data-plan-total]");
-
-    if (!days || !perDayInput.value) return;
-
-    totalInput.value = (days * Number(perDayInput.value)).toFixed(2);
-  });
-}
-
 /* ---------- Collect plans for payload ---------- */
 
 function collectPlansFromDOM() {
@@ -1512,14 +1594,15 @@ function collectPlansFromDOM() {
     const days = Number(card.querySelector("[data-plan-days]").value || 0);
     const perDay = Number(card.querySelector("[data-plan-amount]").value || 0);
     const total = Number(card.querySelector("[data-plan-total]").value || 0);
+
     const name = card.querySelector("[data-plan-name]").value.trim();
     const description = "";
+
     const isRecommended =
       card.querySelector("[data-plan-recommended]")?.checked || false;
 
     if (isRecommended) recommendedCount++;
 
-    // HARD VALIDATION
     if (!name || days < 5) throw new Error("Days must be at least 5");
 
     if (!perDay) {
@@ -1530,21 +1613,31 @@ function collectPlansFromDOM() {
       throw new Error("Per-day amount must be at least ₹50");
     }
 
-    if (total !== days * perDay)
-      throw new Error("Invalid plan total calculation");
+    const calculated = Number((perDay * days).toFixed(2));
+
+    let finalTotal = total;
+
+    if (!total || Math.abs(calculated - total) > 1) {
+      finalTotal = calculated;
+    }
+
+    if (finalTotal > price) {
+      throw new Error("Plan total cannot exceed product price");
+    }
 
     plans.push({
       name,
       days,
       perDayAmount: perDay,
-      totalAmount: total,
+      totalAmount: finalTotal,
       description,
       isRecommended,
     });
   });
 
-  if (recommendedCount !== 1)
+  if (recommendedCount !== 1) {
     throw new Error("Exactly one recommended plan is required");
+  }
 
   return plans;
 }
@@ -1555,11 +1648,11 @@ document.getElementById("addPlanBtn")?.addEventListener("click", addCustomPlan);
 
 document
   .getElementById("productPrice")
-  ?.addEventListener("input", recalcAutoPlans);
+  ?.addEventListener("input", recalcAllPlansFromPrice);
 
 document
   .getElementById("productSalePrice")
-  ?.addEventListener("input", recalcAutoPlans);
+  ?.addEventListener("input", recalcAllPlansFromPrice);
 
 function renderFaqItem(faq = {}, index) {
   return `
@@ -1603,9 +1696,12 @@ function renderFaqs() {
     container.insertAdjacentHTML("beforeend", renderFaqItem(faq, i));
   });
 }
-
 function addFaq() {
+  // preserve existing values typed in DOM
+  productFaqs = collectFaqsFromDOM();
+
   productFaqs.push({ question: "", answer: "", isActive: true });
+
   renderFaqs();
 }
 
@@ -1626,7 +1722,7 @@ function collectFaqsFromDOM() {
     const answer = item.querySelector(".faq-answer")?.value.trim();
     const isActive = item.querySelector(".faq-active")?.checked === true;
 
-    if (!question || !answer) return;
+    if (!question && !answer) return;
 
     faqs.push({
       _id: original?._id,
@@ -1640,10 +1736,151 @@ function collectFaqsFromDOM() {
 }
 
 window.removeFaq = removeFaq;
+function clearFormErrors() {
+  document.querySelectorAll(".form-error").forEach((el) => {
+    el.classList.remove("form-error");
+  });
+}
+
+function showFieldError(element, message) {
+  if (!element) return;
+
+  element.classList.add("form-error");
+  element.focus();
+
+  showNotification(message, "error");
+}
+function validateRequiredFields() {
+  clearFormErrors();
+  const requiredFields = [
+    { id: "productName", label: "Product Name" },
+    { id: "productBrand", label: "Brand" },
+    { id: "productDescription", label: "Short Description" },
+    { id: "productLongDescription", label: "Long Description" },
+    { id: "productCategory", label: "Category" },
+    { id: "productSku", label: "SKU" },
+    { id: "productPrice", label: "Regular Price" },
+    { id: "productStock", label: "Stock Quantity" },
+    { id: "productAvailability", label: "Stock Status" },
+    { id: "warrantyPeriod", label: "Warranty Period" },
+    { id: "warrantyReturnPolicy", label: "Return Policy" },
+    { id: "productOrigin", label: "Origin Country" },
+    { id: "productOriginManufacturer", label: "Manufacturer" },
+    { id: "productMetaTitle", label: "Meta Title" },
+    { id: "productMetaDescription", label: "Meta Description" },
+    { id: "productMetaKeywords", label: "Meta Keywords" },
+  ];
+
+  for (const field of requiredFields) {
+    const el = document.getElementById(field.id);
+
+    if (!el) continue;
+
+    const value = el.value?.trim();
+
+    if (!value) {
+      showFieldError(el, `${field.label} is required`);
+      return false;
+    }
+  }
+  const length = document.getElementById("dimensionLength")?.value;
+  const width = document.getElementById("dimensionWidth")?.value;
+  const height = document.getElementById("dimensionHeight")?.value;
+  const weight = document.getElementById("productWeight")?.value;
+
+  if (!length || !width || !height || !weight) {
+    showNotification("All dimensions are required", "error");
+    highlightFieldError("dimensionLength");
+    return false;
+  }
+  const features = collectFeaturesFromDOM();
+
+  if (!features.length) {
+    const section = document.getElementById("featuresList");
+
+    showNotification("At least one feature is required", "error");
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      const firstInput = section.querySelector(".feature-input");
+      if (firstInput) firstInput.focus();
+    }
+
+    return false;
+  }
+  const specs = collectSpecificationsFromDOM();
+
+  if (!specs.length) {
+    const section = document.getElementById("specificationsList");
+
+    showNotification("At least one specification is required", "error");
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      const firstInput = section.querySelector(".specification-key");
+      if (firstInput) firstInput.focus();
+    }
+
+    return false;
+  }
+  if (!window.tempUploadedImages || window.tempUploadedImages.length === 0) {
+    showNotification("At least one product image is required", "error");
+
+    const section = document.getElementById("dropZone");
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+
+    return false;
+  }
+  if (window.currentProductId && hasVariantsCheckbox?.checked) {
+    const rows = document.querySelectorAll(
+      "#savedVariantsWrapper tbody tr[data-variant-id]",
+    );
+
+    for (const row of rows) {
+      const variantId = row.dataset.variantId;
+
+      const existingImages = document.querySelectorAll(
+        `#variant-preview-${variantId} .variant-preview-card`,
+      );
+
+      const newImages = window.variantImages?.[variantId] || [];
+
+      if (existingImages.length + newImages.length === 0) {
+        showNotification("Each variant must have at least one image", "error");
+
+        row.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+
+        const input = row.querySelector(".variant-image-input");
+        if (input) input.focus();
+
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 /* ================= SAVE ================= */
 
 async function saveProduct() {
+  if (!validateRequiredFields()) return;
   if (window.isUploadingImages) {
     showNotification("Please wait for image upload", "warning");
     return;
@@ -1691,7 +1928,10 @@ async function saveProduct() {
           await API.put(`/faqs/admin/${faq._id}`, faq);
         } else {
           // New FAQ → create
-          await API.post(`/faqs/admin/product/${window.currentProductId}`, faq);
+          await API.post(
+            `/faqs/admin/product/${window.currentMongoProductId}`,
+            faq,
+          );
         }
       }
 
@@ -1763,7 +2003,7 @@ async function saveProduct() {
     }
     showLoading(false);
     // 🔥 If product has variants → redirect to edit with autoMatrix
-    if (payload.hasVariants === true) {
+    if (hasVariantsCheckbox.checked === true) {
       window.location.href = `./product-edit.html?id=${productId}&autoMatrix=true`;
       return;
     }
@@ -1809,6 +2049,7 @@ function initAddProductPage() {
   window.planCount = 0;
 
   initProductFormDOM();
+  initImageUploader();
   const addFeatureBtn = document.getElementById("addFeatureBtn");
   if (addFeatureBtn) {
     addFeatureBtn.addEventListener("click", addFeature);
@@ -1842,6 +2083,7 @@ async function initEditProductPage() {
   window.__IS_EDIT_MODE__ = true;
 
   initProductFormDOM();
+  initImageUploader();
 
   const addFeatureBtn = document.getElementById("addFeatureBtn");
   if (addFeatureBtn) {
@@ -1886,6 +2128,23 @@ async function initEditProductPage() {
   if (!id) return alert("Missing product id");
 
   await editProduct(id);
+  // FORCE VARIANT MODE AFTER CREATE
+  if (autoMatrix === "true") {
+    const checkbox = document.getElementById("hasVariants");
+    const generateBtn = document.getElementById("generateVariantMatrixBtn");
+
+    if (checkbox) checkbox.checked = true;
+    if (generateBtn) generateBtn.classList.remove("d-none");
+
+    // scroll to variant section
+    const variantSection = document.getElementById("variantsSection");
+    if (variantSection) {
+      variantSection.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }
 
   // 🔥 AUTO GENERATE MATRIX AFTER LOAD
   if (autoMatrix === "true") {
@@ -2040,11 +2299,12 @@ function renderSavedVariantsTable(variants) {
       <thead>
         <tr>
           <th>Attributes</th>
-          <th width="120">Price</th>
-          <th width="120">Sale Price</th>
-          <th width="100">Stock</th>
-          <th width="80">Active</th>
-          <th width="100">Action</th>
+         <th width="120">Price</th>
+<th width="120">Sale Price</th>
+<th width="100">Stock</th>
+<th width="140">Images</th>
+<th width="80">Active</th>
+<th width="100">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -2084,7 +2344,16 @@ function renderSavedVariantsTable(variants) {
                     data-field="stock"
                     value="${variant.stock ?? 0}">
                 </td>
-
+<td>
+  <input 
+  type="file"
+  class="form-control form-control-sm variant-image-input"
+  data-variant-id="${variant.variantId}"
+  data-variant-image
+  accept="image/*"
+  multiple
+>
+</td>
                 <td class="text-center">
                   <input 
                     type="checkbox"
@@ -2100,13 +2369,52 @@ function renderSavedVariantsTable(variants) {
                     Delete
                   </button>
                 </td>
-              </tr>
+</tr>
+
+<tr class="variant-image-preview-row">
+  <td colspan="7">
+    <div 
+      class="variant-image-preview d-flex gap-2 flex-wrap mt-2"
+      id="variant-preview-${variant.variantId}">
+    </div>
+  </td>
+</tr>
             `;
           })
           .join("")}
       </tbody>
     </table>
   `;
+  // Render existing variant images from backend
+  variants.forEach((variant) => {
+    if (!variant.images || !variant.images.length) return;
+
+    const container = document.getElementById(
+      `variant-preview-${variant.variantId}`,
+    );
+
+    if (!container) return;
+
+    container.innerHTML = variant.images
+      .map(
+        (img, index) => `
+    <div class="variant-preview-card">
+
+      <img src="${img.url}" class="variant-preview-img">
+
+      <button
+        type="button"
+        class="variant-remove-existing-image"
+        data-variant-id="${variant.variantId}"
+        data-index="${index}">
+        ×
+      </button>
+
+    </div>
+  `,
+      )
+      .join("");
+  });
 }
 
 function renderPreviewVariantsTable(matrix) {
@@ -2272,6 +2580,101 @@ document.addEventListener("change", async function (e) {
     console.error("Update failed:", err);
     showNotification("Update failed", "error");
   }
+});
+
+document.addEventListener("change", function (e) {
+  if (!e.target.classList.contains("variant-image-input")) return;
+
+  const input = e.target;
+  const variantId = input.dataset.variantId;
+
+  window.variantImages = window.variantImages || {};
+
+  if (!window.variantImages[variantId]) {
+    window.variantImages[variantId] = [];
+  }
+
+  const existingImages = window.variantImages[variantId];
+  const newFiles = Array.from(input.files);
+
+  if (existingImages.length + newFiles.length > 3) {
+    showNotification("You can upload only 3 images per variant", "error");
+    input.value = "";
+    return;
+  }
+
+  newFiles.forEach((file) => {
+    existingImages.push(file);
+  });
+
+  renderVariantImagePreview(variantId);
+
+  input.value = "";
+});
+
+document.addEventListener("click", function (e) {
+  if (!e.target.classList.contains("variant-remove-existing-image")) return;
+
+  const variantId = e.target.dataset.variantId;
+  const index = Number(e.target.dataset.index);
+
+  const container = document.getElementById(`variant-preview-${variantId}`);
+  if (!container) return;
+
+  // Remove image visually
+  e.target.closest(".variant-preview-card").remove();
+
+  // Mark removed images so they are not saved
+  window.removedVariantImages = window.removedVariantImages || {};
+  window.removedVariantImages[variantId] =
+    window.removedVariantImages[variantId] || [];
+
+  window.removedVariantImages[variantId].push(index);
+});
+
+function renderVariantImagePreview(variantId) {
+  const container = document.getElementById(`variant-preview-${variantId}`);
+  if (!container) return;
+
+  const images = window.variantImages[variantId] || [];
+
+  container.innerHTML = "";
+
+  images.forEach((file, index) => {
+    const url = URL.createObjectURL(file);
+
+    container.insertAdjacentHTML(
+      "beforeend",
+      `
+  <div class="variant-preview-card">
+
+    <img src="${url}" class="variant-preview-img">
+
+    <button
+      type="button"
+      class="variant-remove-image"
+      data-variant-id="${variantId}"
+      data-index="${index}">
+      ×
+    </button>
+
+  </div>
+  `,
+    );
+  });
+}
+
+document.addEventListener("click", function (e) {
+  if (!e.target.classList.contains("variant-remove-image")) return;
+
+  const variantId = e.target.dataset.variantId;
+  const index = Number(e.target.dataset.index);
+
+  if (!window.variantImages || !window.variantImages[variantId]) return;
+
+  window.variantImages[variantId].splice(index, 1);
+
+  renderVariantImagePreview(variantId);
 });
 /* ================= DELETE SAVED VARIANT ================= */
 
