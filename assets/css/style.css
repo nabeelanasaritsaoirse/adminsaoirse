@@ -593,3 +593,124 @@ body.welcome-page #sidebar {
 #userViewAlert {
   border-radius: 10px;
 }
+.form-error {
+  border: 2px solid #dc3545 !important;
+  background-color: #fff5f5;
+}
+
+.error-label {
+  color: #dc3545;
+}
+/* IMAGE UPLOADER */
+
+.drop-zone{
+  border:2px dashed #cbd5e1;
+  border-radius:10px;
+  padding:25px;
+  background:#fafafa;
+  transition:all .2s ease;
+  cursor:pointer;
+}
+
+.drop-zone:hover{
+  background:#f1f5f9;
+}
+
+.drop-zone.dragging{
+  border-color:#4f46e5;
+  background:#eef2ff;
+}
+
+/* IMAGE GRID */
+
+.image-preview-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:12px;
+}
+
+/* IMAGE CARD */
+
+.image-preview-card{
+  position:relative;
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  overflow:hidden;
+  background:white;
+  padding:6px;
+}
+
+.image-preview-card img{
+  width:100%;
+  height:120px;
+  object-fit:contain;
+  background:#f9fafb;
+}
+
+/* REMOVE BUTTON */
+
+.image-remove-btn{
+  position:absolute;
+  top:4px;
+  right:4px;
+  background:#ef4444;
+  color:white;
+  border:none;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  font-size:12px;
+  cursor:pointer;
+}
+/* ================= VARIANT IMAGE PREVIEW ================= */
+
+.variant-preview-card{
+  position: relative;
+  width:70px;
+  height:70px;
+  border-radius:8px;
+  overflow:hidden;
+  border:1px solid #e3e3e3;
+  background:#fff;
+  transition:all .2s ease;
+}
+
+.variant-preview-card:hover{
+  box-shadow:0 3px 8px rgba(0,0,0,0.15);
+}
+
+.variant-preview-img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+/* REMOVE BUTTON (for both new & existing images) */
+
+.variant-remove-image,
+.variant-remove-existing-image{
+  position:absolute;
+  top:4px;
+  right:4px;
+  width:18px;
+  height:18px;
+  border:none;
+  border-radius:50%;
+  background:#dc3545;
+  color:#fff;
+  font-size:11px;
+  line-height:18px;
+  text-align:center;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+
+.category-image-card.has-image {
+  background-image: var(--preview-image);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}

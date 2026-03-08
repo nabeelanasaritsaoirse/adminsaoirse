@@ -161,6 +161,14 @@ const NAV_CONFIG = {
       permission: "payments",
     },
     {
+      id: "product-approvals",
+      label: "Product Approvals",
+      icon: "bi-check2-square",
+      href: "product-approval.html",
+      hrefFromRoot: "product-approval.html",
+      permission: "products",
+    },
+    {
       id: "autopay",
       label: "Autopay",
       icon: "bi-arrow-repeat",

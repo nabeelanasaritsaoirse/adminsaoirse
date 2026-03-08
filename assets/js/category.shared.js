@@ -74,20 +74,51 @@ window.escapeHtml = function (text) {
   return div.innerHTML;
 };
 
+function buildCategoryTree(categories) {
+  const map = {};
+  const roots = [];
+
+  categories.forEach((cat) => {
+    map[cat._id] = { ...cat, children: [] };
+  });
+
+  categories.forEach((cat) => {
+    if (cat.parentCategoryId && map[cat.parentCategoryId]) {
+      map[cat.parentCategoryId].children.push(map[cat._id]);
+    } else {
+      roots.push(map[cat._id]);
+    }
+  });
+
+  return roots;
+}
+
 window.populateParentCategoryDropdown = function (excludeId = null) {
   const select = document.getElementById("parentCategory");
   if (!select) return;
 
   select.innerHTML = `<option value="">None (Root Category)</option>`;
 
-  CategoryStore.categories
-    .filter((c) => c.isActive && c._id !== excludeId)
-    .forEach((c) => {
-      const opt = document.createElement("option");
-      opt.value = c._id;
-      opt.textContent = c.name;
-      select.appendChild(opt);
+  const tree = buildCategoryTree(CategoryStore.categories);
+
+  function render(nodes, depth = 0) {
+    nodes.forEach((node) => {
+      if (!node.isActive || node._id === excludeId) return;
+
+      const option = document.createElement("option");
+
+      option.value = node._id;
+      option.textContent = `${"— ".repeat(depth)}${node.name}`;
+
+      select.appendChild(option);
+
+      if (node.children.length) {
+        render(node.children, depth + 1);
+      }
     });
+  }
+
+  render(tree);
 };
 
 window.updateStats = function () {
@@ -275,17 +306,16 @@ async function loadCategories() {
     showLoading(true);
 
     const response = await API.get(
-      "/categories/admin/all",
-      {},
-      {
-        isActive: "all",
-        includeAttributes: true,
-      },
+      "/categories/admin/all?page=1&limit=1000&isActive=all",
     );
 
     let data = [];
-    if (Array.isArray(response?.data)) data = response.data;
-    else if (Array.isArray(response)) data = response;
+
+    if (Array.isArray(response?.data?.data)) {
+      data = response.data.data;
+    } else if (Array.isArray(response?.data)) {
+      data = response.data;
+    }
 
     CategoryStore.categories = data.map((c) => ({
       _id: c._id || c.id,
@@ -300,27 +330,15 @@ async function loadCategories() {
       productCount: c.productCount || 0,
       displayOrder: Number(c.displayOrder || 0),
 
-      /* =========================
-     ✅ MARKETPLACE EXTENSION
-     (NON-BREAKING)
-  ========================= */
-
       commissionRate: c.commissionRate ?? 0,
       isRestricted: !!c.isRestricted,
-
       attributeSchema: Array.isArray(c.attributeSchema)
         ? c.attributeSchema
         : [],
 
-      /* =========================
-     KEEP EXISTING SYSTEM SAFE
-  ========================= */
-
       categoryImages: Array.isArray(c.categoryImages) ? c.categoryImages : [],
 
       meta: c.meta || {},
-
-      // ✅ new SEO format support
       metaTitle: c.metaTitle || c.meta?.title || "",
       metaDescription: c.metaDescription || c.meta?.description || "",
       keywords: c.keywords || c.meta?.keywords || [],

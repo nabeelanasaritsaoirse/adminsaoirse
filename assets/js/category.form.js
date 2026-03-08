@@ -38,7 +38,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
-
   /* =========================
      EDIT MODE
      ========================= */
@@ -48,7 +47,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const cat = res?.data;
 
       if (!cat) {
-        adminPanel.showNotification("Category not found", "error");
+        showNotification("Category not found", "error");
         return;
       }
 
@@ -58,10 +57,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       fillFormForEditFromApi(cat);
     } catch (err) {
       console.error(err);
-      adminPanel.showNotification("Failed to load category", "error");
+      showNotification("Failed to load category", "error");
     }
   }
 });
+const categoryImagePreviewState = {};
+let bannerPreviewState = [];
+let existingCategoryImages = {};
 
 function fillFormForEditFromApi(cat) {
   categoryName.value = cat.name || "";
@@ -100,6 +102,9 @@ function fillFormForEditFromApi(cat) {
     cat.mobileImage,
     cat.iconImage,
   ].filter(Boolean);
+  images.forEach((img) => {
+    existingCategoryImages[img.type] = img;
+  });
 
   renderTypedImagePreview(images);
 
@@ -228,16 +233,37 @@ function renderTypedImagePreview(categoryImages = []) {
       ${categoryImages
         .map(
           (img) => `
-          <div class="col-md-2 text-center">
-            <div class="border rounded p-2 h-100">
-              <img
-                src="${escapeHtml(img.url)}"
-                class="img-fluid rounded mb-2"
-                style="max-height:90px; object-fit:contain;"
-              />
-              <div class="badge bg-secondary text-capitalize">${img.type}</div>
-            </div>
-          </div>
+         <div class="col-lg-2 col-md-3 col-sm-4">
+  <div class="border rounded p-2 bg-light text-center position-relative shadow-sm w-100">
+
+    <button 
+      class="btn btn-sm btn-danger remove-category-image"
+      data-type="${img.type}"
+      style="
+position:absolute;
+top:-6px;
+right:-6px;
+width:22px;
+height:22px;
+padding:0;
+font-size:14px;
+"
+    >
+      ×
+    </button>
+
+    <img
+      src="${escapeHtml(img.url)}"
+      style="width:100%; height:90px; object-fit:contain;"
+      class="mb-1"
+    />
+
+    <div>
+      <span class="badge bg-secondary text-capitalize">${img.type}</span>
+    </div>
+
+  </div>
+</div>
         `,
         )
         .join("")}
@@ -269,33 +295,42 @@ function renderTypedImagePreview(categoryImages = []) {
 
 function renderBannerPreview(banners = []) {
   const preview = document.getElementById("bannerImagesPreview");
-  if (!preview || !banners.length) return;
+  if (!preview) return;
 
-  // ✅ Clear old banners (important on re-edit)
-  preview.innerHTML = "";
+  if (!banners.length) {
+    preview.innerHTML = "";
+    return;
+  }
 
-  preview.innerHTML = `
-    <div class="row g-3">
-      ${banners
-        .map(
-          (b) => `
-          <div class="col-md-4 text-center">
-            <div class="border rounded p-2 h-100">
-              <img
-                src="${escapeHtml(b.url)}"
-                class="img-fluid rounded mb-2"
-                style="max-height:140px; object-fit:cover;"
-              />
-              <div class="badge bg-dark">Banner</div>
-            </div>
+  preview.innerHTML = banners
+    .map(
+      (b, i) => `
+      <div class="col-lg-2 col-md-2 col-sm-4">
+        <div class="border rounded p-2 text-center bg-light shadow-sm position-relative">
+
+  <button
+    class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-banner"
+    data-index="${i}"
+    style="transform:translate(40%,-40%)"
+  >
+    ×
+  </button>
+
+          <img
+            src="${typeof b === "string" ? b : b.url}"
+            style="width:100%; height:120px; object-fit:contain;"
+          />
+
+          <div class="mt-1">
+            <span class="badge bg-dark">Banner</span>
           </div>
-        `,
-        )
-        .join("")}
-    </div>
-  `;
-}
 
+        </div>
+      </div>
+    `,
+    )
+    .join("");
+}
 function updateImageLabels(imageMap) {
   document.querySelectorAll(".category-image-card").forEach((card) => {
     const type = card.dataset.imageType;
@@ -312,6 +347,20 @@ function updateImageLabels(imageMap) {
    ========================= */
 
 async function saveCategory() {
+  if (!categoryName.value.trim()) {
+    showFieldError(categoryName, "Category name is required");
+    return;
+  }
+  const hasExistingMain = !!existingCategoryImages.main;
+  const hasNewMain = !!categoryImagePreviewState.main;
+
+  if (!hasExistingMain && !hasNewMain) {
+    showFieldError(
+      document.getElementById("mainImage"),
+      "Main image is required",
+    );
+    return;
+  }
   const payload = {
     name: categoryName.value.trim(),
     description: categoryDescription.value.trim(),
@@ -337,7 +386,7 @@ async function saveCategory() {
     isRestricted: document.getElementById("isRestricted").checked,
 
     attributeSchema: (CategoryStore.attributeSchema || []).filter(
-      (a) => a.name,
+      (a) => a.name && a.name.trim(),
     ),
   };
 
@@ -376,7 +425,7 @@ async function saveCategory() {
       await uploadCategoryImages(categoryId);
       await uploadCategoryBanners(categoryId);
     }
-    adminPanel.showNotification("Category saved successfully", "success");
+    showNotification("Category saved successfully", "success");
 
     const btn = document.querySelector('button[onclick="saveCategory()"]');
     if (btn) {
@@ -389,7 +438,7 @@ async function saveCategory() {
     }, 1200);
   } catch (err) {
     console.error(err);
-    adminPanel.showNotification(
+    showNotification(
       err?.response?.data?.message || "Image upload failed",
       "error",
     );
@@ -598,4 +647,114 @@ function updateAttributeRequired(index, value) {
 function updateAttributeFilterable(index, value) {
   CategoryStore.attributeSchema[index].isFilterable = value;
 }
+function showFieldError(el, message) {
+  if (!el) return;
+
+  el.classList.add("form-error");
+
+  const section = el.closest(".category-image-card") || el;
+
+  section.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+
+  // highlight instead of focusing file input
+  section.classList.add("form-error");
+
+  setTimeout(() => {
+    section.classList.remove("form-error");
+  }, 2500);
+
+  showNotification(message, "error");
+}
+document.addEventListener("input", function (e) {
+  if (e.target.classList.contains("form-error")) {
+    e.target.classList.remove("form-error");
+  }
+});
+document.addEventListener("change", function (e) {
+  if (!e.target.classList.contains("image-file")) return;
+
+  const input = e.target;
+  const file = input.files?.[0];
+
+  if (!file) return;
+
+  const card = input.closest(".category-image-card");
+  const type = card?.dataset?.imageType;
+
+  if (!card || !type) return;
+
+  const reader = new FileReader();
+
+  reader.onload = function (ev) {
+    categoryImagePreviewState[type] = {
+      type: type,
+      url: ev.target.result,
+    };
+
+    renderTypedImagePreview([
+      ...Object.values(existingCategoryImages),
+      ...Object.values(categoryImagePreviewState),
+    ]);
+  };
+
+  reader.readAsDataURL(file);
+});
+document
+  .getElementById("bannerImages")
+  ?.addEventListener("change", function (e) {
+    bannerPreviewState = [];
+
+    const files = Array.from(e.target.files);
+
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        showNotification("Only image files allowed", "error");
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = function (ev) {
+        bannerPreviewState.push(ev.target.result);
+
+        renderBannerPreview(bannerPreviewState);
+      };
+
+      reader.readAsDataURL(file);
+    });
+  });
+
+document.addEventListener("click", function (e) {
+  if (!e.target.classList.contains("remove-category-image")) return;
+
+  const type = e.target.dataset.type;
+
+  delete categoryImagePreviewState[type];
+  delete existingCategoryImages[type];
+
+  const input = document.querySelector(
+    `.category-image-card[data-image-type="${type}"] input[type="file"]`,
+  );
+
+  if (input) input.value = "";
+
+  renderTypedImagePreview([
+    ...Object.values(existingCategoryImages),
+    ...Object.values(categoryImagePreviewState),
+  ]);
+});
+document.addEventListener("click", function (e) {
+  if (!e.target.classList.contains("remove-banner")) return;
+
+  const index = Number(e.target.dataset.index);
+
+  bannerPreviewState.splice(index, 1);
+
+  renderBannerPreview(bannerPreviewState);
+});
 window.saveCategory = saveCategory;
