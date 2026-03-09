@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const status = document.getElementById("statusFilter");
   const level = document.getElementById("levelFilter");
   const view = document.getElementById("viewMode");
-
   if (search) search.addEventListener("input", filterCategories);
   if (status) status.addEventListener("change", filterCategories);
   if (level) level.addEventListener("change", filterCategories);
@@ -51,7 +50,6 @@ async function loadCategories() {
     showLoading(true);
 
     const { page, limit } = CategoryStore.pagination;
-    CategoryStore.pagination.limit = CATEGORY_PAGE_SIZE;
 
     const filters = CategoryStore.filters || {};
 
@@ -180,7 +178,7 @@ async function filterCategories() {
 
   const status = document.getElementById("statusFilter")?.value;
   const level = document.getElementById("levelFilter")?.value;
-  const search = document.getElementById("searchInput")?.value;
+  const search = document.getElementById("searchInput")?.value?.trim();
 
   CategoryStore.filters = {
     status,
@@ -188,8 +186,18 @@ async function filterCategories() {
     search,
   };
 
+  /* 🔥 If searching → remove pagination */
+  if (search) {
+    CategoryStore.pagination.limit = 10000;
+    CategoryStore.pagination.page = 1;
+  } else {
+    CategoryStore.pagination.limit = CATEGORY_PAGE_SIZE;
+  }
+
   await loadCategories();
-  updateStats();
+
+  if (!search) updateStats();
+
   renderCategories();
 }
 
@@ -206,6 +214,18 @@ function renderCategories() {
   const selectedLevel = document.getElementById("levelFilter")?.value;
 
   let data = [...CategoryStore.categories];
+
+  const searchQuery =
+    document.getElementById("searchInput")?.value?.toLowerCase().trim() || "";
+
+  if (searchQuery) {
+    data = data.filter(
+      (c) =>
+        c.name.toLowerCase().includes(searchQuery) ||
+        c.slug.toLowerCase().includes(searchQuery) ||
+        c.description.toLowerCase().includes(searchQuery),
+    );
+  }
 
   if (selectedLevel !== "" && selectedLevel !== null) {
     data = data.filter((c) => c.level === Number(selectedLevel));

@@ -63,6 +63,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 const categoryImagePreviewState = {};
 let bannerPreviewState = [];
+let bannerFileState = [];
+let existingBannerState = [];
 let existingCategoryImages = {};
 
 function fillFormForEditFromApi(cat) {
@@ -110,7 +112,8 @@ function fillFormForEditFromApi(cat) {
 
   // ✅ BANNERS
   if (Array.isArray(cat.bannerImages) && cat.bannerImages.length) {
-    renderBannerPreview(cat.bannerImages);
+    existingBannerState = [...cat.bannerImages];
+    renderBannerPreview([...existingBannerState, ...bannerPreviewState]);
   }
 
   // 🌍 REGIONAL
@@ -302,34 +305,39 @@ function renderBannerPreview(banners = []) {
     return;
   }
 
-  preview.innerHTML = banners
-    .map(
-      (b, i) => `
-      <div class="col-lg-2 col-md-2 col-sm-4">
-        <div class="border rounded p-2 text-center bg-light shadow-sm position-relative">
+  preview.innerHTML = `
+    <div class="row g-3">
+      ${banners
+        .map(
+          (b, i) => `
+          <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+            <div class="border rounded p-2 text-center bg-light shadow-sm position-relative">
 
-  <button
-    class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-banner"
-    data-index="${i}"
-    style="transform:translate(40%,-40%)"
-  >
-    ×
-  </button>
+              <button
+              type="button"
+                class="btn btn-sm btn-danger position-absolute remove-banner"
+                data-index="${i}"
+                style="top:-6px; right:-6px; width:22px; height:22px; padding:0; font-size:14px;"
+              >
+                ×
+              </button>
 
-          <img
-            src="${typeof b === "string" ? b : b.url}"
-            style="width:100%; height:120px; object-fit:contain;"
-          />
+              <img
+                src="${typeof b === "string" ? b : b.url}"
+                style="width:100%; height:120px; object-fit:contain;"
+              />
 
-          <div class="mt-1">
-            <span class="badge bg-dark">Banner</span>
+              <div class="mt-1">
+                <span class="badge bg-dark">Banner</span>
+              </div>
+
+            </div>
           </div>
-
-        </div>
-      </div>
-    `,
-    )
-    .join("");
+        `,
+        )
+        .join("")}
+    </div>
+  `;
 }
 function updateImageLabels(imageMap) {
   document.querySelectorAll(".category-image-card").forEach((card) => {
@@ -513,7 +521,7 @@ async function uploadCategoryBanners(categoryId) {
   if (!input || !input.files.length) return;
 
   const fd = new FormData();
-  Array.from(input.files).forEach((file) => {
+  bannerFileState.forEach((file) => {
     fd.append("bannerImages", file);
   });
 
@@ -597,11 +605,12 @@ function renderAttributeSchemaUI() {
 
     <!-- REMOVE -->
     <div class="col-md-1 text-end">
-      <button type="button"
-        class="btn btn-sm btn-danger"
-        onclick="removeAttribute(${index})">
-        Remove
-      </button>
+     <button
+  type="button"
+  class="btn btn-sm btn-danger remove-attribute"
+  data-index="${index}">
+  Remove
+</button>
     </div>
 
   </div>
@@ -618,11 +627,6 @@ function addAttributeRow() {
     isRequired: false,
   });
 
-  renderAttributeSchemaUI();
-}
-
-function removeAttribute(index) {
-  CategoryStore.attributeSchema.splice(index, 1);
   renderAttributeSchemaUI();
 }
 
@@ -705,11 +709,15 @@ document.addEventListener("change", function (e) {
 document
   .getElementById("bannerImages")
   ?.addEventListener("change", function (e) {
-    bannerPreviewState = [];
-
     const files = Array.from(e.target.files);
-
     if (!files.length) return;
+
+    const MAX_BANNERS = 10;
+
+    if (bannerFileState.length + files.length > MAX_BANNERS) {
+      showNotification("Maximum 10 banner images allowed", "error");
+      return;
+    }
 
     files.forEach((file) => {
       if (!file.type.startsWith("image/")) {
@@ -717,18 +725,27 @@ document
         return;
       }
 
+      bannerFileState.push(file);
+
       const reader = new FileReader();
 
       reader.onload = function (ev) {
         bannerPreviewState.push(ev.target.result);
-
-        renderBannerPreview(bannerPreviewState);
+        renderBannerPreview([...existingBannerState, ...bannerPreviewState]);
       };
 
       reader.readAsDataURL(file);
     });
   });
+document.addEventListener("click", function (e) {
+  if (!e.target.classList.contains("remove-attribute")) return;
 
+  const index = Number(e.target.dataset.index);
+
+  CategoryStore.attributeSchema.splice(index, 1);
+
+  renderAttributeSchemaUI();
+});
 document.addEventListener("click", function (e) {
   if (!e.target.classList.contains("remove-category-image")) return;
 
@@ -748,13 +765,36 @@ document.addEventListener("click", function (e) {
     ...Object.values(categoryImagePreviewState),
   ]);
 });
-document.addEventListener("click", function (e) {
+document.addEventListener("click", async function (e) {
   if (!e.target.classList.contains("remove-banner")) return;
 
   const index = Number(e.target.dataset.index);
 
-  bannerPreviewState.splice(index, 1);
+  /* EXISTING BANNER */
+  if (index < existingBannerState.length) {
+    const removed = existingBannerState[index];
 
-  renderBannerPreview(bannerPreviewState);
+    try {
+      await API.delete(
+        `/categories/${CategoryStore.currentCategoryId}/banner-images/${removed._id}`,
+      );
+
+      existingBannerState.splice(index, 1);
+
+      showNotification("Banner removed", "success");
+    } catch (err) {
+      console.error(err);
+      showNotification("Failed to delete banner", "error");
+      return;
+    }
+  } else {
+  /* NEW BANNER (NOT SAVED YET) */
+    const newIndex = index - existingBannerState.length;
+
+    bannerPreviewState.splice(newIndex, 1);
+    bannerFileState.splice(newIndex, 1);
+  }
+
+  renderBannerPreview([...existingBannerState, ...bannerPreviewState]);
 });
 window.saveCategory = saveCategory;
