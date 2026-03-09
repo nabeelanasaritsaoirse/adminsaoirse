@@ -223,7 +223,9 @@
           tabindex="-1"
           aria-hidden="true"
         >
-          <div class="modal-dialog modal-xl modal-dialog-scrollable">
+          <div
+            class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"
+          >
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="productModalLabel">
@@ -237,6 +239,10 @@
               </div>
 
               <div class="modal-body">
+                <!-- PRODUCT VIEW (READ ONLY) -->
+                <div id="productViewContainer" class="d-none">
+                  <div id="productViewContent"></div>
+                </div>
                 <!-- FULL PRODUCT FORM (UNCHANGED) -->
                 <form id="productForm">
                   <!-- BASIC INFO -->
