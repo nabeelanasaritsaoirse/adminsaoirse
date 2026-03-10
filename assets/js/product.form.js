@@ -545,6 +545,7 @@ async function handleImageSelect(e) {
 
   if (existing + files.length > 10) {
     showNotification("Maximum 10 images allowed", "error");
+    e.target.value = ""; // reset file input
     return;
   }
 

@@ -517,10 +517,10 @@ async function uploadCategoryImages(categoryId) {
 }
 
 async function uploadCategoryBanners(categoryId) {
-  const input = document.getElementById("bannerImages");
-  if (!input || !input.files.length) return;
+  if (!bannerFileState.length) return;
 
   const fd = new FormData();
+
   bannerFileState.forEach((file) => {
     fd.append("bannerImages", file);
   });
@@ -714,9 +714,21 @@ document
 
     const MAX_BANNERS = 10;
 
-    if (bannerFileState.length + files.length > MAX_BANNERS) {
-      showNotification("Maximum 10 banner images allowed", "error");
+    const currentCount = existingBannerState.length + bannerFileState.length;
+    const allowedSlots = MAX_BANNERS - currentCount;
+
+    if (allowedSlots <= 0) {
+      showNotification("You can only upload 10 banner images", "error");
+      e.target.value = "";
       return;
+    }
+
+    if (files.length > allowedSlots) {
+      showNotification(
+        `Only ${allowedSlots} more banner images allowed`,
+        "error",
+      );
+      files.length = allowedSlots; // ✅ trim safely
     }
 
     files.forEach((file) => {
@@ -736,6 +748,8 @@ document
 
       reader.readAsDataURL(file);
     });
+
+    e.target.value = ""; // ✅ important fix
   });
 document.addEventListener("click", function (e) {
   if (!e.target.classList.contains("remove-attribute")) return;
@@ -788,7 +802,7 @@ document.addEventListener("click", async function (e) {
       return;
     }
   } else {
-  /* NEW BANNER (NOT SAVED YET) */
+    /* NEW BANNER (NOT SAVED YET) */
     const newIndex = index - existingBannerState.length;
 
     bannerPreviewState.splice(newIndex, 1);
