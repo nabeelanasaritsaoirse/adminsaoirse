@@ -66,8 +66,13 @@ let bannerPreviewState = [];
 let bannerFileState = [];
 let existingBannerState = [];
 let existingCategoryImages = {};
+let deletedCategoryImages = [];
 
 function fillFormForEditFromApi(cat) {
+  existingCategoryImages = {};
+  Object.keys(categoryImagePreviewState).forEach(
+    (k) => delete categoryImagePreviewState[k],
+  );
   categoryName.value = cat.name || "";
   categoryDescription.value = cat.description || "";
   displayOrder.value = cat.displayOrder || 0;
@@ -104,8 +109,21 @@ function fillFormForEditFromApi(cat) {
     cat.mobileImage,
     cat.iconImage,
   ].filter(Boolean);
+  // Restore ALT TEXT into inputs
+  document.getElementById("mainImageAlt").value = cat.mainImage?.altText || "";
+
+  document.getElementById("illustrationImageAlt").value =
+    cat.illustrationImage?.altText || "";
+
+  document.getElementById("subcategoryImageAlt").value =
+    cat.subcategoryImage?.altText || "";
+
+  document.getElementById("mobileImageAlt").value =
+    cat.mobileImage?.altText || "";
+
+  document.getElementById("iconImageAlt").value = cat.iconImage?.altText || "";
   images.forEach((img) => {
-    existingCategoryImages[img.type] = img;
+    existingCategoryImages[`${img.type}Image`] = img;
   });
 
   renderTypedImagePreview(images);
@@ -359,8 +377,8 @@ async function saveCategory() {
     showFieldError(categoryName, "Category name is required");
     return;
   }
-  const hasExistingMain = !!existingCategoryImages.main;
-  const hasNewMain = !!categoryImagePreviewState.main;
+  const hasExistingMain = !!existingCategoryImages.mainImage;
+  const hasNewMain = !!categoryImagePreviewState.mainImage;
 
   if (!hasExistingMain && !hasNewMain) {
     showFieldError(
@@ -418,6 +436,16 @@ async function saveCategory() {
     if (CategoryStore.currentCategoryId) {
       // UPDATE
       await API.put(`/categories/${CategoryStore.currentCategoryId}`, payload);
+      // DELETE REMOVED IMAGES
+      for (const type of deletedCategoryImages) {
+        const apiType = `${type}Image`;
+
+        await API.delete(
+          `/categories/${CategoryStore.currentCategoryId}/category-images/${apiType}`,
+        );
+      }
+
+      deletedCategoryImages = [];
 
       categoryId = CategoryStore.currentCategoryId;
       sessionStorage.setItem("categorySuccess", "updated");
@@ -460,8 +488,6 @@ async function saveCategory() {
    ========================= */
 
 async function uploadCategoryImages(categoryId) {
-  console.log("🔥 uploadCategoryImages called", categoryId);
-
   const fd = new FormData();
 
   const mappings = [
@@ -472,29 +498,41 @@ async function uploadCategoryImages(categoryId) {
     ["iconImage", "iconImageAlt"],
   ];
 
-  let hasFiles = false;
+  let hasData = false;
 
   mappings.forEach(([fileId, altId]) => {
     const fileInput = document.getElementById(fileId);
     const altInput = document.getElementById(altId);
 
-    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+    const hasExisting = existingCategoryImages[fileId];
+    const hasNewFile = fileInput?.files?.length > 0;
+
+    // new upload
+    if (hasNewFile) {
       fd.append(fileId, fileInput.files[0]);
-      fd.append(altId, altInput?.value || "");
-      hasFiles = true;
+
+      if (altInput?.value) {
+        fd.append(altId, altInput.value);
+      }
+
+      hasData = true;
+    }
+
+    // alt text update only if image truly exists
+    else if (
+      hasExisting &&
+      !deletedCategoryImages.includes(fileId.replace("Image", ""))
+    ) {
+      if (altInput?.value) {
+        fd.append(altId, altInput.value);
+        hasData = true;
+      }
     }
   });
 
-  if (!hasFiles) {
-    console.warn("⚠️ No images selected, skipping upload");
-    return;
-  }
+  if (!hasData) return;
 
   const token = AUTH.getToken();
-
-  if (!token) {
-    throw new Error("Auth token missing");
-  }
 
   const res = await fetch(
     `${BASE_URL}/categories/${categoryId}/category-images`,
@@ -512,8 +550,6 @@ async function uploadCategoryImages(categoryId) {
     console.error("UPLOAD ERROR:", err);
     throw new Error("Image upload failed");
   }
-
-  console.log("✅ Category images uploaded successfully");
 }
 
 async function uploadCategoryBanners(categoryId) {
@@ -686,22 +722,27 @@ document.addEventListener("change", function (e) {
   if (!file) return;
 
   const card = input.closest(".category-image-card");
-  const type = card?.dataset?.imageType;
+  const type = card?.dataset?.imageType + "Image";
 
   if (!card || !type) return;
 
   const reader = new FileReader();
 
   reader.onload = function (ev) {
+    // remove existing image of same type
+    delete existingCategoryImages[type];
+
     categoryImagePreviewState[type] = {
       type: type,
       url: ev.target.result,
     };
 
-    renderTypedImagePreview([
+    const images = [
       ...Object.values(existingCategoryImages),
       ...Object.values(categoryImagePreviewState),
-    ]);
+    ];
+
+    renderTypedImagePreview(images.filter(Boolean));
   };
 
   reader.readAsDataURL(file);
@@ -763,21 +804,29 @@ document.addEventListener("click", function (e) {
 document.addEventListener("click", function (e) {
   if (!e.target.classList.contains("remove-category-image")) return;
 
-  const type = e.target.dataset.type;
+  const baseType = e.target.dataset.type;
+  const type = baseType + "Image";
 
-  delete categoryImagePreviewState[type];
+  // mark for backend deletion
+  if (existingCategoryImages[type]) {
+    deletedCategoryImages.push(baseType);
+  }
+
   delete existingCategoryImages[type];
+  delete categoryImagePreviewState[type];
 
   const input = document.querySelector(
-    `.category-image-card[data-image-type="${type}"] input[type="file"]`,
+    `.category-image-card[data-image-type="${baseType}"] input[type="file"]`,
   );
 
   if (input) input.value = "";
 
-  renderTypedImagePreview([
+  const images = [
     ...Object.values(existingCategoryImages),
     ...Object.values(categoryImagePreviewState),
-  ]);
+  ].filter(Boolean);
+
+  renderTypedImagePreview(images);
 });
 document.addEventListener("click", async function (e) {
   if (!e.target.classList.contains("remove-banner")) return;
