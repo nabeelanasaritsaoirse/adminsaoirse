@@ -50,13 +50,12 @@ async function loadDeletedProducts() {
         page: deletedState.page,
         limit: deletedState.limit,
         showDeleted: true,
+        search: deletedState.search,
       },
     );
 
     // 🔒 HARD GUARANTEE — deleted page shows ONLY deleted
-    const list = Array.isArray(res?.data)
-      ? res.data.filter((p) => p.isDeleted === true)
-      : [];
+    const list = Array.isArray(res?.data) ? res.data : [];
 
     deletedState.total = res?.pagination?.total || 0;
     deletedState.pages = res?.pagination?.pages || 0;
@@ -146,57 +145,101 @@ function updateRestoreButton() {
 
 /* ---------- PAGINATION ---------- */
 function renderDeletedPagination() {
-  const { page, pages, total } = deletedState;
+  const containerId = "deletedPagination";
 
-  let el = document.getElementById("deletedPagination");
-  if (!el) return;
+  let container = document.getElementById(containerId);
 
-  if (pages <= 1) {
-    el.innerHTML = `
-      <div class="small text-muted text-center mt-3">
-        ${total} deleted products
-      </div>
-    `;
-    return;
-  }
+  if (!container) return;
 
-  let numbers = "";
+  const totalPages = deletedState.pages;
+  const currentPage = deletedState.page;
 
-  for (let i = 1; i <= pages; i++) {
-    numbers += `
-      <li class="page-item ${i === page ? "active" : ""}">
-        <button class="page-link" onclick="changeDeletedPage(${i})">
-          ${i}
-        </button>
+  container.innerHTML = "";
+  if (totalPages <= 1) return;
+
+  const PAGE_WINDOW = 10;
+
+  const windowStart =
+    Math.floor((currentPage - 1) / PAGE_WINDOW) * PAGE_WINDOW + 1;
+
+  const windowEnd = Math.min(windowStart + PAGE_WINDOW - 1, totalPages);
+
+  let html = `<ul class="pagination justify-content-center mb-0">`;
+
+  /* << Jump Back */
+  html += `
+    <li class="page-item ${windowStart === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowStart - PAGE_WINDOW}">
+        &laquo;
+      </a>
+    </li>
+  `;
+
+  /* < Previous */
+  html += `
+    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage - 1}">
+        &lsaquo;
+      </a>
+    </li>
+  `;
+
+  /* Page Numbers */
+  for (let p = windowStart; p <= windowEnd; p++) {
+    html += `
+      <li class="page-item ${p === currentPage ? "active" : ""}">
+        <a class="page-link" href="#" data-page="${p}">
+          ${p}
+        </a>
       </li>
     `;
   }
 
-  el.innerHTML = `
-    <nav>
-      <ul class="pagination justify-content-center mt-4">
-
-        <li class="page-item ${page === 1 ? "disabled" : ""}">
-          <button class="page-link" onclick="changeDeletedPage(${page - 1})">
-            Prev
-          </button>
-        </li>
-
-        ${numbers}
-
-        <li class="page-item ${page === pages ? "disabled" : ""}">
-          <button class="page-link" onclick="changeDeletedPage(${page + 1})">
-            Next
-          </button>
-        </li>
-
-      </ul>
-
-      <div class="small text-muted text-center mt-2">
-        ${total} deleted products
-      </div>
-    </nav>
+  /* > Next */
+  html += `
+    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage + 1}">
+        &rsaquo;
+      </a>
+    </li>
   `;
+
+  /* >> Jump Forward */
+  html += `
+    <li class="page-item ${windowEnd === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowEnd + 1}">
+        &raquo;
+      </a>
+    </li>
+  `;
+
+  html += `</ul>
+  <div class="small text-muted text-center mt-2">
+    ${deletedState.total} deleted products
+  </div>`;
+
+  container.innerHTML = html;
+
+  /* Click events */
+  container.querySelectorAll("a.page-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const targetPage = parseInt(a.getAttribute("data-page"), 10);
+
+      if (isNaN(targetPage) || targetPage < 1 || targetPage > totalPages)
+        return;
+
+      deletedState.page = targetPage;
+
+      loadDeletedProducts();
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    });
+  });
 }
 
 function changeDeletedPage(p) {
