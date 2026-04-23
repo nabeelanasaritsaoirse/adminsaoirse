@@ -119,126 +119,107 @@
           </div>
         </div>
 
-        <!-- Tabs -->
-        <ul class="nav nav-tabs mb-3" id="ordersTabs">
-          <li class="nav-item">
-            <button
-              class="nav-link active"
-              data-bs-toggle="tab"
-              data-bs-target="#completedOrders"
+        <!-- FILTER + SEARCH -->
+        <div class="card shadow-sm mb-3">
+          <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+            <!-- SEARCH -->
+            <input
+              type="text"
+              id="orderSearchInput"
+              class="form-control"
+              style="max-width: 250px"
+              placeholder="Search customer..."
+            />
+
+            <!-- STATUS -->
+            <select
+              id="orderStatusFilter"
+              class="form-select"
+              style="max-width: 180px"
             >
-              Completed Orders
-            </button>
-          </li>
+              <option value="ACTIVE">Active</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="SOON">Completing Soon</option>
+            </select>
 
-          <li class="nav-item">
-            <button
-              class="nav-link"
-              data-bs-toggle="tab"
-              data-bs-target="#completingSoon"
-            >
-              Completing in 3 Days
-            </button>
-          </li>
-
-          <!-- ✅ NEW TAB -->
-          <li class="nav-item">
-            <button
-              class="nav-link"
-              data-bs-toggle="tab"
-              data-bs-target="#activeOrders"
-            >
-              Active Orders
-            </button>
-          </li>
-        </ul>
-
-        <!-- TAB CONTENT -->
-        <div class="tab-content">
-          <!-- =========================== -->
-          <!-- TAB 1: COMPLETED ORDERS -->
-          <!-- =========================== -->
-          <div class="tab-pane fade show active" id="completedOrders">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="mb-3">Completed Orders</h5>
-
-                <div class="table-responsive">
-                  <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th>OrderID</th>
-                        <th>User</th>
-                        <th>Product</th>
-                        <th>Total Paid</th>
-                        <th>Completed At</th>
-                        <th>Shipping Label</th>
-                      </tr>
-                    </thead>
-                    <tbody id="completedOrdersBody"></tbody>
-                  </table>
-                </div>
-                <div id="completedPagination" class="mt-3"></div>
-              </div>
+            <!-- FROM DATE -->
+            <input
+              type="date"
+              id="fromDate"
+              class="form-control"
+              style="max-width: 180px"
+            />
+            <!-- TO DATE -->
+            <input
+              type="date"
+              id="toDate"
+              class="form-control"
+              style="max-width: 180px"
+            />
+            <!-- QUICK DATE PRESETS -->
+            <div class="btn-group">
+              <button class="btn btn-outline-secondary btn-sm" id="todayBtn">
+                Today
+              </button>
+              <button
+                class="btn btn-outline-secondary btn-sm"
+                id="last7DaysBtn"
+              >
+                Last 7 Days
+              </button>
+              <button
+                class="btn btn-outline-secondary btn-sm"
+                id="clearDateBtn"
+              >
+                Clear
+              </button>
             </div>
           </div>
+        </div>
 
-          <!-- =========================== -->
-          <!-- TAB 2: COMPLETING SOON -->
-          <!-- =========================== -->
-          <div class="tab-pane fade" id="completingSoon">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="mb-3">Orders Completing Within 3 Days</h5>
+        <!-- SINGLE TABLE -->
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h5 class="mb-3">Orders</h5>
 
-                <div class="table-responsive">
-                  <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th>OrderID</th>
-                        <th>User</th>
-                        <th>Product</th>
-                        <th>Remaining Installments</th>
-                        <th>Last Due Date</th>
-                        <th>Remaining Amount</th>
-                        <th>Prepare Shipping</th>
-                      </tr>
-                    </thead>
-                    <tbody id="completingSoonBody"></tbody>
-                  </table>
-                </div>
-                <div id="completingSoonPagination" class="mt-3"></div>
-              </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>OrderID</th>
+                    <th>User</th>
+                    <th>Product</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersTableBody"></tbody>
+              </table>
             </div>
+
+            <!-- SINGLE PAGINATION -->
+            <div id="ordersPagination" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="orderModal" tabindex="-1">
+      <div
+        class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+      >
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Order Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
           </div>
 
-          <!-- =========================== -->
-          <!-- TAB 3: ACTIVE ORDERS (NEW) -->
-          <!-- =========================== -->
-          <div class="tab-pane fade" id="activeOrders">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="mb-3">Active Orders</h5>
-
-                <div class="table-responsive">
-                  <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th>OrderID</th>
-                        <th>User</th>
-                        <th>Product</th>
-                        <th>Paid / Total Days</th>
-                        <th>Remaining Amount</th>
-                        <th>Last Payment</th>
-                      </tr>
-                    </thead>
-                    <tbody id="activeOrdersBody"></tbody>
-                  </table>
-                </div>
-                <div id="activePagination" class="mt-3"></div>
-              </div>
-            </div>
-          </div>
+          <div class="modal-body" id="orderModalBody">Loading...</div>
         </div>
       </div>
     </div>
