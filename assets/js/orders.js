@@ -20,6 +20,8 @@
   }
 })();
 
+// 🔥 Store orders for instant access (no extra API call)
+let ordersMap = {};
 // /* ===============================
 //    CONFIG
 // ================================ */
@@ -39,7 +41,6 @@ async function apiGet(endpoint) {
     });
 
     const data = await res.json();
-
     if (!res.ok) {
       throw new Error(data.message || "Request failed");
     }
@@ -54,194 +55,93 @@ async function apiGet(endpoint) {
 /* ===============================
    PAGINATION STATE
 ================================ */
-let completedCurrentPage = 1;
-let completedTotalPages = 1;
-let soonCurrentPage = 1;
-let soonTotalPages = 1;
+let currentPage = 1;
+let totalPagesGlobal = 1;
+let currentFilter = "ACTIVE";
+let searchQuery = "";
 
-let activeCurrentPage = 1;
-let activeTotalPages = 1;
-/* ===============================
-   LOAD COMPLETED ORDERS
-================================ */
-async function loadCompletedOrders(page = 1) {
-  completedCurrentPage = page;
+function renderPagination({
+  containerId,
+  currentPage,
+  totalPages,
+  onPageChange,
+}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
 
-  const tbody = document.getElementById("completedOrdersBody");
-  const paginationContainer = document.getElementById("completedPagination");
+  container.innerHTML = "";
+  if (totalPages <= 1) return;
 
-  if (!tbody) return;
+  const PAGE_WINDOW = 10;
 
-  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
+  const windowStart =
+    Math.floor((currentPage - 1) / PAGE_WINDOW) * PAGE_WINDOW + 1;
 
-  const response = await apiGet(
-    `/admin/orders/completed?page=${page}&limit=10`,
-  );
+  const windowEnd = Math.min(windowStart + PAGE_WINDOW - 1, totalPages);
 
-  if (!response || !response.data?.orders) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load orders</td></tr>`;
-    return;
-  }
+  let html = `<ul class="pagination justify-content-center mb-0">`;
 
-  const orders = response.orders || [];
-  const pagination = response.pagination || {
-    totalPages: 1,
-    currentPage: 1,
-  };
+  // <<
+  html += `
+    <li class="page-item ${windowStart === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${Math.max(
+        windowStart - PAGE_WINDOW,
+        1,
+      )}">&laquo;</a>
+    </li>
+  `;
 
-  completedTotalPages = pagination.totalPages;
+  // <
+  html += `
+    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage - 1}">
+        &lsaquo;
+      </a>
+    </li>
+  `;
 
-  if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No completed orders</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = "";
-
-  orders.forEach((order) => {
-    const user = order.user || {};
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${order.orderId}</td>
-      <td>
-        ${user.name || "Deleted User"}
-        <br>
-        <small class="text-muted">${user.phoneNumber || "-"}</small>
-      </td>
-      <td>${order.productName || order.product?.name || "-"}</td>
-      <td>₹${order.totalPaidAmount || 0}</td>
-      <td>
-        ${
-          order.completedAt
-            ? new Date(order.completedAt).toLocaleDateString()
-            : "-"
-        }
-      </td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary"
-          onclick="viewOrder('${order.orderId}')">
-          <i class="bi bi-eye"></i>
-        </button>
-      </td>
+  // numbers
+  for (let p = windowStart; p <= windowEnd; p++) {
+    html += `
+      <li class="page-item ${p === currentPage ? "active" : ""}">
+        <a class="page-link" href="#" data-page="${p}">${p}</a>
+      </li>
     `;
+  }
 
-    tbody.appendChild(tr);
+  // >
+  html += `
+    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage + 1}">
+        &rsaquo;
+      </a>
+    </li>
+  `;
+
+  // >>
+  html += `
+    <li class="page-item ${windowEnd === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${Math.min(
+        windowEnd + 1,
+        totalPages,
+      )}">&raquo;</a>
+    </li>
+  `;
+
+  html += `</ul>`;
+  container.innerHTML = html;
+
+  // click events
+  container.querySelectorAll("a.page-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const page = parseInt(a.dataset.page);
+      if (!page || page < 1 || page > totalPages) return;
+
+      onPageChange(page);
+    });
   });
-
-  renderCompletedPagination();
-}
-
-/* ===============================
-   LOAD COMPLETING SOON ORDERS
-   (USES ANALYTICS API — CORRECT)
-================================ */
-async function loadCompletingSoonOrders(page = 1) {
-  soonCurrentPage = page;
-
-  const tbody = document.getElementById("completingSoonBody");
-  if (!tbody) return;
-
-  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3">Loading...</td></tr>`;
-
-  const response = await apiGet(
-    `/admin/analytics/orders?status=ACTIVE&completionBucket=1-7-days&page=${page}&limit=10`,
-  );
-
-  if (!response || !response.data?.orders) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-danger text-center">Failed to load</td></tr>`;
-    return;
-  }
-
-  const { orders, pagination } = response.data;
-
-  soonTotalPages = pagination?.totalPages || 1;
-
-  if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-muted text-center">No orders completing soon</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = "";
-
-  orders.forEach((order) => {
-    const user = order.user || {};
-    const meta = order.metadata || {};
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${order.orderId}</td>
-      <td>
-        ${user.name || "Deleted User"}<br>
-        <small class="text-muted">${user.phoneNumber || "-"}</small>
-      </td>
-      <td>${order.productName || "-"}</td>
-      <td>${meta.remainingInstallments ?? "-"}</td>
-      <td>${meta.lastDueDate ? new Date(meta.lastDueDate).toLocaleDateString() : "-"}</td>
-      <td>₹${meta.remainingAmount ?? 0}</td>
-      <td>
-        <span class="badge bg-warning">
-          ${meta.daysToComplete ?? "-"} days
-        </span>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-
-  renderSoonPagination();
-}
-
-async function loadActiveOrders(page = 1) {
-  activeCurrentPage = page;
-
-  const tbody = document.getElementById("activeOrdersBody");
-  const countBox = document.getElementById("activeOrdersCount");
-
-  if (!tbody) return;
-
-  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Loading...</td></tr>`;
-
-  const response = await apiGet(
-    `/admin/analytics/orders?status=ACTIVE&page=${page}&limit=10`,
-  );
-
-  if (!response || !response.data?.orders) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load</td></tr>`;
-    return;
-  }
-
-  const { orders, pagination } = response.data;
-
-  activeTotalPages = pagination?.totalPages || 1;
-
-  if (countBox) countBox.innerText = pagination?.totalRecords || 0;
-
-  if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No active orders</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = "";
-
-  orders.forEach((order) => {
-    const user = order.user || {};
-    const meta = order.metadata || {};
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${order.orderId}</td>
-      <td>${user.name || "Deleted User"}</td>
-      <td>${order.productName || "-"}</td>
-      <td>${meta.paidInstallments}/${meta.totalInstallments}</td>
-      <td>₹${meta.remainingAmount ?? 0}</td>
-      <td>${meta.lastDueDate ? new Date(meta.lastDueDate).toLocaleDateString() : "-"}</td>
-    `;
-
-    tbody.appendChild(tr);
-  });
-
-  renderActivePagination();
 }
 
 /* ===============================
@@ -251,7 +151,7 @@ async function loadActiveOrders(page = 1) {
 async function loadOrderStats() {
   try {
     const res = await fetch(
-      `${INSTALLMENTS_ADMIN_BASE}/orders/dashboard/stats`,
+      `${INSTALLMENTS_BASE}/admin/orders/dashboard/stats`,
       {
         headers: {
           Authorization: `Bearer ${AUTH.getToken()}`,
@@ -261,182 +161,293 @@ async function loadOrderStats() {
     );
 
     const result = await res.json();
-    if (!result?.success) return;
 
-    // ✅ CORRECT RESPONSE PATH
-    const orders = result.data?.orders || {};
+    if (!result?.success) {
+      console.error("Stats API failed:", result);
+      return;
+    }
 
-    document.getElementById("totalOrdersCount") &&
-      (document.getElementById("totalOrdersCount").innerText =
-        orders.total ?? 0);
+    const orders = result?.data?.orders;
 
-    document.getElementById("activeOrdersCount") &&
-      (document.getElementById("activeOrdersCount").innerText =
-        orders.active ?? 0);
+    if (!orders) {
+      console.error("Orders data missing:", result);
+      return;
+    }
 
-    document.getElementById("completedOrdersCount") &&
-      (document.getElementById("completedOrdersCount").innerText =
-        orders.completed ?? 0);
+    // ✅ Direct assignment (cleaner & safer)
+    document.getElementById("totalOrdersCount").innerText = orders.total ?? 0;
 
-    document.getElementById("cancelledOrdersCount") &&
-      (document.getElementById("cancelledOrdersCount").innerText =
-        orders.cancelled ?? 0);
+    document.getElementById("activeOrdersCount").innerText = orders.active ?? 0;
 
-    document.getElementById("pendingDeliveryOrdersCount") &&
-      (document.getElementById("pendingDeliveryOrdersCount").innerText =
-        orders.pendingDelivery ?? 0);
+    document.getElementById("completedOrdersCount").innerText =
+      orders.completed ?? 0;
+
+    document.getElementById("cancelledOrdersCount").innerText =
+      orders.cancelled ?? 0;
+
+    document.getElementById("pendingDeliveryOrdersCount").innerText =
+      orders.pendingDelivery ?? 0;
   } catch (err) {
     console.error("Order stats error:", err);
   }
 }
-function renderCompletedPagination() {
-  const container = document.getElementById("completedPagination");
-  if (!container) return;
+async function loadOrders(page = 1) {
+  currentPage = page;
 
-  container.innerHTML = "";
+  const tbody = document.getElementById("ordersTableBody");
+  if (!tbody) return;
 
-  if (completedTotalPages <= 1) return;
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center">Loading...</td></tr>`;
 
-  let html = `<ul class="pagination justify-content-center mt-3">`;
+  let endpoint = "";
 
-  html += `
-    <li class="page-item ${completedCurrentPage === 1 ? "disabled" : ""}">
-      <a class="page-link" href="#" data-page="${completedCurrentPage - 1}">&lsaquo;</a>
-    </li>
-  `;
+  const baseParams = `page=${page}&limit=10&search=${searchQuery}&fromDate=${window.fromDate || ""}&toDate=${window.toDate || ""}`;
 
-  for (let i = 1; i <= completedTotalPages; i++) {
-    html += `
-      <li class="page-item ${i === completedCurrentPage ? "active" : ""}">
-        <a class="page-link" href="#" data-page="${i}">${i}</a>
-      </li>
-    `;
+  if (currentFilter === "ACTIVE") {
+    endpoint = `/admin/analytics/orders?status=ACTIVE&${baseParams}`;
   }
 
-  html += `
-    <li class="page-item ${
-      completedCurrentPage === completedTotalPages ? "disabled" : ""
-    }">
-      <a class="page-link" href="#" data-page="${completedCurrentPage + 1}">&rsaquo;</a>
-    </li>
-  `;
+  if (currentFilter === "COMPLETED") {
+    endpoint = `/admin/orders/completed?${baseParams}`;
+  }
 
-  html += `</ul>`;
+  if (currentFilter === "SOON") {
+    endpoint = `/admin/analytics/orders?status=ACTIVE&completionBucket=1-7-days&${baseParams}`;
+  }
 
-  container.innerHTML = html;
+  const response = await apiGet(endpoint);
 
-  container.querySelectorAll("a.page-link").forEach((a) => {
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      const page = parseInt(a.dataset.page);
-      if (!page || page < 1 || page > completedTotalPages) return;
-      loadCompletedOrders(page);
-    });
+  const payload = response?.data || response;
+
+  if (!payload || !payload.orders) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Failed to load</td></tr>`;
+    return;
+  }
+
+  const { orders, totalPages } = payload;
+
+  totalPagesGlobal = totalPages || 1;
+
+  tbody.innerHTML = "";
+
+  if (!orders.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center">No orders</td></tr>`;
+    return;
+  }
+  orders.forEach((order) => {
+    ordersMap[order.orderId] = order;
   });
-}
-function renderSoonPagination() {
-  const container = document.getElementById("completingSoonPagination");
-  if (!container) return;
+  orders.forEach((order) => {
+    const user = order.user || {};
+    const meta = order.metadata || {};
 
-  container.innerHTML = "";
+    let date = "-";
 
-  if (soonTotalPages <= 1) return;
+    if (currentFilter === "COMPLETED") {
+      date = order.completedAt
+        ? new Date(order.completedAt).toLocaleDateString()
+        : "-";
+    }
 
-  let html = `<ul class="pagination justify-content-center mt-3">`;
+    if (currentFilter === "ACTIVE" || currentFilter === "SOON") {
+      date = meta.lastDueDate
+        ? new Date(meta.lastDueDate).toLocaleDateString()
+        : "-";
+    }
 
-  html += `
-    <li class="page-item ${soonCurrentPage === 1 ? "disabled" : ""}">
-      <a class="page-link" href="#" data-page="${soonCurrentPage - 1}">&lsaquo;</a>
-    </li>
-  `;
+    const tr = document.createElement("tr");
 
-  for (let i = 1; i <= soonTotalPages; i++) {
-    html += `
-      <li class="page-item ${i === soonCurrentPage ? "active" : ""}">
-        <a class="page-link" href="#" data-page="${i}">${i}</a>
-      </li>
-    `;
-  }
+    tr.innerHTML = `
+  <td>${order.orderId}</td>
+  <td>
+    ${order.user?.name || "Deleted User"}<br>
+    <small>${order.user?.phoneNumber || "-"}</small>
+  </td>
+  <td>${order.productName || order.product?.name || "-"}</td>
+  <td>${order.status}</td>
+  <td>₹${order.totalPaidAmount || 0}</td>
+  <td>${order.lastPaymentDate ? new Date(order.lastPaymentDate).toLocaleDateString() : "-"}</td>
+  <td>
+    <button class="btn btn-sm btn-outline-primary"
+      onclick="viewOrder('${order.orderId}')">
+      <i class="bi bi-eye"></i>
+    </button>
+  </td>
+`;
 
-  html += `
-    <li class="page-item ${
-      soonCurrentPage === soonTotalPages ? "disabled" : ""
-    }">
-      <a class="page-link" href="#" data-page="${soonCurrentPage + 1}">&rsaquo;</a>
-    </li>
-  `;
-
-  html += `</ul>`;
-
-  container.innerHTML = html;
-
-  container.querySelectorAll("a.page-link").forEach((a) => {
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      const page = parseInt(a.dataset.page);
-      if (!page || page < 1 || page > soonTotalPages) return;
-      loadCompletingSoonOrders(page);
-    });
+    tbody.appendChild(tr);
   });
-}
-function renderActivePagination() {
-  const container = document.getElementById("activePagination");
-  if (!container) return;
 
-  container.innerHTML = "";
-
-  if (activeTotalPages <= 1) return;
-
-  let html = `<ul class="pagination justify-content-center mt-3">`;
-
-  html += `
-    <li class="page-item ${activeCurrentPage === 1 ? "disabled" : ""}">
-      <a class="page-link" href="#" data-page="${activeCurrentPage - 1}">&lsaquo;</a>
-    </li>
-  `;
-
-  for (let i = 1; i <= activeTotalPages; i++) {
-    html += `
-      <li class="page-item ${i === activeCurrentPage ? "active" : ""}">
-        <a class="page-link" href="#" data-page="${i}">${i}</a>
-      </li>
-    `;
-  }
-
-  html += `
-    <li class="page-item ${
-      activeCurrentPage === activeTotalPages ? "disabled" : ""
-    }">
-      <a class="page-link" href="#" data-page="${activeCurrentPage + 1}">&rsaquo;</a>
-    </li>
-  `;
-
-  html += `</ul>`;
-
-  container.innerHTML = html;
-
-  container.querySelectorAll("a.page-link").forEach((a) => {
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      const page = parseInt(a.dataset.page);
-      if (!page || page < 1 || page > activeTotalPages) return;
-      loadActiveOrders(page);
-    });
+  renderPagination({
+    containerId: "ordersPagination",
+    currentPage: currentPage,
+    totalPages: totalPagesGlobal,
+    onPageChange: (p) => loadOrders(p),
   });
 }
 /* ===============================
    VIEW ORDER
 ================================ */
 function viewOrder(orderId) {
-  window.location.href = `order-details.html?orderId=${orderId}`;
+  const modalBody = document.getElementById("orderModalBody");
+
+  const order = ordersMap[orderId];
+
+  if (!order) {
+    modalBody.innerHTML = `<p class="text-danger">Order not found</p>`;
+    return;
+  }
+
+  if (!orderModal) {
+    console.error("Modal not initialized");
+    return;
+  }
+
+  orderModal.show();
+
+  modalBody.innerHTML = `
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <p><strong>Order ID:</strong> ${order.orderId}</p>
+        <p><strong>Status:</strong> ${order.status}</p>
+        <p><strong>Total Paid:</strong> ₹${order.totalPaidAmount || 0}</p>
+        <p><strong>Remaining:</strong> ₹${order.remainingAmount || 0}</p>
+      </div>
+
+      <div class="col-md-6">
+        <p><strong>User:</strong> ${order.user?.name || "-"}</p>
+        <p><strong>Phone:</strong> ${order.user?.phoneNumber || "-"}</p>
+        <p><strong>Product:</strong> ${order.product?.name || "-"}</p>
+      </div>
+    </div>
+
+    <hr>
+
+    <h6>Installments</h6>
+    <ul class="list-group">
+      ${
+        order.paymentSchedule?.length
+          ? order.paymentSchedule
+              .map(
+                (i) => `
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Day ${i.installmentNumber}</span>
+          <span>₹${i.amount}</span>
+          <span class="${i.status === "PAID" ? "text-success" : "text-warning"}">
+            ${i.status}
+          </span>
+        </li>
+      `,
+              )
+              .join("")
+          : "<li class='list-group-item'>No installments</li>"
+      }
+    </ul>
+  `;
 }
+
+document.getElementById("orderStatusFilter").addEventListener("change", (e) => {
+  currentFilter = e.target.value;
+  loadOrders(1);
+});
+
+let debounceTimer;
+
+const searchInput = document.getElementById("orderSearchInput");
+
+if (searchInput) {
+  searchInput.addEventListener("input", (e) => {
+    clearTimeout(debounceTimer);
+
+    debounceTimer = setTimeout(() => {
+      searchQuery = e.target.value.trim();
+      loadOrders(1);
+    }, 400);
+  });
+}
+
+const fromDateInput = document.getElementById("fromDate");
+const toDateInput = document.getElementById("toDate");
+
+[fromDateInput, toDateInput].forEach((input) => {
+  if (!input) return;
+
+  input.addEventListener("change", () => {
+    window.fromDate = fromDateInput.value;
+    window.toDate = toDateInput.value;
+
+    loadOrders(1);
+  });
+});
+
+// ===============================
+// QUICK DATE PRESETS
+// ===============================
+const todayBtn = document.getElementById("todayBtn");
+const last7DaysBtn = document.getElementById("last7DaysBtn");
+const clearDateBtn = document.getElementById("clearDateBtn");
+
+function formatDate(date) {
+  return date.toISOString().split("T")[0]; // YYYY-MM-DD
+}
+
+// TODAY
+todayBtn?.addEventListener("click", () => {
+  const today = formatDate(new Date());
+
+  document.getElementById("fromDate").value = today;
+  document.getElementById("toDate").value = today;
+
+  window.fromDate = today;
+  window.toDate = today;
+
+  loadOrders(1);
+});
+
+// LAST 7 DAYS
+last7DaysBtn?.addEventListener("click", () => {
+  const today = new Date();
+  const last7 = new Date();
+  last7.setDate(today.getDate() - 6);
+
+  const from = formatDate(last7);
+  const to = formatDate(today);
+
+  document.getElementById("fromDate").value = from;
+  document.getElementById("toDate").value = to;
+
+  window.fromDate = from;
+  window.toDate = to;
+
+  loadOrders(1);
+});
+
+// CLEAR
+clearDateBtn?.addEventListener("click", () => {
+  document.getElementById("fromDate").value = "";
+  document.getElementById("toDate").value = "";
+
+  window.fromDate = "";
+  window.toDate = "";
+
+  loadOrders(1);
+});
 
 /* ===============================
    INIT
 ================================ */
+let orderModal; // 🔥 global
+
 document.addEventListener("DOMContentLoaded", () => {
+  const modalEl = document.getElementById("orderModal");
+
+  if (!modalEl) {
+    console.error("Modal not found in DOM");
+    return;
+  }
+
+  orderModal = new bootstrap.Modal(modalEl);
+
   loadOrderStats();
-  loadCompletedOrders();
-  loadCompletingSoonOrders();
-  loadActiveOrders();
+  loadOrders(1);
 });
