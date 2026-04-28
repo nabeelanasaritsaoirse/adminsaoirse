@@ -201,7 +201,29 @@ async function loadOrders(page = 1) {
 
   let endpoint = "";
 
-  const baseParams = `page=${page}&limit=10&search=${searchQuery}&fromDate=${window.fromDate || ""}&toDate=${window.toDate || ""}`;
+  let params = new URLSearchParams({
+    page,
+    limit: 10,
+  });
+
+  if (searchQuery) params.append("search", searchQuery);
+  const fromDateInputEl = document.getElementById("fromDate");
+  const toDateInputEl = document.getElementById("toDate");
+
+  const safeFromDate =
+    typeof window.fromDate === "string"
+      ? window.fromDate
+      : fromDateInputEl?.value || "";
+
+  const safeToDate =
+    typeof window.toDate === "string"
+      ? window.toDate
+      : toDateInputEl?.value || "";
+
+  if (safeFromDate) params.append("fromDate", safeFromDate);
+  if (safeToDate) params.append("toDate", safeToDate);
+
+  const baseParams = params.toString();
 
   if (currentFilter === "ACTIVE") {
     endpoint = `/admin/analytics/orders?status=ACTIVE&${baseParams}`;
@@ -373,8 +395,8 @@ const toDateInput = document.getElementById("toDate");
   if (!input) return;
 
   input.addEventListener("change", () => {
-    window.fromDate = fromDateInput.value;
-    window.toDate = toDateInput.value;
+    window.fromDate = String(fromDateInput?.value || "");
+    window.toDate = String(toDateInput?.value || "");
 
     loadOrders(1);
   });

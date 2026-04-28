@@ -154,12 +154,81 @@
           </table>
         </div>
 
-        <!-- USER DETAIL -->
-        <div class="card shadow-sm mb-4">
-          <div class="card-header">User Detail</div>
-          <div class="card-body" id="userDetail">Select a user</div>
+        <!-- USER DETAIL MODAL -->
+        <div class="modal fade" id="userModal" tabindex="-1">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div
+              class="modal-content"
+              style="max-height: 80vh; overflow: hidden"
+            >
+              <div class="modal-header">
+                <h5 class="modal-title">User Detail</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                ></button>
+              </div>
+
+              <div
+                class="modal-body"
+                id="userDetailModal"
+                style="overflow-y: auto"
+              >
+                Loading...
+              </div>
+            </div>
+          </div>
         </div>
 
+        <div class="modal fade" id="reassignModal" tabindex="-1">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Reassign Referrer</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+
+              <div class="modal-body">
+                <!-- 🔍 SEARCH -->
+                <input
+                  id="searchReferrer"
+                  class="form-control mb-2"
+                  placeholder="Search user..."
+                />
+
+                <!-- 🔽 DROPDOWN -->
+                <select id="referrerDropdown" class="form-select mb-2">
+                  <option value="">Select user</option>
+                </select>
+
+                <!-- 📝 REASON -->
+                <input
+                  id="reassignReason"
+                  class="form-control mb-2"
+                  placeholder="Reason (required)"
+                />
+
+                <div class="alert alert-warning">
+                  ⚠️ Cannot change if user has active purchases
+                </div>
+              </div>
+
+              <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                  Cancel
+                </button>
+                <button
+                  id="reassignBtn"
+                  class="btn btn-danger"
+                  onclick="submitReassign()"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
         <!-- REWARD CONFIG -->
         <div class="card shadow-sm mb-4">
           <div class="card-header">Reward Config</div>
@@ -228,6 +297,23 @@
             >
               Give Reward
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="globalPopup" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center p-3">
+          <div class="modal-body">
+            <div
+              id="popupIcon"
+              style="font-size: 40px; margin-bottom: 10px"
+            ></div>
+            <h5 id="popupMessage"></h5>
+          </div>
+
+          <div class="modal-footer justify-content-center border-0">
+            <button class="btn btn-primary" data-bs-dismiss="modal">OK</button>
           </div>
         </div>
       </div>

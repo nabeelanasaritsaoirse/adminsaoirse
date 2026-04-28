@@ -5,14 +5,23 @@ let currentSearch = "";
 let currentSort = "referrals";
 let chartInstance = null;
 let globalUsers = [];
+let selectedUserForReassign = null;
+let userModalInstance;
+
+function getUserModal() {
+  if (!userModalInstance) {
+    userModalInstance = new bootstrap.Modal(
+      document.getElementById("userModal"),
+    );
+  }
+  return userModalInstance;
+}
 // ======================
 // USER DETAILS
 // ======================
 async function loadUser(userId) {
   try {
     const res = await API.get(REF_API.userDetails, { userId });
-
-    console.log("User detail API:", res);
 
     const data = res?.data || {};
 
@@ -21,7 +30,9 @@ async function loadUser(userId) {
     const earnings = data.earnings || {};
     const referrals = data.referredUsers || [];
 
-    document.getElementById("userDetail").innerHTML = `
+    getUserModal().show();
+
+    document.getElementById("userDetailModal").innerHTML = `
     
     <!-- USER HEADER -->
     <div class="card shadow-sm mb-3 p-3">
@@ -103,7 +114,7 @@ async function loadUser(userId) {
     <div class="card shadow-sm p-3 mb-3">
       <h6 class="mb-3">Referred Users</h6>
 
-      <div style="max-height:300px; overflow-y:auto;">
+      <div>
         ${
           referrals.length
             ? referrals
@@ -167,45 +178,136 @@ async function loadUser(userId) {
       </div>
     </div>
 
-    <!-- ACTION -->
-    <div class="text-end">
-      <button class="btn btn-danger"
-        onclick="reassignPrompt('${user.userId}')">
-        Reassign Referrer
-      </button>
-    </div>
+    <div class="d-flex justify-content-end mt-3">
+ <button class="btn btn-warning"
+  onclick="openReassignModal('${user.userId}')">
+  Reassign Referrer
+</button>
+</div>
     `;
   } catch (err) {
     console.error("User Detail Error:", err);
-    alert("Failed to load user details");
+    showPopup("error", "Failed to load user details");
   }
 }
-// ======================
-// REASSIGN
-// ======================
-async function reassignPrompt(userId) {
-  const newRef = prompt("Enter new referrer ID:");
-  const reason = prompt("Reason:");
 
-  if (!newRef) return;
+async function searchReferrers(query = "") {
+  const dropdown = document.getElementById("referrerDropdown");
+
+  if (!query.trim()) {
+    dropdown.innerHTML = `<option value="">Type to search users</option>`;
+    return;
+  }
 
   try {
+    const res = await API.get(
+      REF_API.allUsers,
+      {},
+      { page: 1, limit: 10, search: query },
+    );
+
+    const users = res?.data?.users || [];
+
+    dropdown.innerHTML = `
+      <option value="">Select user</option>
+      ${users
+        .map(
+          (u) => `
+        <option value="${u.userId}">
+          ${u.name} (${u.email})
+        </option>
+      `,
+        )
+        .join("")}
+    `;
+  } catch (err) {
+    showPopup("error", "Failed to search referrers");
+  }
+}
+
+let reassignModalInstance;
+
+function getReassignModal() {
+  if (!reassignModalInstance) {
+    reassignModalInstance = new bootstrap.Modal(
+      document.getElementById("reassignModal"),
+    );
+  }
+  return reassignModalInstance;
+}
+
+function openReassignModal(userId) {
+  selectedUserForReassign = userId;
+
+  // safely hide user modal (avoid crash)
+  if (typeof getUserModal === "function") {
+    getUserModal().hide();
+  }
+
+  const searchInput = document.getElementById("searchReferrer");
+  const dropdown = document.getElementById("referrerDropdown");
+  const reasonInput = document.getElementById("reassignReason");
+
+  if (!searchInput || !dropdown || !reasonInput) {
+    console.error("Reassign modal elements missing");
+    return;
+  }
+
+  searchInput.addEventListener(
+    "input",
+    debounce((e) => {
+      searchReferrers(e.target.value);
+    }, 400),
+  );
+  reasonInput.value = "";
+  dropdown.innerHTML = `<option value="">Type to search users</option>`;
+
+  getReassignModal().show();
+}
+
+async function submitReassign() {
+  const newReferrerId = document.getElementById("referrerDropdown").value;
+  const reason = document.getElementById("reassignReason").value;
+  const btn = document.getElementById("reassignBtn");
+
+  if (!newReferrerId) return showPopup("warning", "Select a referrer");
+  if (!reason) return showPopup("warning", "Reason is required");
+  if (newReferrerId === selectedUserForReassign) {
+    return showPopup("warning", "User cannot refer themselves");
+  }
+
+  try {
+    // loading state
+    btn.innerText = "Updating...";
+    btn.disabled = true;
+
     await API.put(
       REF_API.reassignReferrer,
       {
-        newReferrerId: newRef,
+        newReferrerId,
         reason,
       },
-      { userId },
+      { userId: selectedUserForReassign },
     );
 
-    alert("Updated successfully");
-    loadUser(userId);
+    showPopup("success", "Referrer updated successfully");
+
+    // close reassign modal
+    bootstrap.Modal.getInstance(
+      document.getElementById("reassignModal"),
+    ).hide();
+
+    // reopen user modal with fresh data
+    setTimeout(() => {
+      loadUser(selectedUserForReassign);
+    }, 300);
   } catch (err) {
-    alert(err.message);
+    showPopup("error", err.message);
+  } finally {
+    btn.innerText = "Confirm";
+    btn.disabled = false;
   }
 }
-
 // ======================
 // MANUAL REWARD
 // ======================
@@ -217,8 +319,8 @@ async function giveManualReward() {
   const btn = document.getElementById("rewardBtn");
 
   // 🔴 VALIDATION
-  if (!userId) return alert("Please select a user");
-  if (!amount || amount <= 0) return alert("Enter valid amount");
+  if (!userId) return showPopup("warning", "Please select a user");
+  if (!amount || amount <= 0) return showPopup("warning", "Enter valid amount");
 
   try {
     btn.innerText = "Processing...";
@@ -231,13 +333,13 @@ async function giveManualReward() {
       notes: "Admin reward",
     });
 
-    alert("Reward given successfully");
+    showPopup("success", "Reward given successfully");
 
     // 🔥 RESET FORM
     document.getElementById("rewardAmount").value = "";
     document.getElementById("rewardTitle").value = "";
   } catch (err) {
-    alert(err.message);
+    showPopup("error", err.message);
   } finally {
     btn.innerText = "Give Reward";
     btn.disabled = false;
@@ -422,7 +524,7 @@ function renderTableFromGlobal() {
         <td>
           <button class="btn btn-sm btn-outline-primary"
             onclick="loadUser('${u.userId}')">
-            select
+            view
           </button>
         </td>
       </tr>
@@ -473,7 +575,6 @@ async function loadRewardHistory() {
     console.log("Reward history:", res);
 
     const rewards = res?.data || [];
-
     const table = document.getElementById("rewardHistoryTable");
 
     if (!rewards.length) {
@@ -501,26 +602,43 @@ async function loadRewardHistory() {
           <td>₹${r.amount || 0}</td>
 
           <td>
-            <span class="badge ${
-              r.rewardType === "MILESTONE"
-                ? "bg-success"
-                : r.rewardType === "CHAIN"
-                  ? "bg-info"
-                  : "bg-warning"
-            }">
-              ${r.rewardType || "-"}
-            </span>
+            ${
+              r.rewardType === "CHAIN"
+                ? `
+                <div>
+                  <span class="badge bg-info">CHAIN</span><br/>
+
+                  <small class="text-muted">
+                    From: ${r.sourceUser?.name || "Unknown"}
+                  </small><br/>
+
+                  <small class="text-muted">
+                    ${r.percentage || 0}% of ₹${r.sourceReward?.amount || 0}
+                  </small>
+                </div>
+              `
+                : `
+                <span class="badge ${
+                  r.rewardType === "MILESTONE" ? "bg-success" : "bg-warning"
+                }">
+                  ${r.rewardType || "-"}
+                </span>
+              `
+            }
           </td>
 
           <td>${r.badgeName || "-"}</td>
 
-          <td>${new Date(r.createdAt).toLocaleDateString()}</td>
+          <td>${
+            r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "-"
+          }</td>
         </tr>
-      `;
+        `;
       })
       .join("");
   } catch (err) {
     console.error("Reward History Error:", err);
+    showPopup("error", err.message || "Failed to load reward history");
   }
 }
 
@@ -553,13 +671,53 @@ async function updateRewardConfig() {
       amount: document.getElementById("amount").value,
     });
 
-    alert("Config updated");
+    showPopup("success", "Config updated");
   } catch (err) {
-    alert(err.message);
+    showPopup("error", err.message);
   } finally {
     btn.innerText = "Save";
     btn.disabled = false;
   }
+}
+
+function debounce(fn, delay = 300) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+let popupInstance;
+
+function getPopup() {
+  if (!popupInstance) {
+    popupInstance = new bootstrap.Modal(document.getElementById("globalPopup"));
+  }
+  return popupInstance;
+}
+
+function showPopup(type, message) {
+  const icon = document.getElementById("popupIcon");
+  const text = document.getElementById("popupMessage");
+
+  if (!icon || !text) return;
+
+  // reset styles
+  icon.className = "";
+  icon.innerHTML = "";
+
+  if (type === "success") {
+    icon.innerHTML = "✅";
+  } else if (type === "error") {
+    icon.innerHTML = "❌";
+  } else if (type === "warning") {
+    icon.innerHTML = "⚠️";
+  }
+
+  text.innerText = message;
+
+  getPopup().show();
 }
 // ======================
 // SEARCH
