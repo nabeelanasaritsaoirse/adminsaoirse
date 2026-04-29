@@ -516,7 +516,8 @@ function renderTableFromGlobal() {
       <tr>
         <td>
           <strong>${u.name}</strong><br/>
-          <small>${u.email}</small>
+          <small>${u.email}</small><br/>
+          <small>${u.phoneNumber}</small>
         </td>
         <td>${u.totalReferrals}</td>
         <td>${u.activeReferrals}</td>
@@ -596,6 +597,7 @@ async function loadRewardHistory() {
         <tr>
           <td>
             <strong>${user.name || "Unknown"}</strong><br/>
+            <small class="text-muted">${user.phoneNumber || "-"}</small><br/>
             <small class="text-muted">${user.email || "-"}</small>
           </td>
 
@@ -650,10 +652,18 @@ async function loadRewardConfig() {
 
     const config = res?.data || {};
 
-    // fill inputs
-    document.getElementById("target").value = config.target || "";
-    document.getElementById("rewardType").value = config.rewardType || "CASH";
-    document.getElementById("amount").value = config.amount || "";
+    const milestone = config.milestones?.[0] || {};
+
+    document.getElementById("target").value = milestone.referralsNeeded || "";
+
+    document.getElementById("amount").value = milestone.rewardAmount || "";
+
+    document.getElementById("badgeName").value = milestone.badgeName || "";
+
+    // dropdown mapping
+    document.getElementById("rewardType").value = config.chainRewardEnabled
+      ? "BOTH"
+      : "CASH";
   } catch (err) {
     console.error("Config load error:", err);
   }
@@ -665,21 +675,40 @@ async function updateRewardConfig() {
     btn.innerText = "Saving...";
     btn.disabled = true;
 
-    await API.put(REF_API.updateConfig, {
-      target: document.getElementById("target").value,
-      rewardType: document.getElementById("rewardType").value,
-      amount: document.getElementById("amount").value,
-    });
+    const target = Number(document.getElementById("target").value);
+    const amount = Number(document.getElementById("amount").value);
+    const type = document.getElementById("rewardType").value;
+
+    // 🔥 FIX: get badgeName properly
+    const badgeName = document.getElementById("badgeName").value.trim();
+
+    const payload = {
+      milestones: [
+        {
+          referralsNeeded: target,
+          rewardAmount: amount,
+          rewardType: "CASH",
+          badgeName: badgeName || "", // always string
+        },
+      ],
+
+      chainRewardEnabled: type.toLowerCase() === "both",
+      chainRewardType: "PERCENTAGE",
+      chainRewardValue: type.toLowerCase() === "both" ? 10 : 0,
+    };
+
+    console.log("Sending config:", payload);
+
+    await API.put(REF_API.updateConfig, payload);
 
     showPopup("success", "Config updated");
   } catch (err) {
-    showPopup("error", err.message);
+    showPopup("error", err.message || "Failed to update config");
   } finally {
     btn.innerText = "Save";
     btn.disabled = false;
   }
 }
-
 function debounce(fn, delay = 300) {
   let timer;
   return (...args) => {
