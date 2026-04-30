@@ -446,21 +446,79 @@ function renderPagination(totalPages) {
     return;
   }
 
-  container.innerHTML = `
-    <div style="display:flex;justify-content:center;gap:8px;margin-top:15px;">
-      ${Array.from({ length: totalPages }, (_, i) => {
-        const page = i + 1;
-        return `
-          <button class="btn btn-sm ${
-            page === currentPage ? "btn-primary" : "btn-outline-primary"
-          }"
-          onclick="changePage(${page})">
-            ${page}
-          </button>
-        `;
-      }).join("")}
-    </div>
+  const PAGE_WINDOW = 10;
+
+  const windowStart =
+    Math.floor((currentPage - 1) / PAGE_WINDOW) * PAGE_WINDOW + 1;
+
+  const windowEnd = Math.min(windowStart + PAGE_WINDOW - 1, totalPages);
+
+  let html = `
+    <ul class="pagination justify-content-center">
   `;
+
+  // ⏮️ <<
+  html += `
+    <li class="page-item ${windowStart === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowStart - PAGE_WINDOW}">
+        &laquo;
+      </a>
+    </li>
+  `;
+
+  // ◀ <
+  html += `
+    <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage - 1}">
+        &lsaquo;
+      </a>
+    </li>
+  `;
+
+  // Pages
+  for (let p = windowStart; p <= windowEnd; p++) {
+    html += `
+      <li class="page-item ${p === currentPage ? "active" : ""}">
+        <a class="page-link" href="#" data-page="${p}">
+          ${p}
+        </a>
+      </li>
+    `;
+  }
+
+  // ▶ >
+  html += `
+    <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${currentPage + 1}">
+        &rsaquo;
+      </a>
+    </li>
+  `;
+
+  // ⏭️ >>
+  html += `
+    <li class="page-item ${windowEnd === totalPages ? "disabled" : ""}">
+      <a class="page-link" href="#" data-page="${windowEnd + 1}">
+        &raquo;
+      </a>
+    </li>
+  `;
+
+  html += `</ul>`;
+
+  container.innerHTML = html;
+
+  // Event binding
+  container.querySelectorAll(".page-link").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const page = Number(el.dataset.page);
+      if (!page || page < 1 || page > totalPages) return;
+
+      currentPage = page;
+      renderTableFromGlobal();
+    });
+  });
 }
 
 function changePage(page) {
