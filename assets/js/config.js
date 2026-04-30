@@ -182,6 +182,22 @@ const API_CONFIG = {
       getActive: "/success-stories/public/active",
       stats: "/success-stories/admin/stats",
     },
+    referrals: {
+      // Leaderboard
+      allUsers: "/admin/referrals/all-users",
+      userDetails: "/admin/referrals/user/:userId",
+
+      // Referrer management
+      reassignReferrer: "/admin/referrals/user/:userId/referrer",
+
+      // Reward config
+      getConfig: "/admin/referrals/reward-config",
+      updateConfig: "/admin/referrals/reward-config",
+
+      // Rewards
+      manualReward: "/admin/referrals/manual-reward",
+      rewardHistory: "/admin/referrals/reward-history",
+    },
 
     featuredLists: {
       // Public endpoints
@@ -334,9 +350,9 @@ const AUTH = {
         profilePicture: userData.profilePicture || "",
         isSuperAdmin: userData.isSuperAdmin,
         modules: (userData.modules || userData.moduleAccess || []).filter(
-          (m) => m !== "dashboard"
+          (m) => m !== "dashboard",
         ),
-      })
+      }),
     );
 
     // Save username separately for easy access
@@ -401,7 +417,7 @@ const API = {
 
       if (!res.ok) {
         throw new Error(
-          json.message || `HTTP ${res.status}: ${res.statusText}`
+          json.message || `HTTP ${res.status}: ${res.statusText}`,
         );
       }
 

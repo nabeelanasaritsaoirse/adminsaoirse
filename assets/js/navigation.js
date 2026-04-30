@@ -177,6 +177,14 @@ const NAV_CONFIG = {
       permission: "autopay",
     },
     {
+      id: "referrals",
+      label: "Referral System",
+      icon: "bi-diagram-3",
+      href: "referrals.html",
+      hrefFromRoot: "referrals.html",
+      permission: "referrals",
+    },
+    {
       id: "faq_management",
       label: "FAQ Management",
       icon: "bi-question-circle",
